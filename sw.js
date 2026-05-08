@@ -1,6 +1,7 @@
-const CACHE_NAME = 'invest-v15-cache';
+const CACHE_NAME = 'invest-v16-cache'; // Bumped to v16 to force a reset
 const ASSETS_TO_CACHE = [
-    './invest.html',
+    './',              // Added root path
+    './index.html',    // Fixed: changed from invest.html
     './manifest.json',
     'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap',
     'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0'
@@ -14,7 +15,7 @@ self.addEventListener('install', (event) => {
             return cache.addAll(ASSETS_TO_CACHE);
         })
     );
-    self.skipWaiting();
+    self.skipWaiting(); // Force new service worker to activate immediately
 });
 
 // 2. Activate & Clean Old Caches
@@ -24,14 +25,14 @@ self.addEventListener('activate', (event) => {
             return Promise.all(
                 cacheNames.map((cache) => {
                     if (cache !== CACHE_NAME) {
-                        console.log('[Service Worker] Clearing Old Cache');
+                        console.log('[Service Worker] Clearing Old Cache:', cache);
                         return caches.delete(cache);
                     }
                 })
             );
         })
     );
-    self.clients.claim();
+    self.clients.claim(); // Take control of all pages immediately
 });
 
 // 3. Fetch from Cache First (Offline Mode)
@@ -42,7 +43,10 @@ self.addEventListener('fetch', (event) => {
             return cachedResponse || fetch(event.request).then((networkResponse) => {
                 return caches.open(CACHE_NAME).then((cache) => {
                     // Cache the new network response for future offline use
-                    cache.put(event.request, networkResponse.clone());
+                    // Only cache valid responses (GET requests)
+                    if (event.request.method === 'GET' && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
                     return networkResponse;
                 });
             });
@@ -62,7 +66,7 @@ self.addEventListener('push', (event) => {
         icon: 'https://cdn-icons-png.flaticon.com/192/10398/10398188.png',
         badge: 'https://cdn-icons-png.flaticon.com/192/10398/10398188.png',
         vibrate: [200, 100, 200, 100, 200],
-        data: { url: './invest.html' }
+        data: { url: './index.html' } // Fixed: changed from invest.html
     };
 
     event.waitUntil(
