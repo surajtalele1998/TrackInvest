@@ -4,6 +4,8 @@
 :root {
     /* BASE SEED: INDIGO */
     --md-primary: #415F91;
+    --md-primary-rgb: 65, 95, 145;
+    --md-tertiary: #705573;
     --md-on-primary: #FFFFFF;
     --md-primary-container: #D6E3FF;
     --md-on-primary-container: #001B3E;
@@ -45,6 +47,7 @@
 @media (prefers-color-scheme: dark) {
     :root {
         --md-primary: #AAC7FF;
+        --md-tertiary: #DBBCE1;
         --md-on-primary: #0A305F;
         --md-primary-container: #284777;
         --md-on-primary-container: #D6E3FF;
@@ -2396,38 +2399,41 @@ input:checked+.slider:before {
 }
 
 .radar-icon {
-    width: 64px;
-    height: 64px;
-    background: var(--md-primary);
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--md-primary), var(--md-tertiary));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    border: 2px solid rgba(255,255,255,0.2);
 }
 
 .radar-icon .material-symbols-rounded {
-    font-size: 32px;
+    font-size: 36px;
     color: var(--md-on-primary);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 .radar-pulse {
     position: absolute;
-    width: 100%;
-    height: 100%;
+    width: 80px;
+    height: 80px;
     background: var(--md-primary);
     border-radius: 50%;
-    opacity: 0.6;
-    animation: pulse-radar 2s infinite ease-out;
+    opacity: 0.4;
+    animation: pulse-radar 3s infinite cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-.radar-pulse:nth-child(2) { animation-delay: 0.6s; }
-.radar-pulse:nth-child(3) { animation-delay: 1.2s; }
+.radar-pulse:nth-child(2) { animation-delay: 1s; }
+.radar-pulse:nth-child(3) { animation-delay: 2s; }
 
 @keyframes pulse-radar {
-    0% { transform: scale(0.6); opacity: 0.6; }
-    100% { transform: scale(2.2); opacity: 0; }
+    0% { transform: scale(0.8); opacity: 0.5; box-shadow: 0 0 0 0 rgba(var(--md-primary-rgb), 0.4); }
+    70% { transform: scale(3.5); opacity: 0; box-shadow: 0 0 0 20px rgba(var(--md-primary-rgb), 0); }
+    100% { transform: scale(3.5); opacity: 0; }
 }
 
 .nearby-action-btn {

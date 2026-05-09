@@ -2380,14 +2380,20 @@ function nearbyTuneIn() {
     const statusBadge = document.getElementById('nearby-status-badge');
     const nearbyUI = document.getElementById('nearby-sync-active');
     const modeSelector = document.getElementById('nearby-mode-selector');
+    const qrFallback = document.getElementById('nearby-qr-fallback');
     
     if (nearbyUI) nearbyUI.style.display = 'flex';
     if (modeSelector) modeSelector.style.display = 'none';
     
-    if (statusText) statusText.innerText = "Listening for Broadcasts...";
-    if (statusBadge) statusBadge.innerText = "Tuning In";
+    if (statusText) statusText.innerText = "Waiting for broadcast link or QR scan...";
+    if (statusBadge) statusBadge.innerText = "Listening";
+    if (qrFallback) {
+        qrFallback.style.display = 'flex';
+        // Hide the QR display since we are listening, but show the "Open Scanner" button
+        document.getElementById('webrtc-qr-display').style.display = 'none';
+    }
     
-    showSnackbar("Please open the shared link on this device.", "info");
+    showSnackbar("Please open the shared link OR tap 'Open Scanner' to scan a QR.", "info");
 }
 
 function closeNearbySync() {
