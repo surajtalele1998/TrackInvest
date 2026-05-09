@@ -2411,10 +2411,118 @@ function updateAdvisorWidget() {
     }
 }
 
+const WEBRTC_QR_FRAME_LIMIT = 420;
+const WEBRTC_QR_PREFIX = 'TIQR2';
+const WEBRTC_QR_SIZE = 320;
 let qrScanner = null;
+let webrtcQRFrameTimer = null;
+let webrtcScanChunks = {};
+
+function hashWebRTCQRPayload(payload) {
+    let hash = 2166136261;
+    for (let i = 0; i < payload.length; i++) {
+        hash ^= payload.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(36);
+}
+
+function createWebRTCQRFrames(code, frameLimit = WEBRTC_QR_FRAME_LIMIT) {
+    const payload = String(code || '');
+    if (payload.length <= frameLimit) return [payload];
+
+    const id = hashWebRTCQRPayload(payload);
+    let total = 1;
+    let chunkSize = frameLimit;
+
+    for (let i = 0; i < 6; i++) {
+        const headerLength = `${WEBRTC_QR_PREFIX}|${id}|${total}|${total}|`.length;
+        const nextChunkSize = Math.max(1, frameLimit - headerLength);
+        const nextTotal = Math.ceil(payload.length / nextChunkSize);
+        if (nextChunkSize === chunkSize && nextTotal === total) break;
+        chunkSize = nextChunkSize;
+        total = nextTotal;
+    }
+
+    const frames = [];
+    for (let i = 0; i < total; i++) {
+        const chunk = payload.slice(i * chunkSize, (i + 1) * chunkSize);
+        frames.push(`${WEBRTC_QR_PREFIX}|${id}|${i + 1}|${total}|${chunk}`);
+    }
+    return frames;
+}
+
+function parseWebRTCQRFrame(input) {
+    const match = String(input || '').match(/^TIQR2\|([a-z0-9]+)\|(\d+)\|(\d+)\|([\s\S]*)$/);
+    if (!match) return null;
+
+    const index = Number(match[2]);
+    const total = Number(match[3]);
+    if (!Number.isInteger(index) || !Number.isInteger(total) || total < 2 || index < 1 || index > total) {
+        return null;
+    }
+
+    return { id: match[1], index, total, payload: match[4] };
+}
+
+function decodeWebRTCQRInput(input, store = webrtcScanChunks) {
+    const frame = parseWebRTCQRFrame(input);
+    if (!frame) return { complete: true, code: input, received: 1, total: 1 };
+
+    if (!store[frame.id] || store[frame.id].total !== frame.total) {
+        store[frame.id] = { total: frame.total, parts: new Array(frame.total) };
+    }
+
+    store[frame.id].parts[frame.index - 1] = frame.payload;
+    const received = store[frame.id].parts.filter(Boolean).length;
+
+    if (received !== frame.total) {
+        return { complete: false, received, total: frame.total };
+    }
+
+    const code = store[frame.id].parts.join('');
+    delete store[frame.id];
+    return { complete: true, code, received, total: frame.total };
+}
+
+function stopWebRTCQRRotation() {
+    if (webrtcQRFrameTimer) {
+        clearInterval(webrtcQRFrameTimer);
+        webrtcQRFrameTimer = null;
+    }
+}
+
+function parseWebRTCDescriptionCode(code) {
+    try {
+        return JSON.parse(code);
+    } catch (jsonError) {
+        try {
+            return JSON.parse(atob(code));
+        } catch (base64Error) {
+            throw jsonError;
+        }
+    }
+}
+
+function waitForWebRTCIceComplete(pc) {
+    return new Promise(resolve => {
+        if (pc.iceGatheringState === 'complete') {
+            resolve();
+            return;
+        }
+        pc.addEventListener('icegatheringstatechange', () => {
+            if (pc.iceGatheringState === 'complete') resolve();
+        });
+        pc.onicecandidate = event => {
+            if (!event.candidate) resolve();
+        };
+    });
+}
 
 function webrtcStartAsReceiver() {
     haptic(40);
+    stopWebRTCQRRotation();
+    webrtcScanChunks = {};
     document.getElementById('webrtc-mode-selector').style.display = 'none';
     document.getElementById('webrtc-active-ui').style.display = 'flex';
     document.getElementById('webrtc-status').innerText = "Status: Creating Offer...";
@@ -2446,39 +2554,62 @@ async function webrtcGenerateOffer() {
     const pc = webrtcInit();
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-
-    // We need to wait for ice gathering to finish for the simple manual sdp
-    return new Promise(resolve => {
-        if (pc.iceGatheringState === 'complete') {
-            document.getElementById('webrtc-code-output').value = JSON.stringify(pc.localDescription);
-            resolve();
-        } else {
-            pc.onicecandidate = event => {
-                if (!event.candidate) {
-                    document.getElementById('webrtc-code-output').value = JSON.stringify(pc.localDescription);
-                    resolve();
-                }
-            };
-        }
-    });
+    await waitForWebRTCIceComplete(pc);
+    document.getElementById('webrtc-code-output').value = JSON.stringify(pc.localDescription);
 }
 
 function webrtcShowQR() {
     const code = document.getElementById('webrtc-code-output').value;
     if (!code) return;
+    stopWebRTCQRRotation();
+
+    const frames = createWebRTCQRFrames(code);
     const qrDiv = document.getElementById('webrtc-qr');
-    qrDiv.innerHTML = "";
-    new QRCode(qrDiv, { text: code, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.L });
+    const indicator = document.getElementById('webrtc-qr-page-indicator');
+    let frameIndex = 0;
+
+    const renderFrame = () => {
+        qrDiv.innerHTML = "";
+        new QRCode(qrDiv, {
+            text: frames[frameIndex],
+            width: WEBRTC_QR_SIZE,
+            height: WEBRTC_QR_SIZE,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.L
+        });
+
+        if (indicator) {
+            indicator.innerText = frames.length > 1
+                ? `QR ${frameIndex + 1}/${frames.length} - keep scanning until complete`
+                : 'Single QR code';
+        }
+        frameIndex = (frameIndex + 1) % frames.length;
+    };
+
+    renderFrame();
+    if (frames.length > 1) {
+        webrtcQRFrameTimer = setInterval(renderFrame, 1400);
+        document.getElementById('webrtc-status').innerText = `Status: QR Ready - scan ${frames.length} parts.`;
+    }
 }
 
 function webrtcStartScanner() {
     if (qrScanner) qrScanner.clear();
+    webrtcScanChunks = {};
     qrScanner = new Html5Qrcode("webrtc-reader");
     qrScanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-            document.getElementById('webrtc-code-input').value = decodedText;
+            const decoded = decodeWebRTCQRInput(decodedText, webrtcScanChunks);
+            if (!decoded.complete) {
+                document.getElementById('webrtc-status').innerText = `Status: Scanned ${decoded.received}/${decoded.total} QR parts...`;
+                haptic(15);
+                return;
+            }
+
+            document.getElementById('webrtc-code-input').value = decoded.code;
             webrtcStopScanner();
             webrtcProcessInput();
         }
@@ -2508,6 +2639,7 @@ function webrtcInit() {
         const status = document.getElementById('webrtc-status');
         status.innerText = `Status: ${pc.connectionState}`;
         if (pc.connectionState === 'connected') {
+            stopWebRTCQRRotation();
             status.style.background = "var(--md-success-container)";
             status.style.color = "var(--md-on-success-container)";
             document.getElementById('webrtc-sync-btn').style.display = 'block';
@@ -2557,12 +2689,19 @@ async function webrtcProcessInput() {
     const input = document.getElementById('webrtc-code-input').value;
     if (!input) return;
     try {
-        const sdp = JSON.parse(input);
+        const decoded = decodeWebRTCQRInput(input.trim(), webrtcScanChunks);
+        if (!decoded.complete) {
+            document.getElementById('webrtc-status').innerText = `Status: Need ${decoded.total - decoded.received} more QR parts.`;
+            return;
+        }
+
+        const sdp = parseWebRTCDescriptionCode(decoded.code);
         if (sdp.type === 'offer') {
             const pc = webrtcInit();
             await pc.setRemoteDescription(sdp);
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+            await waitForWebRTCIceComplete(pc);
 
             // Show the answer as QR for the Receiver to scan back
             document.getElementById('webrtc-status').innerText = "Status: Offer Processed. Show Answer to Receiver.";
