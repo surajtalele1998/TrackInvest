@@ -6,7 +6,9 @@ const CORE_ASSETS = [
     './manifest.json',
     './icons/icon-192.svg',
     './icons/icon-512.svg',
-    './icons/icon-maskable-512.svg'
+    './icons/icon-maskable-512.svg',
+    './style.css',
+    './app.js'
 ];
 
 const CDN_ASSETS = [
