@@ -23,6 +23,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
+    <!-- NEW NEXT-GEN LIBRARIES -->
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0"
         rel="stylesheet">
@@ -205,6 +211,18 @@
                     </div>
                     <div style="font-size:12px; line-height:1.4; opacity:0.9;">
                         Generate full wealth audit & future strategy...
+                    </div>
+                </div>
+                <div class="carousel-card"
+                    style="background:var(--md-tertiary-container); color:var(--md-on-tertiary-container); border:none; cursor:pointer;"
+                    onclick="openRebalanceSheet()">
+                    <div
+                        style="font-size:13px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">balance</span> Portfolio
+                        Rebalance
+                    </div>
+                    <div style="font-size:12px; line-height:1.4; opacity:0.9;">
+                        Audit asset allocation & risk exposure...
                     </div>
                 </div>
 
@@ -1106,6 +1124,24 @@
         </div>
     </div>
 
+    <!-- AI Rebalance Sheet -->
+    <div class="sheet sub-sheet" id="rebalance-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
+                    style="color:var(--md-primary);">balance</span> Portfolio Rebalance</div>
+            <button class="icon-btn" onclick="closeSubSheet()"><span
+                    class="material-symbols-rounded">close</span></button>
+        </div>
+        <div id="ai-rebalance-content" class="scroll-y" style="flex:1; padding:16px; padding-bottom:32px;">
+            <div style="padding:40px; text-align:center;">
+                <span class="material-symbols-rounded ai-loading-icon"
+                    style="font-size:48px; color:var(--md-primary);">balance</span>
+                <div style="margin-top:16px; font-weight:500;">Auditing your risk exposure...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- AI Next Month Prediction Sheet -->
     <div class="sheet sub-sheet" id="ai-predict-sheet" style="max-height:90vh;">
         <div class="drag-handle"></div>
@@ -1147,7 +1183,11 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="./app.js"></script>
+    <script type="module" src="app.js"></script>
+    <script>
+      // Initialize Lucide icons
+      lucide.createIcons();
+    </script>
 </body>
 
 </html>

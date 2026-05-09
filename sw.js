@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v28';
+const CACHE_NAME = 'invest-pro-v30';
 
 const CORE_ASSETS = [
     './',
@@ -8,7 +8,14 @@ const CORE_ASSETS = [
     './icons/icon-512.svg',
     './icons/icon-maskable-512.svg',
     './style.css',
-    './app.js'
+    './app.js',
+    './js/db.js',
+    './js/engine.js',
+    './js/ui.js',
+    './js/ai.js',
+    './js/sync.js',
+    './js/utils.js',
+    './js/charts.js'
 ];
 
 const CDN_ASSETS = [
@@ -19,7 +26,11 @@ const CDN_ASSETS = [
     'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js',
     'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js',
+    'https://unpkg.com/dexie@latest/dist/dexie.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js',
+    'https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js',
+    'https://unpkg.com/lucide@latest'
 ];
 
 // 1. Install — cache core shell first, then CDN assets best-effort
