@@ -90,8 +90,7 @@ export async function generateAIForecast() {
 
     const query = "Based on my current portfolio and historical logs, predict my next month's investment totals per category and provide a brief rationale. Format as a clean summary.";
     const response = await askTrackInvestAI(query);
-    
-    content.innerHTML = `<div class="ai-report-body" style="padding:16px; line-height:1.6; color:var(--md-on-surface-variant);">${response.replace(/\n/g, '<br>')}</div>`;
+    content.innerHTML = `<div class="ai-report-body" style="padding:16px;">${renderAIResponse(response)}</div>`;
 }
 
 /**
@@ -108,7 +107,7 @@ export async function generateWealthBlueprint() {
 
     const query = "Act as an elite Wealth Manager. Perform a Full Wealth Audit. Analyze net worth distribution, suggest actions for next 12 months, and provide a 5-year projection.";
     const report = await askTrackInvestAI(query);
-    container.innerHTML = `<div class="ai-report-body" style="padding:20px;">${report.replace(/\n/g, '<br>')}</div>`;
+    container.innerHTML = `<div class="ai-report-body" style="padding:20px;">${renderAIResponse(report)}</div>`;
 }
 
 /**
@@ -154,9 +153,31 @@ export async function generateRebalanceAudit() {
         Keep it concise in 4-5 bullet points.`;
 
         const response = await askTrackInvestAI(prompt);
-        container.innerHTML = `<div class="ai-report-body" style="padding:20px;">${response.replace(/\n/g, '<br>')}</div>`;
-    } catch (error) {
+        container.innerHTML = `<div class="ai-report-body" style="padding:20px;">${renderAIResponse(response)}</div>`;
+} catch (error) {
         console.error("Audit Error:", error);
         container.innerHTML = `<div class="error-msg" style="padding:20px; color:var(--md-error);">Audit failed. Check connection.</div>`;
     }
+}
+
+/**
+ * Utility to convert raw AI response (markdown-ish) to pretty MD3 HTML
+ */
+function renderAIResponse(text) {
+    if (!text) return "";
+    
+    // Convert bold **text** to <strong>
+    let html = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--md-primary);">$1</strong>');
+    
+    // Convert bullet points * or - to list items
+    html = html.replace(/^[\s]*[\*\-][\s](.*)/gm, '<div style="display:flex; gap:12px; margin-bottom:12px;"><span class="material-symbols-rounded" style="font-size:18px; color:var(--md-primary);">check_circle</span><span style="font-size:14px; line-height:1.4;">$1</span></div>');
+    
+    // Convert line breaks to paragraphs if they aren't list items
+    html = html.split('\n').map(line => {
+        if (line.trim() === "") return "";
+        if (line.includes('display:flex')) return line; // Already processed list item
+        return `<p style="margin-bottom:12px; font-size:14px; line-height:1.6; color:var(--md-on-surface-variant);">${line}</p>`;
+    }).join('');
+
+    return html;
 }
