@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-v16-cache'; // Bumped to v16 to force a reset
+const CACHE_NAME = 'invest-v17-cache'; // Bumped to v16 to force a reset
 const ASSETS_TO_CACHE = [
     './',              // Added root path
     './index.html',    // Fixed: changed from invest.html
