@@ -2258,7 +2258,152 @@ document.addEventListener("DOMContentLoaded", () => {
     processRecurring();
     renderAll();
     checkAppLock();
+    // Handle Nearby Sync Handshake
+    if (window.location.hash) handleNearbyHash();
 });
+
+window.addEventListener('hashchange', handleNearbyHash);
+
+async function handleNearbyHash() {
+    const hash = window.location.hash;
+    if (!hash.startsWith('#sync:')) return;
+
+    haptic(50);
+    const nearbyUI = document.getElementById('nearby-sync-active');
+    const modeSelector = document.getElementById('nearby-mode-selector');
+    const statusText = document.getElementById('nearby-status-text');
+    const statusBadge = document.getElementById('nearby-status-badge');
+    
+    // Switch UI to active sync mode
+    if (nearbyUI) nearbyUI.style.display = 'flex';
+    if (modeSelector) modeSelector.style.display = 'none';
+    if (statusText) statusText.innerText = "Processing Handshake...";
+    if (statusBadge) statusBadge.innerText = "Syncing";
+
+    try {
+        const payloadStr = hash.replace('#sync:', '');
+        const payload = JSON.parse(decodeURIComponent(payloadStr));
+        
+        if (payload.type === 'offer') {
+            console.log("Nearby: Received Offer, generating answer...");
+            const pc = webrtcInit(true); // true means nearby mode
+            await pc.setRemoteDescription(payload.sdp);
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await waitForWebRTCIceComplete(pc);
+
+            const confirmUrl = `${window.location.origin}${window.location.pathname}#sync:${encodeURIComponent(JSON.stringify({
+                type: 'answer',
+                sdp: pc.localDescription
+            }))}`;
+
+            if (statusText) statusText.innerText = "Handshake Ready. Confirming back...";
+            
+            // Share the answer back
+            if (navigator.share) {
+                await navigator.share({
+                    title: 'Confirm Wealth Sync',
+                    text: 'Tap to complete connection',
+                    url: confirmUrl
+                });
+            } else {
+                showSnackbar("Handshake ready. Please share the confirmation link.", "info");
+            }
+        } else if (payload.type === 'answer') {
+            console.log("Nearby: Received Answer, finalizing...");
+            if (!window.pc) {
+                showSnackbar("Connection lost. Restart Sync.", "error");
+                return;
+            }
+            await window.pc.setRemoteDescription(payload.sdp);
+            if (statusText) statusText.innerText = "Connection Established. Preparing data...";
+        }
+        
+        // Clean up URL
+        window.history.replaceState(null, null, ' ');
+    } catch (e) {
+        console.error("Nearby Handshake Error:", e);
+        if (statusText) statusText.innerText = "Sync Failed. Try again.";
+        if (statusBadge) statusBadge.innerText = "Error";
+    }
+}
+
+async function nearbyBroadcast() {
+    haptic(40);
+    const statusText = document.getElementById('nearby-status-text');
+    const statusBadge = document.getElementById('nearby-status-badge');
+    const nearbyUI = document.getElementById('nearby-sync-active');
+    const modeSelector = document.getElementById('nearby-mode-selector');
+    
+    if (nearbyUI) nearbyUI.style.display = 'flex';
+    if (modeSelector) modeSelector.style.display = 'none';
+
+    try {
+        if (statusText) statusText.innerText = "Initializing Secure Pipe...";
+        if (statusBadge) statusBadge.innerText = "Broadcasting";
+        
+        const pc = webrtcInit(true);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await waitForWebRTCIceComplete(pc);
+
+        const syncUrl = `${window.location.origin}${window.location.pathname}#sync:${encodeURIComponent(JSON.stringify({
+            type: 'offer',
+            sdp: pc.localDescription
+        }))}`;
+
+        if (navigator.share) {
+            await navigator.share({
+                title: 'Broadcast Wealth Data',
+                text: 'Sync your portfolio securely over P2P',
+                url: syncUrl
+            });
+            if (statusText) statusText.innerText = "Waiting for Receiver to tune in...";
+        } else {
+            // Show QR fallback
+            const qrFallback = document.getElementById('nearby-qr-fallback');
+            if (qrFallback) qrFallback.style.display = 'flex';
+            document.getElementById('webrtc-qr-display').style.display = 'block';
+            document.getElementById('webrtc-code-output').value = JSON.stringify(pc.localDescription);
+            webrtcShowQR();
+            if (statusText) statusText.innerText = "Share not supported. Scan this QR.";
+        }
+    } catch (e) {
+        console.error("Broadcast error:", e);
+        showSnackbar("Broadcast failed.", "error");
+    }
+}
+
+function nearbyTuneIn() {
+    haptic(40);
+    const statusText = document.getElementById('nearby-status-text');
+    const statusBadge = document.getElementById('nearby-status-badge');
+    const nearbyUI = document.getElementById('nearby-sync-active');
+    const modeSelector = document.getElementById('nearby-mode-selector');
+    
+    if (nearbyUI) nearbyUI.style.display = 'flex';
+    if (modeSelector) modeSelector.style.display = 'none';
+    
+    if (statusText) statusText.innerText = "Listening for Broadcasts...";
+    if (statusBadge) statusBadge.innerText = "Tuning In";
+    
+    showSnackbar("Please open the shared link on this device.", "info");
+}
+
+function closeNearbySync() {
+    document.getElementById('nearby-sync-active').style.display = 'none';
+    document.getElementById('nearby-mode-selector').style.display = 'flex';
+    if (window.pc) {
+        window.pc.close();
+        window.pc = null;
+    }
+}
+
+function nearbyStartScanner() {
+    document.getElementById('nearby-qr-fallback').style.display = 'none';
+    document.getElementById('webrtc-scanner-ui').style.display = 'flex';
+    webrtcStartScanner();
+}
 
 // ==========================================
 // PWA: SERVICE WORKER + INSTALL
@@ -2624,62 +2769,105 @@ function webrtcStopScanner() {
     }
 }
 
-function webrtcInit() {
+function webrtcInit(isNearby = false) {
     if (window.pc) window.pc.close();
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     window.pc = pc;
 
     pc.onconnectionstatechange = () => {
         const status = document.getElementById('webrtc-status');
-        if (!status) return;
-        status.innerText = `Status: ${pc.connectionState}`;
+        const nearbyStatus = document.getElementById('nearby-status-text');
+        const nearbyBadge = document.getElementById('nearby-status-badge');
+        const nearbyProgress = document.getElementById('nearby-sync-progress');
+
+        const stateMsg = `Status: ${pc.connectionState}`;
+        if (status) status.innerText = stateMsg;
+        if (nearbyStatus) nearbyStatus.innerText = pc.connectionState === 'connected' ? "Connection Secure. Transferring..." : stateMsg;
+
         if (pc.connectionState === 'connected') {
             stopWebRTCQRRotation();
-            status.style.background = "var(--md-success-container)";
-            status.style.color = "var(--md-on-success-container)";
-            document.getElementById('webrtc-sync-btn').style.display = 'block';
-            document.getElementById('webrtc-qr-display').style.display = 'none';
-            document.getElementById('webrtc-manual-area').style.display = 'none';
+            if (status) {
+                status.style.background = "var(--md-success-container)";
+                status.style.color = "var(--md-on-success-container)";
+            }
+            if (nearbyBadge) {
+                nearbyBadge.innerText = "Connected";
+                nearbyBadge.style.background = "var(--md-success-container)";
+            }
+            if (nearbyProgress) {
+                nearbyProgress.style.width = '30%';
+                const progressWrap = document.getElementById('nearby-sync-progress-wrap');
+                if (progressWrap) progressWrap.style.display = 'flex';
+            }
+
+            if (isNearby) {
+                // Sender will have dc.readyState === 'open' soon
+            } else {
+                const syncBtn = document.getElementById('webrtc-sync-btn');
+                if (syncBtn) syncBtn.style.display = 'block';
+                const qrDisplay = document.getElementById('webrtc-qr-display');
+                if (qrDisplay) qrDisplay.style.display = 'none';
+                const manualArea = document.getElementById('webrtc-manual-area');
+                if (manualArea) manualArea.style.display = 'none';
+            }
         }
     };
 
     const dc = pc.createDataChannel("sync");
     window.dc = dc;
-    setupDataChannel(dc);
+    setupDataChannel(dc, isNearby);
 
     pc.ondatachannel = (event) => {
-        setupDataChannel(event.channel);
+        setupDataChannel(event.channel, isNearby);
     };
 
     return pc;
 }
 
-function setupDataChannel(channel) {
-    channel.onopen = () => console.log("DC Open");
+function setupDataChannel(channel, isNearby = false) {
+    channel.onopen = () => {
+        console.log("DC Open");
+        if (isNearby) {
+            webrtcSendSync();
+        }
+    };
     channel.onmessage = (e) => {
+        const nearbyProgress = document.getElementById('nearby-sync-progress');
+        const nearbyStatus = document.getElementById('nearby-status-text');
+        if (nearbyProgress) nearbyProgress.style.width = '70%';
+
         try {
             const remoteDb = JSON.parse(e.data);
             if (remoteDb && remoteDb.investments) {
+                if (nearbyProgress) nearbyProgress.style.width = '100%';
+                if (nearbyStatus) nearbyStatus.innerText = "Data Payload Received!";
+
                 Swal.fire({
-                    title: 'Data Received!',
-                    text: `Merge ${remoteDb.investments.length} entries from other device?`,
+                    title: 'Wealth Data Received!',
+                    text: `Merge ${remoteDb.investments.length} entries from the other device?`,
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Merge Data'
+                    confirmButtonText: 'Merge Now',
+                    confirmButtonColor: 'var(--md-primary)',
+                    background: 'var(--md-surface)',
+                    color: 'var(--md-on-surface)'
                 }).then(res => {
                     if (res.isConfirmed) {
-                        // Simple merge logic: check by ID to prevent duplicates
                         const existingIds = new Set(db.investments.map(i => i.id));
                         const newEntries = remoteDb.investments.filter(ri => !existingIds.has(ri.id));
 
                         db.investments = [...db.investments, ...newEntries];
                         saveData();
                         renderAll();
-                        showSnackbar(`Merged ${newEntries.length} new entries!`);
+                        showSnackbar(`Success! Merged ${newEntries.length} new entries.`);
+                        if (isNearby) setTimeout(closeNearbySync, 2000);
                     }
                 });
             }
-        } catch (err) { console.error("Sync parse error", err); }
+        } catch (err) { 
+            console.error("Sync parse error", err); 
+            if (nearbyStatus) nearbyStatus.innerText = "Transfer Error.";
+        }
     };
 }
 
