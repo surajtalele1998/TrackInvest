@@ -6,12 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#F3F3F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
-    <title>Invest Pro Max AI · Complete Suite</title>
+    <title>TrackInvest</title>
     
-    <link id="dynamic-manifest" rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
+    <meta name="apple-mobile-web-app-title" content="TrackInvest">
+    <link rel="apple-touch-icon" href="./icons/icon-192.svg">
+    <meta name="description" content="Offline-first wealth manager with AI-powered portfolio tracking, predictions, and financial planning.">
+    <meta name="mobile-web-app-capable" content="yes">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -82,6 +85,57 @@
         @keyframes slideFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .section-title { font-size: 14px; font-weight: 500; color: var(--md-primary); margin: 24px 0 16px 4px; display: flex; align-items: center; justify-content: space-between; }
+
+        /* ── NEW UTILITY BADGES & CHIPS ── */
+        .badge-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 700; }
+        .badge-positive { background: rgba(0,200,83,0.15); color: #00c853; }
+        .badge-negative { background: rgba(255,82,82,0.15); color: #ff5252; }
+        .badge-neutral { background: var(--md-surface-container-highest); color: var(--md-on-surface-variant); }
+        .stat-row { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .stat-row::-webkit-scrollbar { display: none; }
+        .stat-chip { background: var(--md-surface-container); border-radius: 16px; padding: 12px 16px; flex-shrink: 0; display: flex; flex-direction: column; gap: 4px; min-width: 110px; cursor: default; }
+        .stat-chip-label { font-size: 11px; color: var(--md-on-surface-variant); font-weight: 500; }
+        .stat-chip-val { font-size: 17px; font-weight: 600; color: var(--md-on-surface); }
+
+        /* ── SORT & FILTER TOOLBAR ── */
+        .filter-toolbar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+        .sort-chip { display: inline-flex; align-items: center; gap: 4px; padding: 8px 14px; border-radius: 100px; font-size: 13px; font-weight: 500; border: 1px solid var(--md-outline-variant); background: transparent; color: var(--md-on-surface); cursor: pointer; white-space: nowrap; transition: 0.2s; }
+        .sort-chip.active { background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-color: transparent; }
+        .date-filter-input { background: var(--md-surface-container-high); border: none; padding: 8px 14px; border-radius: 100px; font-size: 13px; color: var(--md-on-surface); outline: none; font-family: inherit; cursor: pointer; }
+        .date-filter-input::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); cursor: pointer; }
+
+        /* ── RECURRING SIP MANAGER ── */
+        .sip-item { display: flex; align-items: center; gap: 12px; background: var(--md-surface-container); border-radius: 20px; padding: 14px 16px; margin-bottom: 8px; }
+        .sip-item-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+        .sip-item-info { flex: 1; min-width: 0; }
+        .sip-item-name { font-size: 15px; font-weight: 500; color: var(--md-on-surface); }
+        .sip-item-meta { font-size: 12px; color: var(--md-on-surface-variant); margin-top: 2px; }
+        .sip-item-amt { font-size: 16px; font-weight: 600; color: var(--md-primary); flex-shrink: 0; }
+
+        /* ── PORTFOLIO HEALTH SCORE ── */
+        .health-ring-wrap { display: flex; align-items: center; gap: 20px; background: var(--md-surface-container); border-radius: 24px; padding: 20px; margin-bottom: 12px; }
+        .health-score-num { font-size: 48px; font-weight: 300; line-height: 1; }
+        .health-score-label { font-size: 13px; font-weight: 500; color: var(--md-on-surface-variant); }
+        .health-score-sub { font-size: 12px; color: var(--md-outline); margin-top: 4px; }
+
+        /* ── EXPORT / SHARE BTN ── */
+        .action-row { display: flex; gap: 8px; margin-bottom: 16px; }
+        .action-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border-radius: 20px; border: 1px solid var(--md-outline-variant); background: var(--md-surface-container); color: var(--md-on-surface); font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .action-btn:active { background: var(--md-surface-container-highest); }
+        .action-btn.primary { background: var(--md-primary-container); color: var(--md-on-primary-container); border-color: transparent; }
+
+        /* ── NAV BADGE ── */
+        .nav-badge { position: absolute; top: -2px; right: -2px; background: var(--md-primary); color: var(--md-on-primary); border-radius: 100px; font-size: 9px; font-weight: 700; padding: 1px 5px; min-width: 14px; text-align: center; }
+        .nav-icon-wrap { position: relative; }
+
+        /* ── KEYBOARD SHORTCUT HINT ── */
+        .kbd { display: inline-flex; align-items: center; justify-content: center; padding: 2px 6px; border-radius: 6px; background: var(--md-surface-container-highest); border: 1px solid var(--md-outline-variant); font-size: 11px; font-family: monospace; color: var(--md-on-surface-variant); }
+
+        /* ── ENTRY INSIGHTS BAR ── */
+        .insights-bar { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+        .insight-box { background: var(--md-surface-container); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+        .insight-box-label { font-size: 11px; color: var(--md-on-surface-variant); font-weight: 500; }
+        .insight-box-val { font-size: 16px; font-weight: 600; color: var(--md-on-surface); }
 
         /* =========================================
            HERO CARD & SVG INTERACTIVE CHART
@@ -238,9 +292,14 @@
         
         .scrim { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); opacity: 0; pointer-events: none; transition: 0.3s; z-index: 20; }
         .scrim.active { opacity: 1; pointer-events: auto; }
+        .scrim-sub { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); opacity: 0; pointer-events: none; transition: 0.3s; z-index: 40; }
+        .scrim-sub.active { opacity: 1; pointer-events: auto; }
         
         .sheet { position: fixed; bottom: -100%; left: 0; right: 0; margin: 0 auto; max-width: 600px; background: var(--md-surface-container-low); border-radius: 28px 28px 0 0; padding: 24px; transition: 0.4s cubic-bezier(0.2, 0, 0, 1); z-index: 30; max-height: 90vh; overflow-y: auto; display: block; }
         .sheet.active { bottom: 0; }
+        .sheet.sub-sheet { z-index: 50; background: var(--md-surface-container); }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .ai-loading-icon { animation: spin 1s linear infinite; display: inline-block; }
         
         .drag-handle { width: 32px; height: 4px; background: var(--md-outline); opacity: 0.4; border-radius: 2px; margin: 0 auto 24px auto; flex-shrink: 0; }
         .sheet-title { margin: 0 0 24px 0; font-size: 22px; font-weight: 400; display: flex; align-items: center; justify-content: space-between; color: var(--md-on-surface); flex-shrink: 0; }
@@ -310,7 +369,7 @@
     <input type="file" id="csv-file" style="display:none;" accept=".csv" onchange="importCSV(event)">
     
     <header class="top-app-bar">
-        <div class="app-title"><span class="material-symbols-rounded" style="color:var(--md-primary);">account_balance</span> Invest Pro</div>
+        <div class="app-title"><span class="material-symbols-rounded" style="color:var(--md-primary);">account_balance</span> TrackInvest</div>
         <div style="display:flex; gap:8px; align-items:center;">
             <select class="account-selector" id="account-filter" onchange="renderAll()"></select>
             <button class="icon-btn" onclick="togglePrivacy()" aria-label="Toggle Privacy"><span class="material-symbols-rounded" id="privacy-icon">visibility</span></button>
@@ -322,10 +381,18 @@
         <div id="tab-dashboard" class="tab-content active">
             
             <div class="hero-card">
-                <div>
-                    <div class="hero-subtitle">Total Wealth (<span id="active-acc-label">All Accounts</span>)</div>
-                    <div class="hero-title"><span id="networth-val">0</span></div>
-                    <div style="font-size:14px; margin-top:8px; font-weight:500;">Est. Tax Liab: <span id="dash-tax-liab" style="color:var(--md-error);">₹0</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <div class="hero-subtitle">Total Wealth (<span id="active-acc-label">All Accounts</span>)</div>
+                        <div class="hero-title"><span id="networth-val">0</span></div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+                            <span id="hero-roi-badge" class="badge-pill badge-neutral">—</span>
+                            <span style="font-size:13px;opacity:0.7;">Est. Tax: <span id="dash-tax-liab">₹0</span></span>
+                        </div>
+                    </div>
+                    <button class="icon-btn" onclick="copyNetWorth()" title="Copy Net Worth" style="color:var(--md-on-primary-container);opacity:0.7;">
+                        <span class="material-symbols-rounded" style="font-size:20px;">content_copy</span>
+                    </button>
                 </div>
 
                 <div class="chart-filters">
@@ -360,6 +427,12 @@
             </div>
             
             <div class="quick-chips" id="quick-add-chips" style="margin-bottom:16px;"></div>
+            <div class="quick-templates-wrapper" id="quick-templates-list" style="display:none; margin-bottom:8px;"></div>
+
+            <div id="maturity-section" style="display:none; margin-bottom:16px;">
+                <div class="section-title" style="margin-top:0;">⏰ Maturing Soon <span style="font-size:12px;font-weight:400;color:var(--md-outline);">(Next 90 days)</span></div>
+                <div style="display:flex; gap:12px; overflow-x:auto; scrollbar-width:none; padding-bottom:8px;" id="maturity-list"></div>
+            </div>
             
             <div class="section-title">Performance Overview</div>
             
@@ -383,7 +456,15 @@
                 </div>
             </div>
 
-            <div style="display:flex; gap:8px; margin-bottom:24px;">
+            <!-- Quick stat chips -->
+            <div class="stat-row" id="stat-row">
+                <div class="stat-chip"><div class="stat-chip-label">Invested</div><div class="stat-chip-val" id="sc-invested">₹0</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Gain/Loss</div><div class="stat-chip-val" id="sc-pnl">₹0</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Savings Rate</div><div class="stat-chip-val" id="sc-savings-rate">0%</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Best Month</div><div class="stat-chip-val" id="sc-best-month">—</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Streak</div><div class="stat-chip-val" id="sc-streak">0 mo</div></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
                 <div class="summary-card" style="flex:1;" onclick="openMonthDetails(1)">
                     <div class="sum-label">Last Month</div>
                     <div class="sum-val" id="last-month-val">0</div>
@@ -397,7 +478,7 @@
             <div class="section-title">Financial Trackers <span class="material-symbols-rounded" style="font-size:16px;color:var(--md-outline);">swipe</span></div>
             
             <div class="widget-carousel">
-                <div class="carousel-card" style="border-color:var(--md-primary);">
+                <div class="carousel-card" style="border-color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">
                     <div style="font-size:13px;font-weight:500;color:var(--md-primary);margin-bottom:8px;display:flex;align-items:center;gap:6px;">
                         <span class="material-symbols-rounded" style="font-size:16px;">psychology</span> AI Forecast
                     </div>
@@ -474,13 +555,45 @@
         </div>
         
         <div id="tab-ledger" class="tab-content">
-            <div class="section-title">Investment Ledger <button class="ai-widget-mini" onclick="askAIEngine('ledger')">Review Habits</button></div>
-            <div style="display:flex;gap:8px;margin-bottom:16px;">
-                <input type="text" id="search-history" class="search-box" style="margin-bottom:0;flex:1;" placeholder="Search entries..." onkeyup="renderHistory()">
+            <div class="section-title">Investment Ledger <button class="ai-widget-mini" onclick="askAIEngine('ledger')"><span class="material-symbols-rounded" style="font-size:14px;">auto_awesome</span> AI Habits</button></div>
+
+            <!-- Ledger insights bar -->
+            <div class="insights-bar" id="ledger-insights-bar">
+                <div class="insight-box"><div class="insight-box-label">Total Entries</div><div class="insight-box-val" id="li-count">0</div></div>
+                <div class="insight-box"><div class="insight-box-label">Total Invested</div><div class="insight-box-val" id="li-total">₹0</div></div>
+                <div class="insight-box"><div class="insight-box-label">Avg / Entry</div><div class="insight-box-val" id="li-avg">₹0</div></div>
+            </div>
+
+            <!-- Search + Type Filter -->
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="text" id="search-history" class="search-box" style="margin-bottom:0;flex:1;" placeholder="🔍 Search entries..." onkeyup="renderHistory()">
                 <select id="ledger-filter-type" class="search-box" style="width:auto;margin-bottom:0;padding:0 16px;border-radius:28px;" onchange="renderHistory()">
                     <option value="All">All Assets</option>
                 </select>
             </div>
+
+            <!-- Date Range Filter -->
+            <div class="filter-toolbar">
+                <input type="date" id="ledger-date-from" class="date-filter-input" onchange="renderHistory()" title="From date">
+                <span style="color:var(--md-on-surface-variant);font-size:13px;">to</span>
+                <input type="date" id="ledger-date-to" class="date-filter-input" onchange="renderHistory()" title="To date">
+                <button class="sort-chip" onclick="clearLedgerDates()" title="Clear date filter"><span class="material-symbols-rounded" style="font-size:14px;">clear</span></button>
+            </div>
+
+            <!-- Sort chips -->
+            <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none;">
+                <button class="sort-chip active" id="sort-date" onclick="setLedgerSort('date',this)"><span class="material-symbols-rounded" style="font-size:14px;">calendar_today</span> Date</button>
+                <button class="sort-chip" id="sort-amount" onclick="setLedgerSort('amount',this)"><span class="material-symbols-rounded" style="font-size:14px;">attach_money</span> Amount</button>
+                <button class="sort-chip" id="sort-type" onclick="setLedgerSort('type',this)"><span class="material-symbols-rounded" style="font-size:14px;">category</span> Type</button>
+                <button class="sort-chip" id="sort-asc" onclick="toggleLedgerOrder(this)" title="Toggle order"><span class="material-symbols-rounded" style="font-size:14px;" id="sort-order-icon">arrow_downward</span></button>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="action-row" style="margin-bottom:16px;">
+                <button class="action-btn primary" onclick="openSheet('recurring-sheet')"><span class="material-symbols-rounded" style="font-size:18px;">autorenew</span> Manage SIPs</button>
+                <button class="action-btn" onclick="exportToCSV()"><span class="material-symbols-rounded" style="font-size:18px;">download</span> Export CSV</button>
+            </div>
+
             <div class="list" id="ledger-history-list"></div>
         </div>
     </main>
@@ -493,13 +606,31 @@
             <div class="nav-icon-wrap"><span class="material-symbols-rounded">pie_chart</span></div><span class="nav-label">Portfolio</span>
         </div>
         <div class="nav-item" id="nav-ledger" onclick="switchTab('ledger')">
-            <div class="nav-icon-wrap"><span class="material-symbols-rounded">list_alt</span></div><span class="nav-label">Ledger</span>
+            <div class="nav-icon-wrap"><span class="material-symbols-rounded">list_alt</span><span class="nav-badge" id="ledger-entry-badge" style="display:none;"></span></div><span class="nav-label">Ledger</span>
         </div>
     </nav>
     
-    <button class="fab" onclick="openInvestSheet()"><span class="material-symbols-rounded">add</span> Add Entry</button>
+    <button class="fab" onclick="openInvestSheet()" title="Add Entry (N)"><span class="material-symbols-rounded">add</span> Add Entry</button>
     <div class="scrim" id="scrim" onclick="closeOverlays()"></div>
-    
+    <div class="scrim-sub" id="scrim-sub" onclick="closeSubSheet()"></div>
+
+    <!-- Recurring SIPs Manager Sheet -->
+    <div class="sheet" id="recurring-sheet" style="max-height:88vh;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title">
+            <span style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="color:var(--md-primary);">autorenew</span> Recurring SIPs</span>
+            <button class="icon-btn" onclick="closeOverlays()"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div id="recurring-total-display" style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;font-weight:500;">Monthly Auto-SIP Total</span>
+            <span style="font-size:20px;font-weight:600;" id="recurring-total-val">₹0</span>
+        </div>
+        <div id="recurring-list" style="margin-bottom:16px;"></div>
+        <button class="btn-primary" onclick="openInvestSheet(); closeOverlays();" style="margin-top:8px;">
+            <span class="material-symbols-rounded">add</span> Add New SIP
+        </button>
+    </div>
+
     <div class="sheet" id="invest-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" id="invest-sheet-title">Log Investment</h3>
@@ -693,10 +824,14 @@
             </label>
             
             <button class="btn-secondary" onclick="dataCleanup()">🧹 Clean Old Entries</button>
+
+            <button id="pwa-install-btn" class="btn-primary" style="display:none; background:var(--md-primary); color:var(--md-on-primary); gap: 8px; justify-content: center;" onclick="triggerPWAInstall()">
+                <span class="material-symbols-rounded">install_mobile</span> Install App
+            </button>
         </div>
     </div>
     
-    <div class="sheet" id="history-sync-sheet" style="max-height:85vh;">
+    <div class="sheet sub-sheet" id="history-sync-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
         <h3 class="sheet-title">Universal History Generator</h3>
         <p style="font-size:13px; color:var(--md-on-surface-variant); margin-bottom:16px;">
@@ -777,17 +912,17 @@
         <div id="maturity-calendar-content"></div>
     </div>
     
-    <div class="sheet" id="xirr-sheet">
+    <div class="sheet sub-sheet" id="xirr-sheet">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title">XIRR Calculator</h3>
+        <h3 class="sheet-title"><span>XIRR Calculator</span><button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button></h3>
         <div class="input-container"><label>Category</label><select id="xirr-category" class="md-input"></select></div>
         <button class="btn-primary" onclick="calculateXIRR()">Estimate XIRR</button>
         <div id="xirr-result" style="margin-top:16px;font-size:18px;font-weight:500;text-align:center;"></div>
     </div>
     
-    <div class="sheet" id="sip-calc-sheet">
+    <div class="sheet sub-sheet" id="sip-calc-sheet">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title">SIP Goal Calculator</h3>
+        <h3 class="sheet-title"><span>SIP Goal Calculator</span><button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button></h3>
         <div class="input-row">
             <div class="input-container"><label>Target Amount (₹)</label><input type="number" id="sip-target" class="md-input"></div>
             <div class="input-container"><label>Years</label><input type="number" id="sip-years" class="md-input"></div>
@@ -797,9 +932,9 @@
         <div id="sip-result" style="margin-top:16px;font-weight:500;text-align:center;"></div>
     </div>
     
-    <div class="sheet" id="emi-calc-sheet">
+    <div class="sheet sub-sheet" id="emi-calc-sheet">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title">Loan EMI Calculator</h3>
+        <h3 class="sheet-title"><span>Loan EMI Calculator</span><button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button></h3>
         <div class="input-container"><label>Loan Amount (₹)</label><input type="number" id="emi-principal" class="md-input"></div>
         <div class="input-row">
             <div class="input-container"><label>Tenure (Years)</label><input type="number" id="emi-tenure" class="md-input"></div>
@@ -809,9 +944,9 @@
         <div id="emi-result" style="margin-top:16px;font-weight:500;text-align:center;"></div>
     </div>
     
-    <div class="sheet" id="inflation-sheet">
+    <div class="sheet sub-sheet" id="inflation-sheet">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title">Inflation-Adjusted Future Value</h3>
+        <h3 class="sheet-title"><span>Inflation-Adjusted Value</span><button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button></h3>
         <div class="input-container"><label>Present Value (₹)</label><input type="number" id="inf-present" class="md-input"></div>
         <div class="input-row">
             <div class="input-container"><label>Years</label><input type="number" id="inf-years" class="md-input"></div>
@@ -837,12 +972,33 @@
         </div>
     </div>
     
-    <div class="sheet" id="chat-history-sheet" style="max-height:85vh;">
+    <div class="sheet sub-sheet" id="chat-history-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title"><span class="material-symbols-rounded">history</span> Past Sessions</h3>
+        <h3 class="sheet-title">
+            <span style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">history</span> Past Sessions</span>
+            <button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button>
+        </h3>
         <div id="chat-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
     </div>
-    
+
+    <!-- AI Next Month Prediction Sheet -->
+    <div class="sheet sub-sheet" id="ai-predict-sheet" style="max-height:90vh;">
+        <div class="drag-handle"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:20px;font-weight:500;display:flex;align-items:center;gap:8px;">
+                <span class="material-symbols-rounded" style="color:var(--md-primary);">psychology</span> Next Month AI Forecast
+            </h3>
+            <button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <p style="font-size:13px;color:var(--md-on-surface-variant);margin-bottom:16px;">Category-wise AI prediction based on your investment history and patterns.</p>
+        <div id="ai-predict-sheet-content" style="display:flex;flex-direction:column;gap:12px;">
+            <div style="padding:24px;text-align:center;color:var(--md-primary);">
+                <span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span>
+                <div style="margin-top:12px;font-size:14px;">Analyzing your investment patterns...</div>
+            </div>
+        </div>
+    </div>
+
     <div id="snackbar" class="snackbar"></div>
     
     <script>
@@ -933,17 +1089,156 @@
         }
         
         function closeOverlays() { 
-            document.querySelectorAll('.scrim, .sheet').forEach(el => el.classList.remove('active')); 
+            document.querySelectorAll('.scrim, .scrim-sub, .sheet').forEach(el => el.classList.remove('active')); 
             editInvId = null; editGoalId = null; 
         }
+
+        // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
+        const SUB_SHEET_IDS = ['xirr-sheet','sip-calc-sheet','emi-calc-sheet','inflation-sheet','ai-predict-sheet','history-sync-sheet'];
         
         function openSheet(sheetId) { 
-            haptic(20); closeOverlays(); 
-            document.getElementById('scrim').classList.add('active'); 
-            document.getElementById(sheetId).classList.add('active'); 
-            
+            haptic(20);
+            const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
+            if (isSubSheet) {
+                // Don't close existing sheets; open on top with sub-scrim
+                document.getElementById('scrim-sub').classList.add('active');
+                document.getElementById(sheetId).classList.add('active');
+            } else {
+                closeOverlays();
+                document.getElementById('scrim').classList.add('active'); 
+                document.getElementById(sheetId).classList.add('active'); 
+            }
             if(sheetId === 'history-sync-sheet') populateSyncDropdown();
         }
+
+        function closeSubSheet() {
+            document.getElementById('scrim-sub').classList.remove('active');
+            document.querySelectorAll('.sheet.sub-sheet').forEach(el => el.classList.remove('active'));
+        }
+
+        // ── COPY NET WORTH ──────────────────────────────
+        function copyNetWorth() {
+            const text = `Net Worth: ₹${formatInr(currentTotalNW)} (as of ${new Date().toLocaleDateString('en-IN')})`;
+            navigator.clipboard.writeText(text).then(() => showSnackbar('Copied to clipboard', 'content_copy'));
+        }
+
+        // ── CSV EXPORT ──────────────────────────────────
+        function exportToCSV() {
+            haptic(30);
+            let rows = [['Date','Type','Amount','Account','Note','Tags','Dividend']];
+            db.investments.sort((a,b) => new Date(b.date)-new Date(a.date)).forEach(inv => {
+                rows.push([inv.date, inv.type, inv.amount, inv.account||'', inv.note||'', inv.tags||'', inv.isDividend?'Yes':'No']);
+            });
+            let csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+            let blob = new Blob([csv], {type:'text/csv'});
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `InvestPro_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showSnackbar('CSV exported!', 'download');
+        }
+
+        // ── LEDGER SORT & FILTER ────────────────────────
+        let ledgerSort = 'date'; let ledgerAsc = false;
+        function setLedgerSort(field, btn) {
+            ledgerSort = field;
+            document.querySelectorAll('.sort-chip[id^="sort-"]').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            renderHistory();
+        }
+        function toggleLedgerOrder(btn) {
+            ledgerAsc = !ledgerAsc;
+            document.getElementById('sort-order-icon').textContent = ledgerAsc ? 'arrow_upward' : 'arrow_downward';
+            renderHistory();
+        }
+        function clearLedgerDates() {
+            document.getElementById('ledger-date-from').value = '';
+            document.getElementById('ledger-date-to').value = '';
+            renderHistory();
+        }
+
+        // ── RECURRING SIP MANAGER ───────────────────────
+        function renderRecurringSheet() {
+            let total = db.recurring.reduce((s,r) => s+r.amount, 0);
+            let totalEl = document.getElementById('recurring-total-val');
+            if (totalEl) totalEl.textContent = formatMoney(total);
+            let list = document.getElementById('recurring-list');
+            if (!list) return;
+            if (db.recurring.length === 0) {
+                list.innerHTML = `<div class="empty-state-premium"><span class="material-symbols-rounded">autorenew</span><div class="es-title">No Recurring SIPs</div><div>Add an entry with "Recurring" toggle enabled</div></div>`;
+                return;
+            }
+            list.innerHTML = db.recurring.map((r, idx) => {
+                let meta = db.categories[r.type] || {color:'#8D6E63', icon:'savings'};
+                let next = new Date(r.nextRun).toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+                return `<div class="sip-item">
+                    <div class="sip-item-icon" style="background:${meta.color};"><span class="material-symbols-rounded" style="font-size:18px;">${meta.icon}</span></div>
+                    <div class="sip-item-info">
+                        <div class="sip-item-name">${r.note || r.type}</div>
+                        <div class="sip-item-meta">${r.type} · Next: ${next} · ${r.account||'Default'}</div>
+                    </div>
+                    <div class="sip-item-amt">${formatMoney(r.amount)}</div>
+                    <button class="icon-btn" onclick="deleteRecurring(${idx})" style="width:36px;height:36px;color:var(--md-error);"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>
+                </div>`;
+            }).join('');
+        }
+        function deleteRecurring(idx) {
+            haptic(30);
+            Swal.fire({title:'Delete SIP?',text:`Remove "${db.recurring[idx].note||db.recurring[idx].type}"?`,icon:'warning',showCancelButton:true,confirmButtonText:'Delete',customClass:{popup:'swal2-popup',confirmButton:'swal2-confirm',cancelButton:'swal2-cancel'}}).then(r => {
+                if (r.isConfirmed) { db.recurring.splice(idx, 1); saveData(); renderRecurringSheet(); showSnackbar('SIP removed', 'check_circle'); }
+            });
+        }
+
+        // ── STAT CHIPS UPDATE ───────────────────────────
+        function updateStatChips(totalInvested, totalMarketValue, yearTotal) {
+            let sal = db.userProfile.salary || 0;
+            let pnl = totalMarketValue - totalInvested;
+            let roi = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
+            let savRate = sal > 0 ? Math.round((currentAvgMonthly / (sal/12)) * 100) : 0;
+            
+            // Best month
+            let monthMap = {};
+            db.investments.filter(i => !i.isDividend).forEach(i => {
+                let k = i.date.substring(0,7);
+                monthMap[k] = (monthMap[k]||0) + i.amount;
+            });
+            let bestMonth = '—'; let bestAmt = 0;
+            Object.entries(monthMap).forEach(([k,v]) => { if(v > bestAmt) { bestAmt = v; bestMonth = k; } });
+            if (bestMonth !== '—') { let d = new Date(bestMonth+'-01'); bestMonth = d.toLocaleString('default',{month:'short',year:'2-digit'}); }
+
+            // Investment streak (consecutive months)
+            let now = new Date(); let streak = 0;
+            for (let i = 0; i < 24; i++) {
+                let m = now.getMonth() - i; let y = now.getFullYear();
+                if (m < 0) { m += 12; y--; }
+                let k = `${y}-${String(m+1).padStart(2,'0')}`;
+                if (monthMap[k] > 0) streak++; else break;
+            }
+
+            let invested = document.getElementById('sc-invested'); if(invested) invested.textContent = formatMoney(totalInvested);
+            let pnlEl = document.getElementById('sc-pnl'); if(pnlEl) { pnlEl.textContent = (pnl>=0?'+':'')+formatMoney(pnl); pnlEl.style.color = pnl>=0?'#00c853':'#ff5252'; }
+            let srEl = document.getElementById('sc-savings-rate'); if(srEl) { srEl.textContent = savRate+'%'; srEl.style.color = savRate>=20?'#00c853':savRate>=10?'var(--md-on-surface)':'#ff5252'; }
+            let bmEl = document.getElementById('sc-best-month'); if(bmEl) bmEl.textContent = bestMonth;
+            let stEl = document.getElementById('sc-streak'); if(stEl) stEl.textContent = streak+' mo';
+
+            // Hero ROI badge
+            let badge = document.getElementById('hero-roi-badge');
+            if (badge) {
+                let sign = roi >= 0 ? '+' : '';
+                badge.textContent = `${sign}${roi.toFixed(1)}% ROI`;
+                badge.className = `badge-pill ${roi >= 0 ? 'badge-positive' : 'badge-negative'}`;
+            }
+        }
+
+        // ── KEYBOARD SHORTCUTS ──────────────────────────
+        document.addEventListener('keydown', e => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            if (e.key === 'n' || e.key === 'N') openInvestSheet();
+            if (e.key === 'Escape') { closeOverlays(); closeSubSheet(); }
+            if (e.key === '1') switchTab('dashboard');
+            if (e.key === '2') switchTab('portfolio');
+            if (e.key === '3') switchTab('ledger');
+        });
         
         function saveData() { 
             try { localStorage.setItem('appHubInvestDb', JSON.stringify(db)); } 
@@ -1746,13 +2041,39 @@
         
         function renderHistory() { 
             let searchEl = document.getElementById("search-history"), filterEl = document.getElementById("ledger-filter-type"); if (!searchEl || !filterEl) return; 
-            let term = searchEl.value.toLowerCase(), filterType = filterEl.value; 
-            let sortedInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => new Date(b.date) - new Date(a.date)); 
-            if (filterType !== 'All') sortedInv = sortedInv.filter(i => i.type === filterType); 
-            if (term) sortedInv = sortedInv.filter(i => i.type.toLowerCase().includes(term) || (i.note && i.note.toLowerCase().includes(term)) || (i.tags && i.tags.toLowerCase().includes(term)) || i.date.includes(term)); 
-            
-            let groups = {}; sortedInv.forEach(inv => { let dStr = new Date(inv.date).toLocaleString('default', { month: 'long', year: 'numeric' }); if (!groups[dStr]) groups[dStr] = []; groups[dStr].push(inv); }); 
-            let html = Object.keys(groups).length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : Object.keys(groups).map(m => `<div class="ledger-month-header">${m}</div>` + groups[m].map(buildUnifiedItemHTML).join('')).join(''); 
+            let term = searchEl.value.toLowerCase(), filterType = filterEl.value;
+            let dateFrom = document.getElementById('ledger-date-from')?.value;
+            let dateTo = document.getElementById('ledger-date-to')?.value;
+
+            let filtered = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter);
+            if (filterType !== 'All') filtered = filtered.filter(i => i.type === filterType);
+            if (term) filtered = filtered.filter(i => i.type.toLowerCase().includes(term) || (i.note && i.note.toLowerCase().includes(term)) || (i.tags && i.tags.toLowerCase().includes(term)) || i.date.includes(term));
+            if (dateFrom) filtered = filtered.filter(i => i.date >= dateFrom);
+            if (dateTo) filtered = filtered.filter(i => i.date <= dateTo);
+
+            // Sort
+            filtered.sort((a, b) => {
+                let va, vb;
+                if (ledgerSort === 'amount') { va = a.amount; vb = b.amount; }
+                else if (ledgerSort === 'type') { va = a.type; vb = b.type; return ledgerAsc ? va.localeCompare(vb) : vb.localeCompare(va); }
+                else { va = new Date(a.date); vb = new Date(b.date); }
+                return ledgerAsc ? va - vb : vb - va;
+            });
+
+            // Update insights bar
+            let liCount = document.getElementById('li-count'); if(liCount) liCount.textContent = filtered.filter(i=>!i.isDividend).length;
+            let liTotal = filtered.filter(i=>!i.isDividend).reduce((s,i)=>s+i.amount,0);
+            let liTotalEl = document.getElementById('li-total'); if(liTotalEl) liTotalEl.textContent = formatMoney(liTotal);
+            let liAvgEl = document.getElementById('li-avg'); if(liAvgEl) liAvgEl.textContent = filtered.filter(i=>!i.isDividend).length > 0 ? formatMoney(Math.round(liTotal / filtered.filter(i=>!i.isDividend).length)) : '₹0';
+
+            // Group by month only if sorting by date
+            let html = '';
+            if (ledgerSort === 'date') {
+                let groups = {}; filtered.forEach(inv => { let dStr = new Date(inv.date).toLocaleString('default', { month: 'long', year: 'numeric' }); if (!groups[dStr]) groups[dStr] = []; groups[dStr].push(inv); }); 
+                html = Object.keys(groups).length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : Object.keys(groups).map(m => `<div class="ledger-month-header">${m}</div>` + groups[m].map(buildUnifiedItemHTML).join('')).join(''); 
+            } else {
+                html = filtered.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : filtered.map(buildUnifiedItemHTML).join('');
+            }
             let container = document.getElementById('ledger-history-list'); if (container) { container.innerHTML = html; attachSwipeListeners(container); } 
         }
         
@@ -1915,7 +2236,19 @@
 
         function openAIChat() { document.getElementById('ai-chat-log').innerHTML = db.chatHistory.map(m => `<div class="chat-bubble ${m.role}">${m.content}</div>`).join(''); document.getElementById('scrim').classList.add('active'); document.getElementById('ai-chat-sheet').classList.add('active'); setTimeout(() => { let log = document.getElementById('ai-chat-log'); log.scrollTop = log.scrollHeight; }, 100); }
         function saveChatSession() { haptic(40); if (db.chatHistory.length > 0) { db.chatSessions.push({ date: new Date().toISOString(), messages: [...db.chatHistory] }); db.chatHistory = []; saveData(); document.getElementById('ai-chat-log').innerHTML = ''; showSnackbar("Chat saved. Started new session."); } else { showSnackbar("Already in a new session."); } }
-        function viewChatHistory() { haptic(30); closeOverlays(); let html = db.chatSessions.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">forum</span><div class="es-title">No past sessions</div></div>` : ""; db.chatSessions.slice().reverse().forEach((sess, idx) => { let dStr = new Date(sess.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); let preview = sess.messages[0] ? sess.messages[0].content.substring(0, 40) + '...' : 'Empty session'; html += `<div class="md-card" style="padding:12px; margin-bottom:8px;"><div style="font-size:12px;color:var(--md-primary);font-weight:500;">${dStr}</div><div style="font-size:14px;margin-top:4px;">${preview}</div></div>`; }); document.getElementById('chat-history-list').innerHTML = html; document.getElementById('scrim').classList.add('active'); document.getElementById('chat-history-sheet').classList.add('active'); }
+        function viewChatHistory() {
+            haptic(30);
+            let html = db.chatSessions.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">forum</span><div class="es-title">No past sessions</div></div>` : "";
+            db.chatSessions.slice().reverse().forEach((sess) => {
+                let dStr = new Date(sess.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                let preview = sess.messages[0] ? sess.messages[0].content.substring(0, 40) + '...' : 'Empty session';
+                html += `<div class="md-card" style="padding:12px; margin-bottom:8px;"><div style="font-size:12px;color:var(--md-primary);font-weight:500;">${dStr}</div><div style="font-size:14px;margin-top:4px;">${preview}</div></div>`;
+            });
+            document.getElementById('chat-history-list').innerHTML = html;
+            // Open as sub-sheet on top of AI chat sheet
+            document.getElementById('scrim-sub').classList.add('active');
+            document.getElementById('chat-history-sheet').classList.add('active');
+        }
         
         async function sendAIChat() {
             if (!db.geminiKey && !db.groqKey) { showSnackbar("API key required", "key"); return; }
@@ -1932,10 +2265,75 @@
         
         async function fetchAIPrediction() {
             if (!db.geminiKey && !db.groqKey) return;
-            let predictEl = document.getElementById('ai-predict-text'); let now = new Date(); let mSums = [];
-            for (let i = 3; i >= 0; i--) { let m = now.getMonth() - i; let y = now.getFullYear(); if (m < 0) { m += 12; y -= 1; } let monthInv = db.investments.filter(inv => { let d = new Date(inv.date); return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((sum, inv) => sum + inv.amount, 0); mSums.push(monthInv); }
-            let prompt = `User's past 4 months investment totals: ${mSums.join(', ')}. Net worth: ${currentTotalNW}. Salary: ${db.userProfile.salary}. Auto-SIPs set: ${db.recurring.reduce((s,r)=>s+r.amount,0)}. Based strictly on mathematical trajectory and salary, output EXACTLY the forecasted next month investment amount in numbers (e.g. ₹X,XXX), followed by ONE extremely short, encouraging sentence (max 10 words). Use HTML <strong> tags to bold the predicted number.`;
-            try { let htmlResp = await callAIApi(prompt, "You are a financial projection engine. Return strictly raw HTML text without any codeblocks."); predictEl.innerHTML = htmlResp; } catch (e) { predictEl.innerHTML = `Data unavailable for prediction.`; }
+            let predictEl = document.getElementById('ai-predict-text');
+            let now = new Date(); let mSums = [];
+            for (let i = 3; i >= 0; i--) {
+                let m = now.getMonth() - i; let y = now.getFullYear();
+                if (m < 0) { m += 12; y -= 1; }
+                let monthInv = db.investments.filter(inv => { let d = new Date(inv.date); return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((sum, inv) => sum + inv.amount, 0);
+                mSums.push(monthInv);
+            }
+            let autoSipTotal = db.recurring.reduce((s,r) => s+r.amount, 0);
+            let prompt = `User past 4 months totals: ${mSums.join(', ')}. Net worth: ${currentTotalNW}. Auto-SIPs: ${autoSipTotal}. Output ONLY: forecasted amount in <strong> tags, then one short encouraging sentence (max 10 words). Raw HTML, no codeblocks.`;
+            try {
+                let htmlResp = await callAIApi(prompt, "You are a financial projection engine. Return raw HTML only.");
+                predictEl.innerHTML = htmlResp + ` <span style="font-size:11px;color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">Details →</span>`;
+            } catch (e) { predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`; }
+        }
+
+        async function openAIPredictSheet() {
+            haptic(30);
+            if (!db.geminiKey && !db.groqKey) { showSnackbar('Add API Key in Settings', 'key'); return; }
+            document.getElementById('scrim-sub').classList.add('active');
+            document.getElementById('ai-predict-sheet').classList.add('active');
+            let content = document.getElementById('ai-predict-sheet-content');
+            content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span><div style="margin-top:12px;font-size:14px;">Generating category-wise forecast...</div></div>`;
+
+            // Build category monthly data (last 3 months per category)
+            let now = new Date(); let catMonthly = {};
+            Object.keys(db.categories).forEach(cat => { catMonthly[cat] = []; });
+            for (let i = 2; i >= 0; i--) {
+                let m = now.getMonth() - i; let y = now.getFullYear();
+                if (m < 0) { m += 12; y -= 1; }
+                Object.keys(db.categories).forEach(cat => {
+                    let sum = db.investments.filter(inv => { let d = new Date(inv.date); return inv.type === cat && d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((s,i) => s+i.amount, 0);
+                    catMonthly[cat].push(sum);
+                });
+            }
+            let autoSips = {};
+            db.recurring.forEach(r => { autoSips[r.type] = (autoSips[r.type]||0) + r.amount; });
+
+            let prompt = `You are a financial AI. Given this user data, predict next month investment for each category. Return ONLY a JSON array: [{"category":"X","predicted":N,"trend":"up|down|stable","reason":"short reason"}]. Categories data (last 3 months each): ${JSON.stringify(catMonthly)}. Auto-SIPs per category: ${JSON.stringify(autoSips)}. Net worth: ${currentTotalNW}. Salary: ${db.userProfile.salary}. Only include categories with investments. No markdown.`;
+
+            try {
+                let raw = await callAIApi(prompt, "You return only valid JSON arrays. No markdown.");
+                raw = raw.replace(/```json|```/g,'').trim();
+                let predictions = JSON.parse(raw);
+                let total = predictions.reduce((s,p) => s + p.predicted, 0);
+                let html = `<div style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:20px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:13px;font-weight:500;opacity:0.8;">Predicted Total Next Month</div>
+                    <div style="font-size:32px;font-weight:400;margin-top:4px;">₹${formatInr(total)}</div>
+                </div>`;
+                predictions.forEach(p => {
+                    let meta = db.categories[p.category] || {color:'#8D6E63',icon:'savings'};
+                    let trendIcon = p.trend === 'up' ? 'trending_up' : p.trend === 'down' ? 'trending_down' : 'trending_flat';
+                    let trendColor = p.trend === 'up' ? 'var(--md-success)' : p.trend === 'down' ? 'var(--md-error)' : 'var(--md-outline)';
+                    html += `<div style="background:var(--md-surface-container-highest);border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px;">
+                        <div style="width:40px;height:40px;border-radius:12px;background:${meta.color};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span class="material-symbols-rounded" style="color:#fff;font-size:20px;">${meta.icon}</span></div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:15px;font-weight:500;">${p.category}</div>
+                            <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.reason}</div>
+                        </div>
+                        <div style="text-align:right;flex-shrink:0;">
+                            <div style="font-size:16px;font-weight:500;">₹${formatInr(p.predicted)}</div>
+                            <div style="display:flex;align-items:center;gap:2px;justify-content:flex-end;margin-top:2px;"><span class="material-symbols-rounded" style="font-size:14px;color:${trendColor};">${trendIcon}</span><span style="font-size:11px;color:${trendColor};">${p.trend}</span></div>
+                        </div>
+                    </div>`;
+                });
+                content.innerHTML = html;
+            } catch(e) {
+                content.innerHTML = `<div style="padding:16px;color:var(--md-error);text-align:center;">Failed to generate prediction. Check API keys.</div>`;
+            }
         }
         
         async function autoSetGoalsViaAI() {
@@ -1968,7 +2366,7 @@
                 return;
             }
             let aiContainer = document.getElementById('ai-response-container');
-            aiContainer.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded" style="animation:spin 1s linear infinite;font-size:32px;">autorenew</span><br><br>Generating structured AI analysis...</div>`;
+            aiContainer.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span><br><br>Generating structured AI analysis...</div>`;
             document.getElementById('ai-report-charts').style.display = 'none'; 
             document.getElementById('scrim').classList.add('active'); document.getElementById('ai-sheet').classList.add('active');
             
@@ -2050,7 +2448,7 @@
             let lastM = currentM === 0 ? 11 : currentM - 1; let lastMY = currentM === 0 ? currentY - 1 : currentY;
             
             let totalNW = 0, totalMarketValue = 0, thisMonthTotal = 0, lastMonthTotal = 0, yearTotal = 0;
-            let typeTotals = {}, typeLastDate = {}, maturities = [], tax80cTotal = 0;
+            let typeTotals = {}, typeLastDate = {}, maturities = [], tax80cTotal = 0, totalInvestedAll = 0;
             
             Object.keys(db.categories).forEach(t => { 
                 typeTotals[t] = 0; 
@@ -2061,6 +2459,7 @@
             Object.keys(db.categories).forEach(type => {
                 let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
                 let totalInvested = filteredInvs.filter(i=>!i.isDividend).reduce((sum, inv) => sum + inv.amount, 0) + (db.categoryDetails[type]?.initialBal || 0);
+                totalInvestedAll += totalInvested;
                 
                 let exactValuation = calculateStrictValuation(type, totalInvested, filteredInvs);
                 typeTotals[type] = exactValuation;
@@ -2110,6 +2509,11 @@
             if(activeTab && activeTab.id === 'tab-portfolio') renderDonutChart(typeTotals, totalMarketValue); 
             
             renderHeatmap(); fetchAIPrediction();
+            updateStatChips(totalInvestedAll, totalMarketValue, yearTotal);
+            renderRecurringSheet();
+            // Entry count badge
+            let badgeEl = document.getElementById('ledger-entry-badge');
+            if (badgeEl) { let cnt = db.investments.length; badgeEl.style.display = cnt > 0 ? 'block' : 'none'; badgeEl.textContent = cnt > 99 ? '99+' : cnt; }
             
             let tplHtml = ""; db.templates.forEach((tpl, idx) => { let meta = db.categories[tpl.type] || { icon: 'bolt' }; tplHtml += `<div class="quick-template-card" onclick="executeQuickLog(${idx})"><span class="material-symbols-rounded qt-icon">${meta.icon}</span><div class="qt-text">${tpl.note} ${formatMoney(tpl.amount)}</div><span class="material-symbols-rounded" style="font-size:16px;opacity:0.5;margin-left:4px;" onclick="deleteQuickLog(event,${idx})">close</span></div>`; });
             let qtWrapper = document.getElementById('quick-templates-list'); if (qtWrapper) { qtWrapper.innerHTML = tplHtml; qtWrapper.style.display = tplHtml ? 'flex' : 'none'; }
@@ -2154,6 +2558,72 @@
             renderAll(); 
             checkAppLock();
         });
+        
+        // ==========================================
+        // PWA: SERVICE WORKER + INSTALL
+        // ==========================================
+        let deferredInstallPrompt = null;
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js', { scope: './' })
+                    .then(reg => {
+                        console.log('[PWA] SW registered, scope:', reg.scope);
+                        // Check for SW updates
+                        reg.addEventListener('updatefound', () => {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                                    showSnackbar('App updated! Refresh for latest version.', 'system_update');
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => console.error('[PWA] SW registration failed:', err));
+            });
+        }
+
+        // Capture the install prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            console.log('[PWA] Install prompt captured');
+            // Show install button
+            let installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'flex';
+        });
+
+        // Handle app installed
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            console.log('[PWA] App installed');
+            showSnackbar('App installed successfully! 🎉', 'install_mobile');
+            let installBtn = document.getElementById('pwa-install-btn');
+            if (installBtn) installBtn.style.display = 'none';
+        });
+
+        // Trigger install from button
+        function triggerPWAInstall() {
+            if (!deferredInstallPrompt) {
+                showSnackbar('Already installed or not supported in this browser', 'info');
+                return;
+            }
+            deferredInstallPrompt.prompt();
+            deferredInstallPrompt.userChoice.then(result => {
+                console.log('[PWA] User choice:', result.outcome);
+                if (result.outcome === 'accepted') {
+                    showSnackbar('Installing...', 'download');
+                }
+                deferredInstallPrompt = null;
+            });
+        }
+
+        // Detect if running as installed PWA
+        function isInstalledPWA() {
+            return window.matchMedia('(display-mode: standalone)').matches ||
+                   window.navigator.standalone === true;
+        }
         
     </script>
 </body>
