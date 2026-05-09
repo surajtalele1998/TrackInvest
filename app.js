@@ -81,14 +81,14 @@ Chart.defaults.animation = { duration: 1500, easing: 'easeOutQuart' };
 // ==========================================
 // 2. GLOBAL HELPER FUNCTIONS
 // ==========================================
-function haptic(ms = 30) { 
-    try { 
+function haptic(ms = 30) {
+    try {
         if (typeof navigator !== 'undefined' && navigator.vibrate && ms > 0) {
-            navigator.vibrate(ms); 
+            navigator.vibrate(ms);
         }
-    } catch (e) { 
+    } catch (e) {
         // Silently fail if blocked by browser policy
-    } 
+    }
 }
 
 function getLocalYYYYMMDD(d) {
@@ -791,7 +791,7 @@ function setInvestType(type) {
     const isMonthlyAsset = ['SIP', 'PF', 'PPF'].includes(type) || config.monthly;
     const monthlyWrap = document.getElementById('monthly-contrib-wrapper');
     if (monthlyWrap) monthlyWrap.style.display = isMonthlyAsset ? 'flex' : 'none';
-    
+
     const isMonthlyCheck = document.getElementById('inv-is-monthly');
     if (isMonthlyCheck && !editInvId) isMonthlyCheck.checked = isMonthlyAsset;
 
@@ -799,20 +799,12 @@ function setInvestType(type) {
     const showIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'flex' : 'none'; };
     const showBlockIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'block' : 'none'; };
 
-    if (fields.interest || ['FD', 'PF', 'PPF'].includes(type)) showIfExist('dynamic-fd-fields', true);
-    if (fields.maturity || ['FD', 'PF', 'PPF'].includes(type)) showBlockIfExist('maturity-box-simple', true);
-    if (fields.sipday || type === 'SIP') showIfExist('dynamic-sip-day-field', true);
-    if (fields.mf || type === 'SIP' || type === 'Stocks') showIfExist('dynamic-mf-search', true);
-    if (fields.qty || type === 'Stocks') showIfExist('dynamic-qty-price', true);
-    if (fields.growth || ['Gold', 'Real Estate'].includes(type)) showIfExist('dynamic-growth-fields', true);
-
-    // Custom overrides from configuration
-    if (config.interest) showIfExist('dynamic-fd-fields', true);
-    if (config.payout) showIfExist('dynamic-fd-fields', true);
-    if (config.maturity) showBlockIfExist('maturity-box-simple', true);
-    if (config.sipday) showIfExist('dynamic-sip-day-field', true);
-    if (config.mf) showIfExist('dynamic-mf-search', true);
-    if (config.qty) showIfExist('dynamic-qty-price', true);
+    if (config.interest || ['FD', 'PF', 'PPF'].includes(type)) showIfExist('dynamic-fd-fields', true);
+    if (config.maturity || ['FD', 'PF', 'PPF'].includes(type)) showBlockIfExist('maturity-box-simple', true);
+    if (config.sipday || type === 'SIP') showIfExist('dynamic-sip-day-field', true);
+    if (config.mf || type === 'SIP' || type === 'Stocks') showIfExist('dynamic-mf-search', true);
+    if (config.qty || type === 'Stocks') showIfExist('dynamic-qty-price', true);
+    if (config.growth || ['Gold', 'Real Estate'].includes(type)) showIfExist('dynamic-growth-fields', true);
 
     // Safe DOM access for labels and inputs
     const amtEl = document.getElementById('inv-amt');
@@ -1358,7 +1350,7 @@ function saveCatSettings() {
     if (!db.categoryDetails[activeCategory]) db.categoryDetails[activeCategory] = {};
     if (!isNaN(cmv)) db.currentMarketValues[activeCategory] = cmv; else delete db.currentMarketValues[activeCategory];
     if (!isNaN(alloc)) db.allocTargets[activeCategory] = alloc; else delete db.allocTargets[activeCategory];
-    
+
     db.categoryDetails[activeCategory].initialBal = !isNaN(initialBal) ? initialBal : 0;
     db.categoryDetails[activeCategory].interestRate = !isNaN(intRate) ? intRate : 0;
 
@@ -1555,15 +1547,15 @@ async function webrtcStartAsReceiver() {
     document.getElementById('webrtc-active-ui').style.display = 'flex';
     document.getElementById('webrtc-qr-display').style.display = 'block';
     document.getElementById('webrtc-status').innerText = 'Status: Generating Receive Code...';
-    
+
     initWebRTC();
     // In receiver mode, we create the offer
     webrtcChannel = webrtcConn.createDataChannel('sync');
     setupDataChannel();
-    
+
     let offer = await webrtcConn.createOffer();
     await webrtcConn.setLocalDescription(offer);
-    
+
     // The ICE candidates will trigger onicecandidate, which will update the QR
     // But we might need to wait for candidates if we want a "full" offer QR
 }
@@ -1574,10 +1566,10 @@ async function webrtcStartAsSender() {
     document.getElementById('webrtc-active-ui').style.display = 'flex';
     document.getElementById('webrtc-scanner-ui').style.display = 'flex';
     document.getElementById('webrtc-status').innerText = 'Status: Scan Receiver QR...';
-    
+
     webrtcScanner = new Html5Qrcode("webrtc-reader");
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
+
     webrtcScanner.start({ facingMode: "environment" }, config, async (decodedText) => {
         await webrtcStopScanner();
         haptic([50, 50]);
@@ -1600,7 +1592,7 @@ function initWebRTC() {
         if (!e.candidate) {
             let code = btoa(JSON.stringify(webrtcConn.localDescription));
             document.getElementById('webrtc-code-output').value = code;
-            
+
             // Generate QR
             const qrDiv = document.getElementById('webrtc-qr');
             qrDiv.innerHTML = '';
@@ -1612,9 +1604,9 @@ function initWebRTC() {
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.L
             });
-            
+
             document.getElementById('webrtc-status').innerText = 'Status: QR Ready! Scan now.';
-            
+
             // Add a "Scan Answer QR" button for the receiver
             if (!document.getElementById('webrtc-scan-answer-btn')) {
                 const btn = document.createElement('button');
@@ -1644,7 +1636,7 @@ function setupDataChannel() {
             try {
                 let parsed = JSON.parse(e.data.substring(5));
                 Object.assign(db, parsed);
-                saveData(); initUI(); renderAll(); 
+                saveData(); initUI(); renderAll();
                 showSnackbar("Data Synced via WebRTC!", "sync");
                 haptic([100, 50, 100]);
             } catch (err) { showSnackbar("Sync Failed", "error"); }
@@ -1671,8 +1663,8 @@ async function webrtcProcessInput() {
             document.getElementById('webrtc-qr-display').style.display = 'none';
             document.getElementById('webrtc-manual-area').style.display = 'none';
         }
-    } catch (e) { 
-        showSnackbar("Invalid QR/Code", "error"); 
+    } catch (e) {
+        showSnackbar("Invalid QR/Code", "error");
         console.error(e);
     }
 }
@@ -1815,14 +1807,14 @@ async function fetchAIPrediction() {
     if (!db.geminiKey && !db.groqKey) return;
     let predictEl = document.getElementById('ai-predict-text-dashboard');
     if (!predictEl) return;
-    
+
     let now = new Date(); let mSums = [];
     for (let i = 3; i >= 0; i--) {
         let m = now.getMonth() - i; let y = now.getFullYear();
         if (m < 0) { m += 12; y -= 1; }
-        let monthInv = db.investments.filter(inv => { 
-            let d = new Date(inv.date); 
-            return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; 
+        let monthInv = db.investments.filter(inv => {
+            let d = new Date(inv.date);
+            return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend;
         }).reduce((sum, inv) => sum + inv.amount, 0);
         mSums.push(monthInv);
     }
@@ -1831,8 +1823,8 @@ async function fetchAIPrediction() {
     try {
         let htmlResp = await callAIApi(prompt, "You are a financial projection engine. Return raw HTML only.");
         predictEl.innerHTML = htmlResp + ` <span style="font-size:11px;color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">Details →</span>`;
-    } catch (e) { 
-        predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`; 
+    } catch (e) {
+        predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`;
     }
 }
 
@@ -1925,11 +1917,11 @@ async function openWealthBlueprint() {
 }
 
 async function generateWealthBlueprint() {
-    if (!db.geminiKey && !db.groqKey) { 
+    if (!db.geminiKey && !db.groqKey) {
         document.getElementById('wealth-blueprint-content').innerHTML = `<div style="padding:40px;text-align:center;color:var(--md-error);">Add API Key in Settings to generate Wealth Blueprint.</div>`;
-        return; 
+        return;
     }
-    
+
     let container = document.getElementById('wealth-blueprint-content');
     container.innerHTML = `<div style="padding:40px; text-align:center;">
         <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px; color:var(--md-primary);">psychology</span>
@@ -2338,32 +2330,32 @@ function calculatePortfolioHealth() {
     let score = 100;
     let issues = [];
     let suggestions = [];
-    
+
     let categoriesCount = Object.keys(currentTypeTotals).filter(k => currentTypeTotals[k] > 0).length;
-    if (categoriesCount < 3) { 
-        score -= 20; 
-        issues.push("Low diversification"); 
+    if (categoriesCount < 3) {
+        score -= 20;
+        issues.push("Low diversification");
         suggestions.push("Invest in at least 3 categories (e.g. SIP, FD, Cash)");
     }
-    
+
     let cash = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Bank'] || 0) + (currentTypeTotals['Liquid'] || 0);
     let annualSal = db.userProfile.salary || 0;
     let monthlyExp = annualSal > 0 ? (annualSal / 12 * 0.5) : 30000;
-    
-    if (cash < monthlyExp * 3) { 
-        score -= 15; 
-        issues.push("Low liquidity buffer"); 
+
+    if (cash < monthlyExp * 3) {
+        score -= 15;
+        issues.push("Low liquidity buffer");
         suggestions.push("Increase 'Cash' or 'Bank' balance to cover 3-6 months expenses");
     }
-    
+
     let onTrackGoals = db.goals.filter(g => {
         let saved = g.saved || 0;
         if (g.link && currentTypeTotals[g.link]) saved += currentTypeTotals[g.link];
         return saved >= (g.target * 0.1);
     }).length;
-    if (db.goals.length > 0 && onTrackGoals === 0) { 
-        score -= 10; 
-        issues.push("Goals underfunded"); 
+    if (db.goals.length > 0 && onTrackGoals === 0) {
+        score -= 10;
+        issues.push("Goals underfunded");
         suggestions.push("Direct more SIPs towards your primary Financial Goals");
     }
 
@@ -2377,7 +2369,7 @@ function calculatePortfolioHealth() {
         issues.push("Conservative growth");
         suggestions.push("Increase SIPs to beat inflation over the long term");
     }
-    
+
     return {
         score: Math.max(0, score),
         status: score > 80 ? "Excellent" : score > 60 ? "Good" : "Needs Attention",
@@ -2411,9 +2403,9 @@ function updateAdvisorWidget() {
     }
 }
 
-const WEBRTC_QR_FRAME_LIMIT = 420;
+const WEBRTC_QR_FRAME_LIMIT = 320;
 const WEBRTC_QR_PREFIX = 'TIQR2';
-const WEBRTC_QR_SIZE = 320;
+const WEBRTC_QR_SIZE = 300;
 let qrScanner = null;
 let webrtcQRFrameTimer = null;
 let webrtcScanChunks = {};
@@ -2589,8 +2581,8 @@ function webrtcShowQR() {
 
     renderFrame();
     if (frames.length > 1) {
-        webrtcQRFrameTimer = setInterval(renderFrame, 1400);
-        document.getElementById('webrtc-status').innerText = `Status: QR Ready - scan ${frames.length} parts.`;
+        webrtcQRFrameTimer = setInterval(renderFrame, 2200); // Slower rotation for better focus
+        document.getElementById('webrtc-status').innerText = `Status: Scan ${frames.length} parts (Rotating...)`;
     }
 }
 
@@ -2600,15 +2592,17 @@ function webrtcStartScanner() {
     qrScanner = new Html5Qrcode("webrtc-reader");
     qrScanner.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        { fps: 15, qrbox: { width: 280, height: 280 } },
         (decodedText) => {
             const decoded = decodeWebRTCQRInput(decodedText, webrtcScanChunks);
             if (!decoded.complete) {
-                document.getElementById('webrtc-status').innerText = `Status: Scanned ${decoded.received}/${decoded.total} QR parts...`;
-                haptic(15);
+                document.getElementById('webrtc-status').innerText = `Status: Part ${decoded.received}/${decoded.total} captured...`;
+                document.getElementById('webrtc-status').style.background = "var(--md-primary-container)";
+                haptic(25);
                 return;
             }
 
+            haptic(50);
             document.getElementById('webrtc-code-input').value = decoded.code;
             webrtcStopScanner();
             webrtcProcessInput();
@@ -2637,6 +2631,7 @@ function webrtcInit() {
 
     pc.onconnectionstatechange = () => {
         const status = document.getElementById('webrtc-status');
+        if (!status) return;
         status.innerText = `Status: ${pc.connectionState}`;
         if (pc.connectionState === 'connected') {
             stopWebRTCQRRotation();
@@ -2673,11 +2668,14 @@ function setupDataChannel(channel) {
                     confirmButtonText: 'Merge Data'
                 }).then(res => {
                     if (res.isConfirmed) {
-                        // Simple merge logic
-                        db.investments = [...db.investments, ...remoteDb.investments.filter(ri => !db.investments.find(li => li.id === ri.id))];
+                        // Simple merge logic: check by ID to prevent duplicates
+                        const existingIds = new Set(db.investments.map(i => i.id));
+                        const newEntries = remoteDb.investments.filter(ri => !existingIds.has(ri.id));
+
+                        db.investments = [...db.investments, ...newEntries];
                         saveData();
                         renderAll();
-                        showSnackbar("Data Merged Successfully!");
+                        showSnackbar(`Merged ${newEntries.length} new entries!`);
                     }
                 });
             }
@@ -2686,16 +2684,22 @@ function setupDataChannel(channel) {
 }
 
 async function webrtcProcessInput() {
-    const input = document.getElementById('webrtc-code-input').value;
-    if (!input) return;
+    const inputEl = document.getElementById('webrtc-code-input');
+    const status = document.getElementById('webrtc-status');
+    if (!inputEl || !inputEl.value) return;
+
     try {
-        const decoded = decodeWebRTCQRInput(input.trim(), webrtcScanChunks);
+        status.innerText = "Status: Processing Code...";
+        const decoded = decodeWebRTCQRInput(inputEl.value.trim(), webrtcScanChunks);
+
         if (!decoded.complete) {
-            document.getElementById('webrtc-status').innerText = `Status: Need ${decoded.total - decoded.received} more QR parts.`;
+            status.innerText = `Status: Part ${decoded.received}/${decoded.total} captured...`;
             return;
         }
 
         const sdp = parseWebRTCDescriptionCode(decoded.code);
+        if (!sdp || !sdp.type) throw new Error("Invalid SDP format");
+
         if (sdp.type === 'offer') {
             const pc = webrtcInit();
             await pc.setRemoteDescription(sdp);
@@ -2704,23 +2708,33 @@ async function webrtcProcessInput() {
             await waitForWebRTCIceComplete(pc);
 
             // Show the answer as QR for the Receiver to scan back
-            document.getElementById('webrtc-status').innerText = "Status: Offer Processed. Show Answer to Receiver.";
+            status.innerText = "Status: Offer Processed. Show Answer to Receiver.";
+            status.style.background = "var(--md-primary-container)";
             document.getElementById('webrtc-code-output').value = JSON.stringify(pc.localDescription);
             document.getElementById('webrtc-qr-display').style.display = 'block';
             webrtcShowQR();
         } else if (sdp.type === 'answer') {
+            if (!window.pc) {
+                showSnackbar("Error: Receiver state lost. Restart connection.", "error");
+                return;
+            }
             await window.pc.setRemoteDescription(sdp);
+            status.innerText = "Status: Answer Accepted. Finalizing...";
         }
     } catch (e) {
-        showSnackbar("Invalid Code", "error");
+        console.error("WebRTC Process Error:", e);
+        status.innerText = "Status: Error - Code Processing Failed";
+        status.style.background = "var(--md-error-container)";
+        status.style.color = "var(--md-on-error-container)";
+        showSnackbar("Process failed. Please try again.", "error");
     }
 }
 
 function webrtcSendSync() {
     if (window.dc && window.dc.readyState === 'open') {
         window.dc.send(JSON.stringify(db));
-        showSnackbar("Data Sent!");
+        showSnackbar("Data Sent Successfully!");
     } else {
-        showSnackbar("Not connected", "error");
+        showSnackbar("Not connected. Ensure connection status is 'connected'.", "error");
     }
 }

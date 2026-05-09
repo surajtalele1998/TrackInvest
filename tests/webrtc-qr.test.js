@@ -38,6 +38,11 @@ function loadApp() {
         console,
         document,
         localStorage: { getItem() { return null; }, setItem() {} },
+        crypto: globalThis.crypto,
+        TextEncoder,
+        TextDecoder,
+        atob,
+        btoa,
         navigator: {},
         location: { reload() {} },
         addEventListener() {},
@@ -73,6 +78,12 @@ const app = loadApp();
 
 assert.strictEqual(typeof app.createWebRTCQRFrames, 'function');
 assert.strictEqual(typeof app.decodeWebRTCQRInput, 'function');
+assert.strictEqual(typeof app.escapeHtml, 'function');
+assert.strictEqual(typeof app.encryptData, 'function');
+assert.strictEqual(typeof app.decryptData, 'function');
+assert.strictEqual(typeof app.calculateMonthlySIPValue, 'function');
+assert.strictEqual(typeof app.calculateEMIValue, 'function');
+assert.strictEqual(typeof app.calculateInflationValue, 'function');
 
 const longPayload = '{"type":"offer","sdp":"' + 'candidate:'.repeat(120) + '"}';
 const frames = app.createWebRTCQRFrames(longPayload, 160);
@@ -99,3 +110,34 @@ assert.strictEqual(single.complete, true);
 assert.strictEqual(single.code, '{"type":"answer","sdp":"short"}');
 assert.strictEqual(single.received, 1);
 assert.strictEqual(single.total, 1);
+
+assert.strictEqual(
+    app.escapeHtml('<img src=x onerror=alert(1)> " & \''),
+    '&lt;img src=x onerror=alert(1)&gt; &quot; &amp; &#39;'
+);
+
+const formatted = app.formatAIResponse('<img src=x onerror=alert(1)> **Safe** [bad](javascript:alert(1))');
+assert(!formatted.includes('<img'), 'AI markdown output must not render raw HTML tags');
+assert(!formatted.includes('onerror='), 'AI markdown output must not keep event handlers');
+assert(!formatted.includes('javascript:'), 'AI markdown output must not keep unsafe links');
+assert(formatted.includes('&lt;img'), 'AI markdown output should escape raw HTML');
+assert(formatted.includes('<strong>Safe</strong>'), 'safe markdown formatting should still render');
+
+assert.strictEqual(app.calculateMonthlySIPValue(100000, 10, 12) > 0, true);
+assert.strictEqual(app.calculateMonthlySIPValue(100000, 10, 0) > 0, true);
+assert.strictEqual(app.calculateMonthlySIPValue(0, 10, 12), null);
+assert.strictEqual(app.calculateEMIValue(100000, 5, 0), 100000 / 60);
+assert.strictEqual(app.calculateEMIValue(100000, 0, 8), null);
+assert.strictEqual(app.calculateInflationValue(100000, 10, 6) > 100000, true);
+assert.strictEqual(app.calculateInflationValue(100000, -1, 6), null);
+
+(async () => {
+    const secret = JSON.stringify({ investments: [{ note: '<secret>' }], geminiKey: 'AIza-secret' });
+    const encrypted = await app.encryptData(secret, '1234');
+    assert(encrypted.startsWith('ENC2:'), 'encrypted backups should use the versioned ENC2 format');
+    assert(!encrypted.includes('AIza-secret'), 'encrypted backup must not contain plaintext API keys');
+    assert.strictEqual(await app.decryptData(encrypted, '1234'), secret);
+})().catch(err => {
+    console.error(err);
+    process.exit(1);
+});
