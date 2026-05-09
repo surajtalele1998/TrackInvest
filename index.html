@@ -191,6 +191,15 @@
                     </div>
                 </div>
 
+                <div class="carousel-card" style="background:var(--md-secondary-container); color:var(--md-on-secondary-container); border:none; cursor:pointer;" onclick="openWealthBlueprint()">
+                    <div style="font-size:13px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Wealth Blueprint
+                    </div>
+                    <div style="font-size:12px; line-height:1.4; opacity:0.9;">
+                        Generate full wealth audit & future strategy...
+                    </div>
+                </div>
+
                 <div class="carousel-card" onclick="openMonthDetails('tax')">
                     <div class="tax-header">80C Status <span id="tax-val"
                             style="font-size:12px; color:var(--md-on-surface);">0 / 1.5L</span></div>
@@ -226,20 +235,27 @@
             <div class="section-title">📈 12‑Month Trend</div>
             <div class="chart-container-js" style="margin-bottom: 24px;"><canvas id="rollingChart"></canvas></div>
 
+            <!-- Smart Advisor Card -->
+            <div id="advisor-card" class="md-card" style="display:none; margin-bottom:24px; border:1px solid var(--md-primary-fixed-dim); background:var(--md-surface-container-low);">
+                <div id="advisor-text"></div>
+            </div>
+
             <!-- Premium AI Widget -->
-            <div class="ai-widget md-primary-container" style="margin-bottom:24px; cursor:pointer; padding:20px; border-radius:24px; position:relative; overflow:hidden;" onclick="openAIChat()">
-                <div style="position:absolute; top:-20px; right:-20px; width:100px; height:100px; background:var(--md-primary); opacity:0.1; border-radius:50%; filter:blur(30px);"></div>
+            <div class="ai-widget md-primary-container" style="margin-bottom:24px; cursor:pointer; padding:24px; border-radius:28px; position:relative; overflow:hidden; box-shadow:var(--md-elevation-2);" onclick="openAIChat()">
+                <div style="position:absolute; top:-30%; right:-10%; width:150px; height:150px; background:var(--md-primary); opacity:0.15; border-radius:50%; filter:blur(40px);"></div>
                 <div style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
-                    <div style="display:flex; align-items:center; gap:16px;">
-                        <div style="background:var(--md-primary); color:var(--md-on-primary); width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; box-shadow: 0 4px 12px rgba(var(--md-primary-rgb), 0.3);">
-                            <span class="material-symbols-rounded" style="font-size:28px;">magic_button</span>
+                    <div style="display:flex; align-items:center; gap:20px;">
+                        <div style="background:var(--md-primary); color:var(--md-on-primary); width:56px; height:56px; border-radius:20px; display:flex; align-items:center; justify-content:center; box-shadow: 0 8px 16px rgba(var(--md-primary-rgb), 0.2);">
+                            <span class="material-symbols-rounded" style="font-size:32px;">magic_button</span>
                         </div>
                         <div>
-                            <div style="font-weight:600; font-size:16px; color:var(--md-on-primary-container);">AI Wealth Assistant</div>
-                            <div style="font-size:12px; opacity:0.8; color:var(--md-on-primary-container);">Get personalized investment strategies</div>
+                            <div style="font-weight:700; font-size:18px; color:var(--md-on-primary-container); letter-spacing:-0.02em;">AI Wealth Engine</div>
+                            <div style="font-size:13px; opacity:0.85; color:var(--md-on-primary-container); margin-top:2px;">Advanced portfolio analysis & insights</div>
                         </div>
                     </div>
-                    <span class="material-symbols-rounded" style="color:var(--md-primary); font-size:20px;">bolt</span>
+                    <div style="background:var(--md-primary); color:var(--md-on-primary); width:32px; height:32px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">arrow_forward</span>
+                    </div>
                 </div>
             </div>
             <div class="md-card" style="margin-bottom:24px; cursor:pointer;" onclick="openDividendSheet()">
@@ -1020,6 +1036,23 @@
                     class="material-symbols-rounded">close</span></button>
         </h3>
         <div id="chat-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
+    </div>
+
+    <!-- Wealth Blueprint Sheet -->
+    <div class="sheet sub-sheet" id="wealth-blueprint-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
+                    style="color:var(--md-primary);">auto_awesome</span> Wealth Blueprint</div>
+            <button class="icon-btn" onclick="closeSubSheet()"><span
+                    class="material-symbols-rounded">close</span></button>
+        </div>
+        <div id="wealth-blueprint-content" class="scroll-y" style="flex:1; padding:16px; padding-bottom:32px;">
+            <div style="padding:40px; text-align:center;">
+                <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px; color:var(--md-primary);">psychology</span>
+                <div style="margin-top:16px; font-weight:500;">Drafting your personalized wealth strategy...</div>
+            </div>
+        </div>
     </div>
 
     <!-- AI Next Month Prediction Sheet -->

@@ -81,7 +81,15 @@ Chart.defaults.animation = { duration: 1500, easing: 'easeOutQuart' };
 // ==========================================
 // 2. GLOBAL HELPER FUNCTIONS
 // ==========================================
-function haptic(ms = 30) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { } }
+function haptic(ms = 30) { 
+    try { 
+        if (typeof navigator !== 'undefined' && navigator.vibrate && ms > 0) {
+            navigator.vibrate(ms); 
+        }
+    } catch (e) { 
+        // Silently fail if blocked by browser policy
+    } 
+}
 
 function getLocalYYYYMMDD(d) {
     const tzOffset = d.getTimezoneOffset() * 60000;
@@ -332,6 +340,11 @@ window.fireMilestoneConfetti = function () {
     }
 };
 
+function getThemeColor() {
+    const root = getComputedStyle(document.body);
+    return root.getPropertyValue('--md-primary').trim() || '#4559A4';
+}
+
 function checkMilestones(nw) {
     let unlocked = false;
     milestoneThresholds.forEach(t => {
@@ -425,6 +438,7 @@ function calculateStrictTax() {
 function calculateStrictValuation(type, totalInvested, rawInvs) {
     const govRates = { 'PPF': 7.1, 'PF': 8.15 };
     const defaultRate = db.categoryDetails[type]?.interestRate || govRates[type] || 0;
+    let interestEarned = 0;
 
     if (type === 'FD') {
         let val = 0;
@@ -433,39 +447,46 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
             let rate = inv.interestRate || defaultRate;
             let payout = inv.payoutType || 'quarterly';
             let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
+            let principal = inv.amount;
+            let futureVal = principal;
 
             if (payout === 'quarterly') {
-                val += inv.amount * Math.pow(1 + (rate / 100) / 4, 4 * years);
+                futureVal = principal * Math.pow(1 + (rate / 100) / 4, 4 * years);
             } else if (payout === 'monthly') {
-                val += inv.amount * Math.pow(1 + (rate / 100) / 12, 12 * years);
+                futureVal = principal * Math.pow(1 + (rate / 100) / 12, 12 * years);
             } else {
                 // Simple interest on maturity
-                val += inv.amount * (1 + (rate / 100) * years);
+                futureVal = principal * (1 + (rate / 100) * years);
             }
+            val += futureVal;
+            interestEarned += (futureVal - principal);
         });
-        return val;
+        return { total: val, interest: interestEarned };
     }
     if (type === 'PF' || type === 'PPF') {
         let val = 0;
         let sorted = rawInvs.filter(i => !i.isDividend).sort((a, b) => new Date(a.date) - new Date(b.date));
         sorted.forEach(inv => {
             let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
-            // PPF/PF usually compounds annually or monthly
-            val += inv.amount * Math.pow(1 + (defaultRate / 100), years);
+            let futureVal = inv.amount * Math.pow(1 + (defaultRate / 100), years);
+            val += futureVal;
+            interestEarned += (futureVal - inv.amount);
         });
-        return val;
+        return { total: val, interest: interestEarned };
     }
     if ((type === 'SIP' || type === 'Stocks') && db.navCache) {
         let val = 0; let hasUnits = false;
         rawInvs.forEach(inv => {
             if (!inv.isDividend && inv.units && inv.mfCode && db.navCache[inv.mfCode]) {
-                val += inv.units * db.navCache[inv.mfCode].nav;
+                let currentVal = inv.units * db.navCache[inv.mfCode].nav;
+                val += currentVal;
+                interestEarned += (currentVal - inv.amount);
                 hasUnits = true;
             } else if (!inv.isDividend) {
                 val += inv.amount;
             }
         });
-        if (hasUnits) return val;
+        if (hasUnits) return { total: val, interest: interestEarned };
     }
 
     let customRate = db.categoryDetails[type]?.interestRate || 0;
@@ -475,12 +496,14 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
             if (inv.isDividend) return;
             let rate = inv.interestRate || customRate;
             let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
-            val += inv.amount * Math.pow(1 + (rate / 100) / 12, 12 * years);
+            let futureVal = inv.amount * Math.pow(1 + (rate / 100) / 12, 12 * years);
+            val += futureVal;
+            interestEarned += (futureVal - inv.amount);
         });
-        return val;
+        return { total: val, interest: interestEarned };
     }
 
-    return totalInvested;
+    return { total: totalInvested, interest: 0 };
 }
 
 // ==========================================
@@ -766,30 +789,30 @@ function setInvestType(type) {
 
     // Show monthly contribution wrapper for SIP, PF, PPF or if configured
     const isMonthlyAsset = ['SIP', 'PF', 'PPF'].includes(type) || config.monthly;
-    document.getElementById('monthly-contrib-wrapper').style.display = isMonthlyAsset ? 'flex' : 'none';
-    if (!editInvId) document.getElementById('inv-is-monthly').checked = isMonthlyAsset;
+    const monthlyWrap = document.getElementById('monthly-contrib-wrapper');
+    if (monthlyWrap) monthlyWrap.style.display = isMonthlyAsset ? 'flex' : 'none';
+    
+    const isMonthlyCheck = document.getElementById('inv-is-monthly');
+    if (isMonthlyCheck && !editInvId) isMonthlyCheck.checked = isMonthlyAsset;
 
     // Core Logic mapping
-    if (type === 'FD' || type === 'PPF' || type === 'PF') {
-        document.getElementById('dynamic-fd-fields').style.display = 'flex';
-        document.getElementById('maturity-box-simple').style.display = 'block';
-    } else if (type === 'SIP') {
-        document.getElementById('dynamic-mf-search').style.display = 'flex';
-        document.getElementById('dynamic-sip-day-field').style.display = 'flex';
-    } else if (type === 'Stocks') {
-        document.getElementById('dynamic-qty-price').style.display = 'flex';
-        document.getElementById('dynamic-mf-search').style.display = 'flex';
-    } else if (type === 'Gold' || type === 'Real Estate') {
-        document.getElementById('dynamic-growth-fields').style.display = 'flex';
-    }
+    const showIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'flex' : 'none'; };
+    const showBlockIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'block' : 'none'; };
+
+    if (fields.interest || ['FD', 'PF', 'PPF'].includes(type)) showIfExist('dynamic-fd-fields', true);
+    if (fields.maturity || ['FD', 'PF', 'PPF'].includes(type)) showBlockIfExist('maturity-box-simple', true);
+    if (fields.sipday || type === 'SIP') showIfExist('dynamic-sip-day-field', true);
+    if (fields.mf || type === 'SIP' || type === 'Stocks') showIfExist('dynamic-mf-search', true);
+    if (fields.qty || type === 'Stocks') showIfExist('dynamic-qty-price', true);
+    if (fields.growth || ['Gold', 'Real Estate'].includes(type)) showIfExist('dynamic-growth-fields', true);
 
     // Custom overrides from configuration
-    if (config.interest) document.getElementById('dynamic-fd-fields').style.display = 'flex';
-    if (config.payout) document.getElementById('dynamic-fd-fields').style.display = 'flex';
-    if (config.maturity) document.getElementById('maturity-box-simple').style.display = 'block';
-    if (config.sipday) document.getElementById('dynamic-sip-day-field').style.display = 'flex';
-    if (config.mf) document.getElementById('dynamic-mf-search').style.display = 'flex';
-    if (config.qty) document.getElementById('dynamic-qty-price').style.display = 'flex';
+    if (config.interest) showIfExist('dynamic-fd-fields', true);
+    if (config.payout) showIfExist('dynamic-fd-fields', true);
+    if (config.maturity) showBlockIfExist('maturity-box-simple', true);
+    if (config.sipday) showIfExist('dynamic-sip-day-field', true);
+    if (config.mf) showIfExist('dynamic-mf-search', true);
+    if (config.qty) showIfExist('dynamic-qty-price', true);
 
     // Safe DOM access for labels and inputs
     const amtEl = document.getElementById('inv-amt');
@@ -1326,12 +1349,28 @@ function openCategoryDetails(type) {
 }
 
 function saveCatSettings() {
-    haptic(40); let cmv = parseFloat(document.getElementById('cat-cmv-input').value); let alloc = parseFloat(document.getElementById('cat-target-alloc').value); let initialBal = parseFloat(document.getElementById('cat-initial-bal').value); let intRate = parseFloat(document.getElementById('cat-interest-rate').value);
+    haptic(40);
+    let cmv = parseFloat(document.getElementById('cat-cmv-input').value);
+    let alloc = parseFloat(document.getElementById('cat-target-alloc').value);
+    let initialBal = parseFloat(document.getElementById('cat-initial-bal').value);
+    let intRate = parseFloat(document.getElementById('cat-interest-rate').value);
+
     if (!db.categoryDetails[activeCategory]) db.categoryDetails[activeCategory] = {};
     if (!isNaN(cmv)) db.currentMarketValues[activeCategory] = cmv; else delete db.currentMarketValues[activeCategory];
     if (!isNaN(alloc)) db.allocTargets[activeCategory] = alloc; else delete db.allocTargets[activeCategory];
-    if (!isNaN(initialBal)) db.categoryDetails[activeCategory].initialBal = initialBal; else db.categoryDetails[activeCategory].initialBal = 0;
-    if (!isNaN(intRate)) db.categoryDetails[activeCategory].interestRate = intRate; else db.categoryDetails[activeCategory].interestRate = 0;
+    
+    db.categoryDetails[activeCategory].initialBal = !isNaN(initialBal) ? initialBal : 0;
+    db.categoryDetails[activeCategory].interestRate = !isNaN(intRate) ? intRate : 0;
+
+    // Save field configurations
+    const fields = {};
+    const fieldIds = ['interest', 'payout', 'maturity', 'sipday', 'mf', 'qty'];
+    fieldIds.forEach(fid => {
+        const el = document.getElementById('cfg-' + fid);
+        if (el) fields[fid] = el.checked;
+    });
+    db.categoryDetails[activeCategory].fields = fields;
+
     saveData(); renderAll(); showSnackbar("Settings Saved", "check_circle"); closeOverlays();
 }
 
@@ -1509,13 +1548,84 @@ function restoreData(e) {
     }; reader.readAsText(file);
 }
 
-let webrtcConn, webrtcChannel;
+let webrtcScanner;
+async function webrtcStartAsReceiver() {
+    haptic(40);
+    document.getElementById('webrtc-mode-selector').style.display = 'none';
+    document.getElementById('webrtc-active-ui').style.display = 'flex';
+    document.getElementById('webrtc-qr-display').style.display = 'block';
+    document.getElementById('webrtc-status').innerText = 'Status: Generating Receive Code...';
+    
+    initWebRTC();
+    // In receiver mode, we create the offer
+    webrtcChannel = webrtcConn.createDataChannel('sync');
+    setupDataChannel();
+    
+    let offer = await webrtcConn.createOffer();
+    await webrtcConn.setLocalDescription(offer);
+    
+    // The ICE candidates will trigger onicecandidate, which will update the QR
+    // But we might need to wait for candidates if we want a "full" offer QR
+}
+
+async function webrtcStartAsSender() {
+    haptic(40);
+    document.getElementById('webrtc-mode-selector').style.display = 'none';
+    document.getElementById('webrtc-active-ui').style.display = 'flex';
+    document.getElementById('webrtc-scanner-ui').style.display = 'flex';
+    document.getElementById('webrtc-status').innerText = 'Status: Scan Receiver QR...';
+    
+    webrtcScanner = new Html5Qrcode("webrtc-reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
+    webrtcScanner.start({ facingMode: "environment" }, config, async (decodedText) => {
+        await webrtcStopScanner();
+        haptic([50, 50]);
+        document.getElementById('webrtc-code-input').value = decodedText;
+        await webrtcProcessInput();
+    });
+}
+
+async function webrtcStopScanner() {
+    if (webrtcScanner) {
+        await webrtcScanner.stop();
+        webrtcScanner = null;
+    }
+    document.getElementById('webrtc-scanner-ui').style.display = 'none';
+}
+
 function initWebRTC() {
     webrtcConn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     webrtcConn.onicecandidate = e => {
         if (!e.candidate) {
-            document.getElementById('webrtc-code-output').value = btoa(JSON.stringify(webrtcConn.localDescription));
-            document.getElementById('webrtc-code-area').style.display = 'flex';
+            let code = btoa(JSON.stringify(webrtcConn.localDescription));
+            document.getElementById('webrtc-code-output').value = code;
+            
+            // Generate QR
+            const qrDiv = document.getElementById('webrtc-qr');
+            qrDiv.innerHTML = '';
+            new QRCode(qrDiv, {
+                text: code,
+                width: 200,
+                height: 200,
+                colorDark: "#4559A4",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.L
+            });
+            
+            document.getElementById('webrtc-status').innerText = 'Status: QR Ready! Scan now.';
+            
+            // Add a "Scan Answer QR" button for the receiver
+            if (!document.getElementById('webrtc-scan-answer-btn')) {
+                const btn = document.createElement('button');
+                btn.id = 'webrtc-scan-answer-btn';
+                btn.className = 'btn-secondary';
+                btn.style.marginTop = '12px';
+                btn.style.width = '100%';
+                btn.innerText = 'Step 2: Scan Answer QR';
+                btn.onclick = () => webrtcStartAsSender(); // Reuse sender logic to scan
+                document.getElementById('webrtc-qr-display').appendChild(btn);
+            }
         }
     };
     webrtcConn.ondatachannel = e => {
@@ -1523,6 +1633,7 @@ function initWebRTC() {
         setupDataChannel();
     };
 }
+
 function setupDataChannel() {
     webrtcChannel.onopen = () => {
         document.getElementById('webrtc-status').innerText = 'Status: Connected! 🚀';
@@ -1533,19 +1644,14 @@ function setupDataChannel() {
             try {
                 let parsed = JSON.parse(e.data.substring(5));
                 Object.assign(db, parsed);
-                saveData(); initUI(); renderAll(); showSnackbar("Data Synced via WebRTC!", "sync");
+                saveData(); initUI(); renderAll(); 
+                showSnackbar("Data Synced via WebRTC!", "sync");
+                haptic([100, 50, 100]);
             } catch (err) { showSnackbar("Sync Failed", "error"); }
         }
     };
 }
-async function webrtcGenerateOffer() {
-    initWebRTC();
-    webrtcChannel = webrtcConn.createDataChannel('sync');
-    setupDataChannel();
-    let offer = await webrtcConn.createOffer();
-    await webrtcConn.setLocalDescription(offer);
-    document.getElementById('webrtc-status').innerText = 'Status: Generating Offer...';
-}
+
 async function webrtcProcessInput() {
     let input = document.getElementById('webrtc-code-input').value.trim();
     if (!input) return;
@@ -1556,19 +1662,29 @@ async function webrtcProcessInput() {
             await webrtcConn.setRemoteDescription(desc);
             let answer = await webrtcConn.createAnswer();
             await webrtcConn.setLocalDescription(answer);
-            document.getElementById('webrtc-status').innerText = 'Status: Answer generated. Pass it back.';
+            document.getElementById('webrtc-status').innerText = 'Status: Answer generated. Show this QR to Receiver.';
+            document.getElementById('webrtc-qr-display').style.display = 'block';
+            // QR will be updated via onicecandidate for the answer
         } else if (desc.type === 'answer') {
             await webrtcConn.setRemoteDescription(desc);
             document.getElementById('webrtc-status').innerText = 'Status: Connecting...';
+            document.getElementById('webrtc-qr-display').style.display = 'none';
+            document.getElementById('webrtc-manual-area').style.display = 'none';
         }
-    } catch (e) { showSnackbar("Invalid Code", "error"); }
+    } catch (e) { 
+        showSnackbar("Invalid QR/Code", "error"); 
+        console.error(e);
+    }
 }
+
 function webrtcSendSync() {
     if (webrtcChannel && webrtcChannel.readyState === 'open') {
         webrtcChannel.send('SYNC:' + JSON.stringify(db));
-        showSnackbar("Data sent securely!");
+        showSnackbar("Data synced successfully!", "check_circle");
+        haptic([100, 50, 100]);
+        setTimeout(() => location.reload(), 2000);
     } else {
-        showSnackbar("Not connected!");
+        showSnackbar("Not connected yet!", "warning");
     }
 }
 
@@ -1659,7 +1775,9 @@ function formatAIResponse(text) {
         .replace(/^\* (.*$)/gim, '<li>$1</li>')
         .replace(/<li>(.*?)<\/li>/gs, '<ul><li>$1</li></ul>')
         .replace(/<\/ul>\s*<ul>/g, '')
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
 
     // Robust Markdown Table Parsing
     const tableRegex = /((?:\|.*\|(?:\n|\r)|(?:\r\n))+)/g;
@@ -1695,12 +1813,17 @@ function formatAIResponse(text) {
 
 async function fetchAIPrediction() {
     if (!db.geminiKey && !db.groqKey) return;
-    let predictEl = document.getElementById('ai-predict-text');
+    let predictEl = document.getElementById('ai-predict-text-dashboard');
+    if (!predictEl) return;
+    
     let now = new Date(); let mSums = [];
     for (let i = 3; i >= 0; i--) {
         let m = now.getMonth() - i; let y = now.getFullYear();
         if (m < 0) { m += 12; y -= 1; }
-        let monthInv = db.investments.filter(inv => { let d = new Date(inv.date); return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((sum, inv) => sum + inv.amount, 0);
+        let monthInv = db.investments.filter(inv => { 
+            let d = new Date(inv.date); 
+            return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; 
+        }).reduce((sum, inv) => sum + inv.amount, 0);
         mSums.push(monthInv);
     }
     let autoSipTotal = db.recurring.reduce((s, r) => s + r.amount, 0);
@@ -1708,10 +1831,31 @@ async function fetchAIPrediction() {
     try {
         let htmlResp = await callAIApi(prompt, "You are a financial projection engine. Return raw HTML only.");
         predictEl.innerHTML = htmlResp + ` <span style="font-size:11px;color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">Details →</span>`;
-    } catch (e) { predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`; }
+    } catch (e) { 
+        predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`; 
+    }
 }
 
-async function openAIPredictSheet() {
+function openAIPredictSheet() {
+    haptic(30);
+    const scrim = document.getElementById('scrim-sub');
+    const sheet = document.getElementById('ai-predict-sheet');
+    if (scrim) scrim.classList.add('active');
+    if (sheet) sheet.classList.add('active');
+    generateAIForecast();
+}
+
+function openProjectionSheet() {
+    haptic(30);
+    const target = prompt("Enter your monthly investment goal (₹):", db.settingsTable.monthlyTargetRef || 0);
+    if (target !== null && !isNaN(parseFloat(target))) {
+        db.settingsTable.monthlyTargetRef = parseFloat(target);
+        saveData(); renderAll();
+        showSnackbar("Monthly goal updated!", "check_circle");
+    }
+}
+
+async function generateAIForecast() {
     haptic(30);
     if (!db.geminiKey && !db.groqKey) { showSnackbar('Add API Key in Settings', 'key'); return; }
     document.getElementById('scrim-sub').classList.add('active');
@@ -1771,6 +1915,69 @@ async function openAIPredictSheet() {
     } catch (e) {
         content.innerHTML = `<div style="padding:16px;color:var(--md-error);text-align:center;">Failed to generate prediction. Check API keys.</div>`;
     }
+}
+
+async function openWealthBlueprint() {
+    haptic(40);
+    document.getElementById('scrim-sub').classList.add('active');
+    document.getElementById('wealth-blueprint-sheet').classList.add('active');
+    generateWealthBlueprint();
+}
+
+async function generateWealthBlueprint() {
+    if (!db.geminiKey && !db.groqKey) { 
+        document.getElementById('wealth-blueprint-content').innerHTML = `<div style="padding:40px;text-align:center;color:var(--md-error);">Add API Key in Settings to generate Wealth Blueprint.</div>`;
+        return; 
+    }
+    
+    let container = document.getElementById('wealth-blueprint-content');
+    container.innerHTML = `<div style="padding:40px; text-align:center;">
+        <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px; color:var(--md-primary);">psychology</span>
+        <div style="margin-top:16px; font-weight:500;">Drafting your personalized wealth strategy...</div>
+    </div>`;
+
+    let portfolioData = {
+        totalNetWorth: currentTotalNW,
+        categoryBreakdown: currentTypeTotals,
+        monthlyIncome: db.userProfile.salary / 12,
+        recurringSips: db.recurring,
+        taxSavings80C: db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).reduce((s, i) => s + i.amount, 0),
+        goals: db.goals
+    };
+
+    let prompt = `Act as an elite Wealth Manager. Perform a Full Wealth Audit.
+    User Data: ${JSON.stringify(portfolioData)}.
+    Current State: Analyze net worth distribution.
+    Future Planning: Suggest actions for next 12 months.
+    80C Status: User has saved ₹${portfolioData.taxSavings80C} out of ₹1.5L limit.
+    Requirements:
+    1. Provide a "Portfolio Health Score" (0-100).
+    2. Identify top 3 strengths and top 3 weaknesses.
+    3. Suggest specific asset rebalancing.
+    4. Provide a "Wealth Projection" for 5, 10, and 20 years.
+    5. Action Plan: 3 immediate steps.
+    
+    Output Format: HTML with MD3 styling. Use cards, progress bars, and tables. No markdown code blocks. Keep it premium and visual.`;
+
+    try {
+        let report = await callAIApi(prompt, "You are a master of financial aesthetics. Use clean HTML/CSS.");
+        container.innerHTML = report;
+    } catch (e) {
+        container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--md-error);">Failed to generate blueprint. Check connection.</div>`;
+    }
+}
+
+function openMonthDetails(mode) {
+    haptic(20);
+    // This would ideally open a sheet with filtered investments
+    // For now, let's filter the list tab
+    if (mode === 'tax') {
+        // Show only 80C investments
+        showSnackbar("Filtering 80C Tax Savings...", "account_balance");
+    } else {
+        showSnackbar("Filtering month details...", "calendar_month");
+    }
+    // Logic to switch to list tab and filter...
 }
 
 async function autoSetGoalsViaAI() {
@@ -1873,13 +2080,9 @@ async function askAIEngine(context) {
 }
 
 function openAIPredictSheet() {
-    askAIEngine('full_report');
+    generateAIForecast();
 }
 
-function openAIChat() {
-    // For now, open the same report view, or we can make it a specific context
-    askAIEngine('full_report');
-}
 
 function renderAIReportCharts(typeTotals) {
     let pieCtx = document.getElementById('aiChartPie');
@@ -1951,16 +2154,26 @@ function renderAll() {
     });
 
     // STRICT VALUATION LOGIC
+    let totalInterestEarnedAll = 0;
     Object.keys(db.categories).forEach(type => {
         let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
-        let totalInvested = filteredInvs.filter(i => !i.isDividend).reduce((sum, inv) => sum + inv.amount, 0) + (db.categoryDetails[type]?.initialBal || 0);
-        totalInvestedAll += totalInvested;
+        let invested = filteredInvs.filter(i => !i.isDividend).reduce((sum, inv) => sum + inv.amount, 0) + (db.categoryDetails[type]?.initialBal || 0);
+        totalInvestedAll += invested;
 
-        let exactValuation = calculateStrictValuation(type, totalInvested, filteredInvs);
-        typeTotals[type] = exactValuation;
-        totalMarketValue += exactValuation;
-        totalNW += totalInvested;
+        let valResult = calculateStrictValuation(type, invested, filteredInvs);
+        typeTotals[type] = valResult.total;
+        totalMarketValue += valResult.total;
+        totalInterestEarnedAll += valResult.interest;
+        totalNW += invested;
     });
+
+    const pnlEl = document.getElementById('sc-pnl');
+    if (pnlEl) {
+        pnlEl.innerText = formatMoney(totalInterestEarnedAll);
+        pnlEl.style.color = totalInterestEarnedAll >= 0 ? "var(--md-success)" : "var(--md-error)";
+    }
+    const investedEl = document.getElementById('sc-invested');
+    if (investedEl) investedEl.innerText = formatMoney(totalInvestedAll);
 
     // Month Totals & Maturities Loop
     db.investments.forEach(inv => {
@@ -1998,6 +2211,7 @@ function renderAll() {
     let monthInvestedEl = document.getElementById('monthly-invested-display'); if (monthInvestedEl) monthInvestedEl.innerText = formatMoney(thisMonthTotal);
 
     updateProjectionSlider();
+    updateAdvisorWidget();
 
     let activeTab = document.querySelector('.tab-content.active');
     if (activeTab && activeTab.id === 'tab-dashboard') { renderNWChart(); renderRollingChart(); }
@@ -2123,22 +2337,78 @@ function isInstalledPWA() {
 function calculatePortfolioHealth() {
     let score = 100;
     let issues = [];
+    let suggestions = [];
+    
     let categoriesCount = Object.keys(currentTypeTotals).filter(k => currentTypeTotals[k] > 0).length;
-    if (categoriesCount < 3) { score -= 20; issues.push("Low diversification"); }
-    let cash = currentTypeTotals['Cash'] || currentTypeTotals['Bank'] || 0;
-    let monthlyExp = (db.userProfile.salary || 0) / 12 * 0.5;
-    if (cash < monthlyExp * 3) { score -= 15; issues.push("Low liquidity buffer"); }
+    if (categoriesCount < 3) { 
+        score -= 20; 
+        issues.push("Low diversification"); 
+        suggestions.push("Invest in at least 3 categories (e.g. SIP, FD, Cash)");
+    }
+    
+    let cash = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Bank'] || 0) + (currentTypeTotals['Liquid'] || 0);
+    let annualSal = db.userProfile.salary || 0;
+    let monthlyExp = annualSal > 0 ? (annualSal / 12 * 0.5) : 30000;
+    
+    if (cash < monthlyExp * 3) { 
+        score -= 15; 
+        issues.push("Low liquidity buffer"); 
+        suggestions.push("Increase 'Cash' or 'Bank' balance to cover 3-6 months expenses");
+    }
+    
     let onTrackGoals = db.goals.filter(g => {
         let saved = g.saved || 0;
         if (g.link && currentTypeTotals[g.link]) saved += currentTypeTotals[g.link];
         return saved >= (g.target * 0.1);
     }).length;
-    if (db.goals.length > 0 && onTrackGoals === 0) { score -= 10; issues.push("Goals underfunded"); }
+    if (db.goals.length > 0 && onTrackGoals === 0) { 
+        score -= 10; 
+        issues.push("Goals underfunded"); 
+        suggestions.push("Direct more SIPs towards your primary Financial Goals");
+    }
+
+    // Allocation check
+    let equity = (currentTypeTotals['SIP'] || 0) + (currentTypeTotals['Stocks'] || 0);
+    let safe = (currentTypeTotals['FD'] || 0) + (currentTypeTotals['PPF'] || 0) + (currentTypeTotals['PF'] || 0) + cash;
+    if (equity > safe * 2) {
+        issues.push("Aggressive equity exposure");
+        suggestions.push("Rebalance: Move some gains to FD or Debt funds");
+    } else if (safe > equity * 3 && annualSal > 0) {
+        issues.push("Conservative growth");
+        suggestions.push("Increase SIPs to beat inflation over the long term");
+    }
+    
     return {
         score: Math.max(0, score),
         status: score > 80 ? "Excellent" : score > 60 ? "Good" : "Needs Attention",
-        issues: issues
+        issues: issues,
+        suggestions: suggestions
     };
+}
+
+function updateAdvisorWidget() {
+    const health = calculatePortfolioHealth();
+    const advisorText = document.getElementById('advisor-text');
+    const advisorCard = document.getElementById('advisor-card');
+    if (!advisorText || !advisorCard) return;
+
+    if (health.suggestions.length > 0) {
+        advisorCard.style.display = 'block';
+        let html = `<div style="font-weight:600; margin-bottom:8px; color:var(--md-primary); display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">tips_and_updates</span> Smart Recommendations
+        </div>`;
+        html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
+        health.suggestions.slice(0, 2).forEach(s => {
+            html += `<div style="font-size:13px; display:flex; gap:8px; line-height:1.4;">
+                <span class="material-symbols-rounded" style="font-size:16px; color:var(--md-primary);">check_circle</span>
+                <span>${s}</span>
+            </div>`;
+        });
+        html += `</div>`;
+        advisorText.innerHTML = html;
+    } else {
+        advisorCard.style.display = 'none';
+    }
 }
 
 let qrScanner = null;
