@@ -599,3 +599,12 @@ export async function openRebalanceSheet() {
     document.getElementById('rebalance-sheet').classList.add('active');
     import('./ai.js').then(ai => ai.generateRebalanceAudit());
 }
+
+export function copyBlueprint() {
+    const content = document.getElementById('wealth-blueprint-content').innerText;
+    if (!content || content.includes('Drafting')) return;
+    
+    navigator.clipboard.writeText(content).then(() => {
+        import('./utils.js').then(u => u.showSnackbar("Strategy copied to clipboard!", "check_circle"));
+    });
+}

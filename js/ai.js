@@ -169,6 +169,9 @@ function renderAIResponse(text) {
     // Convert bold **text** to <strong>
     let html = text.replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--md-primary);">$1</strong>');
     
+    // Convert headers ### Title to styled div
+    html = html.replace(/^### (.*)/gm, '<div style="font-size:16px; font-weight:600; color:var(--md-primary); margin:20px 0 12px 0; border-bottom:1px solid var(--md-outline-variant); padding-bottom:4px;">$1</div>');
+    
     // Convert bullet points * or - to list items
     html = html.replace(/^[\s]*[\*\-][\s](.*)/gm, '<div style="display:flex; gap:12px; margin-bottom:12px;"><span class="material-symbols-rounded" style="font-size:18px; color:var(--md-primary);">check_circle</span><span style="font-size:14px; line-height:1.4;">$1</span></div>');
     

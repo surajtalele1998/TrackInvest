@@ -1112,8 +1112,12 @@
         <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
                     style="color:var(--md-primary);">auto_awesome</span> Wealth Blueprint</div>
-            <button class="icon-btn" onclick="closeSubSheet()"><span
-                    class="material-symbols-rounded">close</span></button>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button class="icon-btn" onclick="copyBlueprint()" title="Copy Strategy"><span
+                        class="material-symbols-rounded">content_copy</span></button>
+                <button class="icon-btn" onclick="closeSubSheet()"><span
+                        class="material-symbols-rounded">close</span></button>
+            </div>
         </div>
         <div id="wealth-blueprint-content" class="scroll-y" style="flex:1; padding:16px; padding-bottom:32px;">
             <div style="padding:40px; text-align:center;">

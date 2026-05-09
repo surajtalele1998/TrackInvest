@@ -53,6 +53,7 @@ window.openProjectionSheet = ui.openProjectionSheet;
 window.openAIPredictSheet = ui.openAIPredictSheet;
 window.openWealthBlueprint = ui.openWealthBlueprint;
 window.openRebalanceSheet = ui.openRebalanceSheet;
+window.copyBlueprint = ui.copyBlueprint;
 window.updateProjectionSlider = ui.updateProjectionSlider;
 
 /**
