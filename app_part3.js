@@ -85,17 +85,25 @@ async function generateAITags() {
 
 // ==========================================
 function processRecurring() {
-    let today = new Date(); let updated = false;
+    let today = new Date(); let updated = false; let processedCount = 0;
     db.recurring.forEach(rec => {
         let nextDate = parseDate(rec.nextRun); let maxSafety = 24;
+        let missedMonths = 0;
         while (nextDate <= today && maxSafety > 0) {
             db.investments.push({
-                id: Date.now() + Math.random(), date: getLocalYYYYMMDD(nextDate), type: rec.type, amount: rec.amount, note: rec.note + ' (Auto)', tags: rec.tags || '', isDividend: false, account: rec.account || db.accounts[0]
+                id: generateUniqueId(), date: getLocalYYYYMMDD(nextDate), type: rec.type, amount: rec.amount, note: rec.note + ' (Auto)', tags: rec.tags || '', isDividend: false, account: rec.account || db.accounts[0]
             });
-            nextDate.setMonth(nextDate.getMonth() + 1); rec.nextRun = getLocalYYYYMMDD(nextDate); updated = true; maxSafety--;
+            nextDate.setMonth(nextDate.getMonth() + 1); rec.nextRun = getLocalYYYYMMDD(nextDate); updated = true; maxSafety--; processedCount++; missedMonths++;
+        }
+        // Warn user if multiple months were processed at once
+        if (missedMonths > 1) {
+            console.warn(`Recurring ${rec.note}: processed ${missedMonths} missed months`);
         }
     });
-    if (updated) { saveData(); showSnackbar("Auto‑SIPs Processed"); }
+    if (updated) { 
+        saveData(); 
+        showSnackbar(`Auto‑SIPs Processed: ${processedCount} entries`, 'check_circle'); 
+    }
 }
 
 
@@ -170,8 +178,8 @@ function renderAll() {
     document.getElementById('last-month-val').innerText = formatMoney(lastMonthTotal);
     document.getElementById('next-month-val').innerText = formatMoney(db.projectionNextMonth);
 
-    // Update Dashboard Tax Liability
-    let taxObj = calculateStrictTax();
+    // Update Dashboard Tax Liability - pass computed 80c value explicitly
+    let taxObj = calculateStrictTax(tax80cTotal);
     let dashTax = document.getElementById('dash-tax-liab');
     if (dashTax) { dashTax.innerText = taxObj.str; dashTax.style.color = taxObj.liability === 0 ? "var(--md-success)" : "var(--md-error)"; }
 
@@ -195,7 +203,32 @@ function renderAll() {
     let qtWrapper = document.getElementById('quick-templates-list'); if (qtWrapper) { qtWrapper.innerHTML = tplHtml; qtWrapper.style.display = tplHtml ? 'flex' : 'none'; }
 
     let fireFill = document.getElementById('fire-fill');
-    if (fireFill && db.fireTargetMonthly > 0) { let t = db.fireTargetMonthly * 300; fireFill.style.width = Math.min(100, (currentTotalNW / t) * 100) + '%'; document.getElementById('fire-saved').innerText = formatMoney(currentTotalNW); document.getElementById('fire-target').innerText = `Target: ${formatMoney(t)}`; let remaining = t - currentTotalNW; if (remaining > 0 && currentAvgMonthly > 0) { let monthsLeft = Math.ceil(remaining / currentAvgMonthly); let fireDate = new Date(); fireDate.setMonth(fireDate.getMonth() + monthsLeft); document.getElementById('fire-eta').innerText = `FIRE Year: ${fireDate.getFullYear()}`; } else { document.getElementById('fire-eta').innerText = `🔥 FIRE ACHIEVED!`; } }
+    if (fireFill && db.fireTargetMonthly > 0) {
+        let t = db.fireTargetMonthly * 300;
+        fireFill.style.width = Math.min(100, (currentTotalNW / t) * 100) + '%';
+        document.getElementById('fire-saved').innerText = formatMoney(currentTotalNW);
+        document.getElementById('fire-target').innerText = `Target: ${formatMoney(t)}`;
+        let remaining = t - currentTotalNW;
+        let fireEtaEl = document.getElementById('fire-eta');
+        if (remaining <= 0) {
+            // Target already achieved
+            fireEtaEl.innerText = `🔥 FIRE ACHIEVED!`;
+        } else if (currentAvgMonthly <= 0) {
+            // No monthly savings rate set
+            fireEtaEl.innerText = `Set monthly target to see ETA`;
+        } else {
+            // Calculate ETA based on current savings rate
+            let monthsLeft = Math.ceil(remaining / currentAvgMonthly);
+            if (monthsLeft > 600) {
+                // More than 50 years - probably unrealistic
+                fireEtaEl.innerText = `ETA: 50+ years`;
+            } else {
+                let fireDate = new Date();
+                fireDate.setMonth(fireDate.getMonth() + monthsLeft);
+                fireEtaEl.innerText = `FIRE Year: ${fireDate.getFullYear()}`;
+            }
+        }
+    }
 
     let taxValEl = document.getElementById('tax-val');
     if (taxValEl) { taxValEl.innerText = `${formatMoney(tax80cTotal)} / 1.5L`; document.getElementById('tax-fill').style.width = Math.min(100, (tax80cTotal / 150000) * 100) + '%'; let taxAlert = document.getElementById('tax-rollover-alert'); if (taxAlert) { taxAlert.style.display = tax80cTotal >= 150000 ? 'block' : 'none'; } }
@@ -212,7 +245,7 @@ function renderAll() {
 
         allCategoriesForRebalance.forEach(t => {
             let value = typeTotals[t] || 0;
-            if (value > 0) {
+            if (value > 0 && totalMarketValue > 0) {
                 let perc = (value / totalMarketValue) * 100;
                 let color = db.categories[t]?.color || "#ccc";
                 allocHtml += `<div class="alloc-segment" style="width:${perc}%;background:${color};"></div>`;
@@ -297,7 +330,30 @@ function renderAll() {
     if (portGrid) { let activeCats = Object.keys(typeTotals).filter(t => typeTotals[t] > 0 || db.allocTargets[t]); portGrid.innerHTML = activeCats.length === 0 ? `<div class="empty-state-premium" style="grid-column:1 / -1;"><span class="material-symbols-rounded">pie_chart</span><div class="es-title">Empty Portfolio</div></div>` : activeCats.map(t => { let meta = db.categories[t]; let dObj = new Date(typeLastDate[t]); let dateStr = typeLastDate[t] ? `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })}` : "No entries"; let cur = typeTotals[t]; let inv = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[t]?.initialBal || 0); let prof = cur - inv; let roiHtml = prof !== 0 ? `<div class="roi-tag ${prof > 0 ? 'positive' : 'negative'}">${prof > 0 ? '+' : ''}${formatMoney(prof)}</div>` : ""; let intRate = db.categoryDetails[t]?.interestRate; let intRateHtml = intRate ? `<div style="font-size:10px;background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-weight:700;color:var(--md-primary);">${intRate}% APY</div>` : ""; return `<div class="port-card" onclick="openCategoryDetails('${t}')"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div class="port-icon" style="background:${meta.color};"><span class="material-symbols-rounded" style="font-size:20px;">${meta.icon}</span></div>${intRateHtml}</div><div class="port-type">${t}</div><div class="port-amt">${formatMoney(cur)}</div>${roiHtml}<div class="port-date" style="font-size:11px; margin-top:4px; color:var(--md-outline);">Last: ${dateStr}</div></div>`; }).join(''); }
 
     let goalsList = document.getElementById('goals-list');
-    if (goalsList) { goalsList.innerHTML = db.goals.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">flag</span><div class="es-title">No Goals Set</div></div>` : db.goals.map(g => { let savedAmt = g.saved, isLinked = false; let monthlyContrib = 0; if (g.linkedCategory) { if (typeTotals[g.linkedCategory] !== undefined) { savedAmt = typeTotals[g.linkedCategory]; isLinked = true; } monthlyContrib = db.recurring.filter(r => r.type === g.linkedCategory).reduce((s, r) => s + r.amount, 0); } let perc = Math.min(100, (savedAmt / g.target) * 100); let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${g.linkedCategory}</span>` : ''; let forecastHtml = ''; if (savedAmt < g.target && monthlyContrib > 0) { let monthsLeft = Math.ceil((g.target - savedAmt) / monthlyContrib); let fDate = new Date(); fDate.setMonth(fDate.getMonth() + monthsLeft); forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 Expected hit: ${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}</div>`; } return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${g.name} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`; }).join(''); }
+    if (goalsList) {
+        goalsList.innerHTML = db.goals.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">flag</span><div class="es-title">No Goals Set</div></div>` : db.goals.map(g => {
+            let savedAmt = g.saved, isLinked = false; let monthlyContrib = 0;
+            if (g.linkedCategory) {
+                // Calculate invested principal (excluding appreciation) for linked category
+                let investedPrincipal = db.investments.filter(i => i.type === g.linkedCategory && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[g.linkedCategory]?.initialBal || 0);
+                savedAmt = investedPrincipal;
+                isLinked = true;
+                monthlyContrib = db.recurring.filter(r => r.type === g.linkedCategory).reduce((s, r) => s + r.amount, 0);
+            }
+            let perc = Math.min(100, (savedAmt / g.target) * 100);
+            let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${g.linkedCategory}</span>` : '';
+            let forecastHtml = '';
+            if (savedAmt < g.target && monthlyContrib > 0) {
+                let monthsLeft = Math.ceil((g.target - savedAmt) / monthlyContrib);
+                if (monthsLeft <= 600) { // Only show if within 50 years
+                    let fDate = new Date();
+                    fDate.setMonth(fDate.getMonth() + monthsLeft);
+                    forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 Expected hit: ${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}</div>`;
+                }
+            }
+            return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${g.name} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`;
+        }).join('');
+    }
 
     let sInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 5);
     document.getElementById('dashboard-history-list').innerHTML = sInv.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">history</span><div class="es-title">No Recent Activity</div></div>` : sInv.map(buildUnifiedItemHTML).join('');

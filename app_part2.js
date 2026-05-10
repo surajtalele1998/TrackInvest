@@ -21,9 +21,15 @@ function saveInvestment() {
     let investMode = document.getElementById('inv-mode').value;
     let sipDay = parseInt(document.getElementById('inv-sip-day').value) || null;
 
+    // Validation
     if (!date || isNaN(amt)) return showSnackbar("Date and Amount required", "error");
+    if (amt <= 0) return showSnackbar("Amount must be greater than zero", "error");
+    if (units !== null && units <= 0) return showSnackbar("Units must be greater than zero", "error");
+    if (intRate !== null && (intRate < 0 || intRate > 50)) return showSnackbar("Interest rate must be between 0% and 50%", "error");
+    if (matDate && date && new Date(matDate) <= new Date(date)) return showSnackbar("Maturity date must be after investment date", "error");
+    if (initialPayment !== null && initialPayment <= 0) return showSnackbar("Initial payment must be greater than zero", "error");
     let newEntry = {
-        id: editInvId || Date.now(),
+        id: editInvId || generateUniqueId(),
         date,
         type: currentInvType,
         amount: amt,
@@ -47,7 +53,7 @@ function saveInvestment() {
 
     if (!editInvId && initialPayment > 0) {
         db.investments.push({
-            id: Date.now() - 1,
+            id: generateUniqueId(),
             date,
             type: currentInvType,
             amount: initialPayment,
@@ -74,7 +80,7 @@ function deleteInvestment() {
     haptic(50); Swal.fire({ title: 'Delete Entry?', text: "This cannot be undone.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }).then((r) => { if (r.isConfirmed) { db.investments = db.investments.filter(i => i.id !== editInvId); saveData(); renderAll(); closeOverlays(); showSnackbar("Entry Deleted"); } });
 }
 
-function executeQuickLog(idx) { haptic(40); let tpl = db.templates[idx]; db.investments.push({ id: Date.now(), date: getLocalYYYYMMDD(new Date()), type: tpl.type, amount: tpl.amount, note: tpl.note, tags: tpl.tags, isDividend: false, account: tpl.account }); saveData(); renderAll(); showSnackbar(`Quick Logged ${formatMoney(tpl.amount)}`); }
+function executeQuickLog(idx) { haptic(40); let tpl = db.templates[idx]; db.investments.push({ id: generateUniqueId(), date: getLocalYYYYMMDD(new Date()), type: tpl.type, amount: tpl.amount, note: tpl.note, tags: tpl.tags, isDividend: false, account: tpl.account }); saveData(); renderAll(); showSnackbar(`Quick Logged ${formatMoney(tpl.amount)}`); }
 function deleteQuickLog(event, idx) { event.stopPropagation(); haptic(40); Swal.fire({ title: 'Delete Template?', showCancelButton: true }).then((res) => { if (res.isConfirmed) { db.templates.splice(idx, 1); saveData(); renderAll(); } }); }
 
 // ==========================================
@@ -234,6 +240,15 @@ function openCategoryDetails(type) {
     });
     document.getElementById('cat-asset-list').innerHTML = assetHtml || '<div style="color:var(--md-outline);font-size:14px;text-align:center;padding:16px;">No assets found.</div>';
     renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'cat-history-list');
+    
+    // Load field configuration checkboxes
+    const fieldConfig = db.categoryDetails[type]?.fields || {};
+    const allFieldIds = ['interest', 'payout', 'maturity', 'sipday', 'mf', 'qty', 'broker', 'subcat', 'monthly', 'simple', 'growth'];
+    allFieldIds.forEach(fid => {
+        const el = document.getElementById('cfg-' + fid);
+        if (el) el.checked = !!fieldConfig[fid];
+    });
+    
     document.getElementById('scrim').classList.add('active'); document.getElementById('category-sheet').classList.add('active');
 
     setTimeout(() => { renderCategoryChart(type); }, 300);
@@ -253,9 +268,9 @@ function saveCatSettings() {
     db.categoryDetails[activeCategory].initialBal = !isNaN(initialBal) ? initialBal : 0;
     db.categoryDetails[activeCategory].interestRate = !isNaN(intRate) ? intRate : 0;
 
-    // Save field configurations
+    // Save field configurations - preserve all fields including those not in UI yet
     const fields = {};
-    const fieldIds = ['interest', 'payout', 'maturity', 'sipday', 'mf', 'qty'];
+    const fieldIds = ['interest', 'payout', 'maturity', 'sipday', 'mf', 'qty', 'broker', 'subcat', 'monthly', 'simple', 'growth'];
     fieldIds.forEach(fid => {
         const el = document.getElementById('cfg-' + fid);
         if (el) fields[fid] = el.checked;
@@ -368,10 +383,10 @@ function addCustomCategory() {
     if (!db.categoryDetails[name]) db.categoryDetails[name] = {};
 
     const fields = {
-        flat: {},
-        fd: { interest: true, payout: true, maturity: true },
-        sip: { mf: true, sipday: true, monthly: true },
-        stock: { mf: true, qty: true },
+        flat: { simple: true },
+        fd: { interest: true, payout: true, maturity: true, broker: true, subcat: true },
+        sip: { mf: true, sipday: true, monthly: true, broker: true, subcat: true },
+        stock: { mf: true, qty: true, broker: true, subcat: true },
         growth: { growth: true }
     };
 
@@ -526,7 +541,7 @@ function importCSV(e) {
                 let cols = rows[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
                 cols = cols.map(c => c.replace(/^"|"$/g, ''));
                 if (cols.length >= 3 && cols[0] && !isNaN(parseFloat(cols[2]))) {
-                    db.investments.push({ id: Date.now() + Math.random(), date: cols[0].trim(), type: cols[1].trim() || 'Cash', amount: parseFloat(cols[2]), note: cols[3] ? cols[3].trim() : '', tags: cols[4] ? cols[4].trim() : '', isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
+                    db.investments.push({ id: generateUniqueId(), date: cols[0].trim(), type: cols[1].trim() || 'Cash', amount: parseFloat(cols[2]), note: cols[3] ? cols[3].trim() : '', tags: cols[4] ? cols[4].trim() : '', isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
                     added++;
                 }
             }
@@ -594,34 +609,74 @@ function calculateXIRR() {
     cashFlows.sort((a, b) => a.date - b.date);
     let d0 = cashFlows[0].date;
 
+    const npv = (flows, rate) => {
+        return flows.reduce((sum, flow) => {
+            let t = (flow.date - d0) / (365.25 * 24 * 60 * 60 * 1000);
+            return sum + flow.amount / Math.pow(1 + rate, t);
+        }, 0);
+    };
+
+    // Newton-Raphson with binary search fallback
     const irr = (flows) => {
         let guess = 0.1;
         const maxIter = 100;
         const precision = 0.0001;
 
+        // Try Newton-Raphson first
         for (let i = 0; i < maxIter; i++) {
             let f = 0, df = 0;
             for (let j = 0; j < flows.length; j++) {
                 let t = (flows[j].date - d0) / (365.25 * 24 * 60 * 60 * 1000);
                 let discountFactor = Math.pow(1 + guess, t);
-
                 f += flows[j].amount / discountFactor;
                 df += -t * flows[j].amount / Math.pow(1 + guess, t + 1);
             }
 
             if (Math.abs(f) < precision) return guess;
+            if (Math.abs(df) < 1e-10) break; // Derivative too small, switch to binary search
 
             let nextGuess = guess - f / df;
             if (isNaN(nextGuess) || !isFinite(nextGuess)) break;
 
             guess = nextGuess;
-            if (guess <= -1) guess = -0.999; // Cap at near -100% loss
         }
-        return guess;
+
+        // Binary search fallback for robust convergence
+        let low = -0.9999, high = 10; // Allow up to -99.99% loss to 1000% gain
+        let bestGuess = guess;
+        let bestError = Math.abs(npv(flows, guess));
+
+        for (let i = 0; i < 50; i++) {
+            let mid = (low + high) / 2;
+            let midVal = npv(flows, mid);
+            let lowVal = npv(flows, low);
+
+            if (Math.abs(midVal) < bestError) {
+                bestError = Math.abs(midVal);
+                bestGuess = mid;
+            }
+
+            if (Math.abs(midVal) < precision) return mid;
+
+            // Narrow the range
+            if (midVal * lowVal < 0) {
+                high = mid;
+            } else {
+                low = mid;
+            }
+        }
+
+        return bestGuess;
     };
 
     let result = irr(cashFlows);
-    let resultText = (result * 100).toFixed(2) + '%';
+    // Handle total loss case (-100%)
+    let resultText;
+    if (result <= -0.9999) {
+        resultText = '-100.00%';
+    } else {
+        resultText = (result * 100).toFixed(2) + '%';
+    }
     document.getElementById('xirr-result').innerHTML = `XIRR: <strong style="color:var(--md-primary); font-size:24px;">${resultText}</strong>`;
 }
 function calculateMonthlySIP() { let target = parseFloat(document.getElementById('sip-target').value); let years = parseFloat(document.getElementById('sip-years').value); let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; let months = years * 12; let monthly = target * rate / (Math.pow(1 + rate, months) - 1); document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; }
@@ -782,7 +837,7 @@ function saveChatSession() {
     haptic(40);
     const title = db.chatHistory[0].content.substring(0, 30) + "...";
     db.chatSessions.unshift({
-        id: Date.now(),
+        id: generateUniqueId(),
         date: new Date().toISOString(),
         title: title,
         messages: [...db.chatHistory]
@@ -983,7 +1038,7 @@ async function autoSetGoalsViaAI() {
         const syncGoal = (name, target, cat) => {
             let g = db.goals.find(x => x.name === name);
             if (g) g.target = target;
-            else db.goals.push({ id: Date.now() + Math.random(), name: name, target: target, saved: 0, linkedCategory: cat });
+            else db.goals.push({ id: generateUniqueId(), name: name, target: target, saved: 0, linkedCategory: cat });
         };
 
         syncGoal("Emergency Fund", data["Emergency Fund"], "Liquid");

@@ -26,6 +26,7 @@ if (!db.chatHistory) db.chatHistory = [];
 if (!db.chatSessions) db.chatSessions = [];
 if (!db.lastBackupPrompt) db.lastBackupPrompt = '';
 if (!db.navCache) db.navCache = {};
+if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: April (month index 3) for India FY
 
 const defaultCategories = ['FD', 'PPF', 'PF', 'SIP', 'Liquid', 'Home', 'Cash', 'Stocks'];
 
@@ -97,6 +98,15 @@ function haptic(ms = 30) {
 document.addEventListener('mousedown', () => window.userInteracted = true, {once: true});
 document.addEventListener('touchstart', () => window.userInteracted = true, {once: true});
 
+// ── UNIQUE ID GENERATOR ────────────────────────
+let _idCounter = 0;
+function generateUniqueId() {
+    const ts = Date.now();
+    const counter = ++_idCounter % 10000;
+    const random = Math.floor(Math.random() * 1000);
+    return `${ts}${counter}${random}`;
+}
+
 // ── HISTORY & SESSION HELPERS ──────────────────
 function pushSheetState(sheetId) {
     history.pushState({ sheetId: sheetId }, "");
@@ -124,7 +134,9 @@ function getLocalYYYYMMDD(d) {
 function parseDate(dateStr) {
     if (!dateStr) return new Date();
     const p = dateStr.split('-');
-    return new Date(p[0], p[1] - 1, p[2]);
+    if (p.length !== 3 || isNaN(p[0]) || isNaN(p[1]) || isNaN(p[2])) return new Date();
+    const d = new Date(p[0], p[1] - 1, p[2]);
+    return isNaN(d.getTime()) ? new Date() : d;
 }
 
 function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
@@ -328,8 +340,16 @@ function saveData() {
 
 function isCurrentFY(dateStr) {
     let d = new Date(dateStr); let now = new Date(); let curYear = now.getFullYear(); let curMonth = now.getMonth();
-    let fyStartYear = curMonth >= 3 ? curYear : curYear - 1; let fyStart = new Date(fyStartYear, 3, 1);
-    let fyEnd = new Date(fyStartYear + 1, 2, 31, 23, 59, 59); return d >= fyStart && d <= fyEnd;
+    let fyStartMonth = db.fyStartMonth !== undefined ? db.fyStartMonth : 3; // Default April
+    let fyEndMonth = (fyStartMonth + 11) % 12; // FY ends 11 months after start
+    let fyStartYear = curMonth >= fyStartMonth ? curYear : curYear - 1;
+    let fyStart = new Date(fyStartYear, fyStartMonth, 1);
+    // FY ends in the month before the start month of the next FY
+    // If FY starts in April (3), it ends in March (2) of next year
+    // If FY starts in January (0), it ends in December (11) of same year
+    let fyEndYear = fyEndMonth < fyStartMonth ? fyStartYear + 1 : fyStartYear;
+    let fyEnd = new Date(fyEndYear, fyEndMonth + 1, 0, 23, 59, 59); // Last day of end month
+    return d >= fyStart && d <= fyEnd;
 }
 
 // App Lock functions managed in Section 9
@@ -517,12 +537,17 @@ document.addEventListener('touchmove', e => {
 // ==========================================
 // 3. STRICT CALCULATORS & VALUATION ENGINE
 // ==========================================
-function calculateStrictTax() {
+function calculateStrictTax(tax80c = null) {
     let sal = parseFloat(db.userProfile.salary) || 0;
+    // Validate salary is non-negative
+    if (sal < 0) sal = 0;
     if (sal === 0) return { liability: 0, str: "Setup Income in Settings" };
 
     let regime = db.userProfile.regime || 'new';
     let tax = 0;
+
+    // Use passed tax80c, fallback to global currentTax80c, then 0
+    let deduction80c = tax80c !== null ? tax80c : (typeof currentTax80c !== 'undefined' ? currentTax80c : 0);
 
     if (regime === 'new') {
         // New Regime 2024-25 (with 75k std deduction)
@@ -536,7 +561,7 @@ function calculateStrictTax() {
         if (taxable > 1500000) tax += (taxable - 1500000) * 0.30; // >15L
     } else {
         // Old Regime
-        let taxable = Math.max(0, sal - 50000 - Math.min(currentTax80c, 150000));
+        let taxable = Math.max(0, sal - 50000 - Math.min(deduction80c, 150000));
         if (taxable <= 500000) return { liability: 0, str: "Tax Free (Rebate 87A)" };
 
         if (taxable > 250000) tax += Math.min(taxable - 250000, 250000) * 0.05; // 2.5-5L
@@ -593,8 +618,12 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
     if (type === 'PF' || type === 'PPF') {
         let val = 0;
         getEffectiveInvs().forEach(inv => {
+            // PPF/PF: Interest calculated monthly, credited annually
+            // Using monthly compounding for accurate valuation
             let years = Math.max(0, (new Date() - parseDate(inv.date)) / (1000 * 60 * 60 * 24 * 365.25));
-            let futureVal = inv.amount * Math.pow(1 + (defaultRate / 100), years);
+            let monthlyRate = (defaultRate / 100) / 12;
+            let months = years * 12;
+            let futureVal = inv.amount * Math.pow(1 + monthlyRate, months);
             val += futureVal;
             interestEarned += (futureVal - inv.amount);
         });
@@ -602,10 +631,18 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
     }
 
     if ((type === 'SIP' || type === 'Stocks') && db.navCache) {
-        let val = 0; let hasUnits = false;
+        let val = 0; let hasUnits = false; let staleNavCount = 0;
+        const oneDayMs = 24 * 60 * 60 * 1000;
+        const today = new Date();
         rawInvs.forEach(inv => {
             if (!inv.isDividend && inv.units && inv.mfCode && db.navCache[inv.mfCode]) {
-                let currentVal = inv.units * db.navCache[inv.mfCode].nav;
+                let navData = db.navCache[inv.mfCode];
+                // Check if NAV is stale (> 1 day old)
+                let navDate = navData.lastFetched ? new Date(navData.lastFetched) : new Date(navData.date);
+                let isStale = (today - navDate) > oneDayMs;
+                if (isStale) staleNavCount++;
+
+                let currentVal = inv.units * navData.nav;
                 val += currentVal;
                 interestEarned += (currentVal - inv.amount);
                 hasUnits = true;
@@ -615,6 +652,12 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
         });
         // Add initial balance to value if units are not being used for it
         val += (db.categoryDetails[type]?.initialBal || 0);
+        // Warn about stale NAV data
+        if (staleNavCount > 0 && !window.navStaleWarningShown) {
+            window.navStaleWarningShown = true;
+            setTimeout(() => { window.navStaleWarningShown = false; }, 60000); // Reset after 1 minute
+            showSnackbar(`${staleNavCount} NAV values may be outdated. Refresh for latest.`, 'warning');
+        }
         return { total: val, interest: interestEarned };
     }
 
@@ -934,16 +977,18 @@ function setInvestType(type) {
     if (config.qty) showIfExist('dynamic-qty-price', true);
     if (config.growth) showIfExist('dynamic-growth-fields', true);
 
-    // Dynamic visibility for Sub-Category and Broker
+    // Dynamic visibility for Sub-Category and Broker based on config
     const isSimple = config.simple || ['Cash', 'Liquid'].includes(type);
+    const hasBroker = config.broker !== undefined ? config.broker : !isSimple;
+    const hasSubcat = config.subcat !== undefined ? config.subcat : !isSimple;
     const subcatWrapper = document.getElementById('inv-subcat')?.parentElement;
     const brokerWrapper = document.getElementById('inv-broker')?.parentElement;
-    if (subcatWrapper) subcatWrapper.style.display = isSimple ? 'none' : 'flex';
-    if (brokerWrapper) brokerWrapper.style.display = isSimple ? 'none' : 'flex';
+    if (subcatWrapper) subcatWrapper.style.display = hasSubcat ? 'flex' : 'none';
+    if (brokerWrapper) brokerWrapper.style.display = hasBroker ? 'flex' : 'none';
     // If hidden, clear the row margin
     const row = subcatWrapper?.parentElement;
     if (row && row.classList.contains('input-row')) {
-        row.style.display = isSimple ? 'none' : 'flex';
+        row.style.display = (hasSubcat || hasBroker) ? 'flex' : 'none';
     }
 
     // Safe DOM access for labels and inputs
@@ -1107,7 +1152,7 @@ async function fetchLiveNAV(code) {
 
         let latestNav = parseFloat(data.data[0].nav);
         document.getElementById('inv-price').value = latestNav.toFixed(4);
-        db.navCache[code] = { nav: latestNav, date: data.data[0].date };
+        db.navCache[code] = { nav: latestNav, date: data.data[0].date, lastFetched: new Date().toISOString() };
         reverseCalculateUnits();
         showSnackbar(`Live NAV: ₹${latestNav}`, "check_circle");
     } catch (e) { showSnackbar("Failed to fetch NAV", "error"); }
@@ -1190,7 +1235,7 @@ async function syncHistoricalSIP() {
                 }
 
                 let units = foundNav ? amt / foundNav : 0;
-                db.investments.push({ id: Date.now() + Math.random(), date: dStr, type: type, amount: amt, units: units, mfCode: code, note: schemeName, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
+                db.investments.push({ id: generateUniqueId(), date: dStr, type: type, amount: amt, units: units, mfCode: code, note: schemeName, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
                 added++; currentDate.setMonth(currentDate.getMonth() + 1);
             }
 
@@ -1204,7 +1249,7 @@ async function syncHistoricalSIP() {
             if (currentDate > today) break;
             let dStr = getLocalYYYYMMDD(currentDate);
 
-            db.investments.push({ id: Date.now() + Math.random(), date: dStr, type: type, amount: amt, note: `${type} (Backfill)`, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
+            db.investments.push({ id: generateUniqueId(), date: dStr, type: type, amount: amt, note: `${type} (Backfill)`, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
             added++; currentDate.setMonth(currentDate.getMonth() + 1);
         }
         saveData(); renderAll(); closeOverlays(); showSnackbar(`Generated ${added} deposits for ${type}!`, "check_circle");
