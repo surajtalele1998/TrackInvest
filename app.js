@@ -1956,54 +1956,74 @@ async function sendAIChat() {
 }
 
 function formatAIResponse(text) {
-    if (!text) return "";
+    if (!text) return '<p style="padding:20px; opacity:0.6;">No data received...</p>';
 
-    let formatted = text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
-        .replace(/^\* (.*$)/gim, '<li>$1</li>')
-        .replace(/<li>(.*?)<\/li>/gs, '<ul><li>$1</li></ul>')
-        .replace(/<\/ul>\s*<ul>/g, '')
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>')
-        .replace(/\n\n/g, '<br><br>')
-        .replace(/\n/g, '<br>');
+    // 1. Initial Clean: Remove AI code fences if present
+    let formatted = text.replace(/```(html|markdown)?|```/gi, '').trim();
 
-    // Robust Markdown Table Parsing
-    const tableRegex = /((?:\|.*\|(?:\n|\r)|(?:\r\n))+)/g;
+    // 2. PROTECT TABLES: Process tables first while newlines still exist
+    const tableRegex = /((?:\|.*\|(?:\n|\r|\r\n))+)/g;
     formatted = formatted.replace(tableRegex, (match) => {
-        if (match.includes('---')) {
+        // Only process if it looks like a real table (contains a separator row)
+        if (match.includes('| ---') || match.includes('|---')) {
             const lines = match.trim().split(/\n|\r/);
-            let htmlTable = '<div class="table-wrapper"><table>';
-            lines.forEach((line, index) => {
-                if (line.includes('---') || line.trim() === '') return;
+            let htmlTable = '<div class="table-container"><table><thead>';
+
+            let bodyStarted = false;
+
+            lines.forEach((line) => {
+                if (line.includes('---')) {
+                    htmlTable += '</thead><tbody>';
+                    bodyStarted = true;
+                    return;
+                }
+
                 const cells = line.split('|').filter(c => c.trim() !== '');
                 if (cells.length === 0) return;
+
                 htmlTable += '<tr>';
                 cells.forEach(cell => {
-                    const tag = index === 0 ? 'th' : 'td';
+                    const tag = bodyStarted ? 'td' : 'th';
                     htmlTable += `<${tag}>${cell.trim()}</${tag}>`;
                 });
                 htmlTable += '</tr>';
             });
-            htmlTable += '</table></div>';
+
+            htmlTable += '</tbody></table></div>';
             return htmlTable;
         }
         return match;
     });
 
-    // Final cleanup: preserve breaks for non-table text
-    formatted = formatted.replace(/\n/g, '<br>');
-    // Remove redundant breaks around headers/tables
-    formatted = formatted.replace(/<br>(<(h\d|div|blockquote|ul))/g, '$1');
-    formatted = formatted.replace(/(<\/h\d>|<\/div>|<\/blockquote>|<\/ul>)<br>/g, '$1');
+    // 3. PROCESS MARKDOWN (Headers, Lists, Blockquotes)
+    formatted = formatted
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+        // Process Lists
+        .replace(/^\* (.*$)/gim, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+        .replace(/<\/ul>\s*<ul>/g, '')
+        // Links
+        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+    // 4. PRESERVE SPACING (Only for non-HTML elements)
+    // We split by tags to ensure we don't add <br> inside a <table> or <ul>
+    const parts = formatted.split(/(<[^>]*>)/);
+    formatted = parts.map(part => {
+        if (part.startsWith('<')) return part; // Keep HTML tags as is
+        return part.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+    }).join('');
+
+    // 5. CLEANUP redundant breaks
+    formatted = formatted.replace(/<br>\s*<(h\d|div|blockquote|ul|table|thead|tbody|tr)/gi, '<$1');
+    formatted = formatted.replace(/<\/(h\d|div|blockquote|ul|table|thead|tbody|tr)>\s*<br>/gi, '</$1>');
 
     return `<div class="ai-report-body">${formatted}</div>`;
 }
-
 async function fetchAIPrediction() {
     if (!db.geminiKey && !db.groqKey) return;
     let predictEl = document.getElementById('ai-predict-text-dashboard');
@@ -2162,8 +2182,6 @@ async function generateWealthBlueprint() {
     }
 }
 
-
-
 async function autoSetGoalsViaAI() {
     haptic(40);
     if (!db.geminiKey && !db.groqKey) { showSnackbar("API Key Required", "key"); return; }
@@ -2201,105 +2219,207 @@ async function autoSetGoalsViaAI() {
 async function askAIEngine(context) {
     haptic(40);
     if (!db.geminiKey && !db.groqKey) {
-        showSnackbar("Save Groq or Gemini Key First", "key");
+        showSnackbar("Save API Key First", "key");
         setTimeout(openSettings, 1000);
         return;
     }
-    let aiContainer = document.getElementById('ai-response-container');
-    aiContainer.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span><br><br>Generating structured AI analysis...</div>`;
-    document.getElementById('ai-report-charts').style.display = 'none';
-    document.getElementById('scrim').classList.add('active'); document.getElementById('ai-sheet').classList.add('active');
 
-    let payload = {}; let promptBase = "";
-    if (context === 'full_report') {
-        let history6m = [];
-        let now = new Date();
-        for (let i = 5; i >= 0; i--) {
-            let m = now.getMonth() - i; let y = now.getFullYear(); while (m < 0) { m += 12; y -= 1; }
-            let monthTotal = db.investments.filter(inv => { let d = parseDate(inv.date); return d.getMonth() === m && d.getFullYear() === y; }).reduce((sum, inv) => sum + inv.amount, 0);
-            history6m.push({ month: new Date(y, m).toLocaleString('default', { month: 'short' }), total: monthTotal });
-        }
+    const aiContainer = document.getElementById('ai-response-container');
+    const chartSection = document.getElementById('ai-report-charts');
 
-        let goalProgress = db.goals.map(g => {
-            let saved = g.saved || 0;
-            if (g.link && currentTypeTotals[g.link]) saved += currentTypeTotals[g.link];
-            return { name: g.name, target: g.target, saved: saved, progress: ((saved / g.target) * 100).toFixed(1) + '%' };
+    // UI Loading State with contextual labels
+    let loadingLabel = "Analyzing Data...";
+    if (context === 'full_report') loadingLabel = "Conducting Strategic Wealth Audit...";
+    if (context === 'allocation') loadingLabel = "Analyzing Asset Distribution & Risk...";
+    if (context === 'ledger') loadingLabel = "Auditing Behavioral Spending Habits...";
+
+    aiContainer.innerHTML = `
+        <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
+            <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
+            <div style="margin-top:16px; font-weight:500; font-family:'Google Sans';">${loadingLabel}</div>
+            <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
+        </div>`;
+
+    chartSection.style.display = 'none';
+    document.getElementById('scrim').classList.add('active');
+    document.getElementById('ai-sheet').classList.add('active');
+
+    // 1. DATA PREP (Shared Context)
+    const now = new Date();
+    const payload = {
+        netWorth: currentTotalNW,
+        burnRate: db.userProfile.monthlyExpense || 0,
+        salary: db.userProfile.salary,
+        allocation: currentTypeTotals,
+        targets: db.allocTargets,
+        recentHistory: db.investments.slice(-40), // More context for deeper analysis
+        taxSaved: db.investments.filter(i => db.categories[i.type]?.is80c && isCurrentFY(i.date)).reduce((s, i) => s + i.amount, 0),
+        goals: db.goals
+    };
+
+    let catMonthly = {};
+    Object.keys(db.categories).forEach(cat => { catMonthly[cat] = []; });
+    for (let i = 2; i >= 0; i--) {
+        let m = now.getMonth() - i; let y = now.getFullYear();
+        if (m < 0) { m += 12; y -= 1; }
+        Object.keys(db.categories).forEach(cat => {
+            let sum = db.investments.filter(inv => { let d = parseDate(inv.date); return inv.type === cat && d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((s, i) => s + i.amount, 0);
+            catMonthly[cat].push(sum);
         });
-
-        payload = {
-            netWorth: currentTotalNW,
-            salary: db.userProfile.salary,
-            activeSips: db.recurring,
-            taxLiability: calculateStrictTax().liability,
-            allocation: currentTypeTotals,
-            goals: goalProgress,
-            historicalTrends: history6m,
-            assetCount: db.investments.length,
-            portfolioHealth: calculatePortfolioHealth()
-        };
-
-        promptBase = `You are a World-Class Financial Analyst & Wealth Strategist. Analyze this financial blueprint for a premium client: ${JSON.stringify(payload)}.
-        Generate a comprehensive, high-end report using Markdown.
-        
-        STRUCTURE:
-        1. # Wealth Intelligence Report
-           - Executive Summary of Net Worth health (₹${formatInr(payload.netWorth)}).
-           - Key Insight in a blockquote (>).
-        
-        2. ## 1. Capital Allocation & Matrix
-           - A markdown table (| Asset | Value | % | Target | Advice |).
-        
-        3. ## 2. Goal Trajectory
-           - Analysis of each goal: ${JSON.stringify(payload.goals)}.
-        
-        4. ## 3. 12-Month Roadmap
-           - Actionable steps and tax-saving opportunities (80C: ₹${payload.taxLiability} liability).
-        
-        5. ## 4. Strategic Recommendations
-           - Long-term vision and risk mitigation.
-
-        Tone: Professional, sophisticated, elite.`;
     }
-    else if (context === 'allocation') { payload = { allocation: currentTypeTotals, targets: db.allocTargets }; promptBase = `Review allocation vs targets: ${JSON.stringify(payload)}. Note concentration risks. Provide ONLY valid HTML snippet (using <h3>, <p>, <ul>).`; }
-    else if (context === 'ledger') { payload = { recent: db.investments.slice(-20) }; promptBase = `Review the user's last 20 transactions: ${JSON.stringify(payload)}. Analyze habits and spot anomalies. Provide ONLY valid HTML snippet (using <h3>, <p>, <ul>).`; }
+    let autoSips = {};
+    db.recurring.forEach(r => { autoSips[r.type] = (autoSips[r.type] || 0) + r.amount; });
+
+    let promptBase = "";
+
+    // 2. CONTEXT-SPECIFIC STRATEGIC PROMPTS
+    if (context === 'full_report') {
+        promptBase = `You are an Elite Financial Strategist. Your goal is to provide a "Brutal & Brilliant" wealth audit. Do not sugarcoat. Analyze the provided telemetry and deliver a masterclass in wealth management.
+        GIVE AN INDIAN FORMAYED MIDDLE CLASS USERS CAN UNDERSTAND THAT SIMPLE AND EASY LANGUAGE REPSONSES
+        <CONTEXT_TELEMETRY>
+        - Comprehensive Portfolio: ${JSON.stringify(payload)}
+        - Monthly Investment Velocity: ${JSON.stringify(catMonthly)}
+        - Recurring Commitments (SIPs): ${JSON.stringify(autoSips)}
+        - Target Allocations: ${JSON.stringify(db.allocTargets)}
+        </CONTEXT_TELEMETRY>
+
+        <STRATEGIC_MANDATE>
+        Execute a 4-dimensional analysis:
+        1. THE CURRENT REALITY: Analyze the delta between Salary, Expenses, and Net Worth. Is the user actually building wealth or just moving money? Evaluate the Emergency Fund safety (6-12 month runway).
+        2. THE BEHAVIORAL AUDIT: Based on the last 20 transactions, identify "Discipline Hits" (Wins) and "Leaks" (Losses). What habits are invisible to the user but visible in the data?
+        3. THE 5-YEAR PROJECTION (THE "CHANGE" BENEFIT): Calculate the compound impact of current changes. Contrast the "As-Is" trajectory with the "Optimized" trajectory if they fix their current mistakes today.
+        4. TACTICAL BLUEPRINT: What exactly must happen in the next 90 days to secure the next 5 years?
+        </STRATEGIC_MANDATE>
+
+        <OUTPUT_SCHEMA_RULES>
+        Format using MD3 (Material Design 3) logic: Use bold headers, No markdown and emphasized blockquotes.
+        Output Format: HTML with MD3 styling. Use cards, progress bars, and tables. No markdown code blocks. Keep it premium and visual.
+        Make sure table are designed for mobile UI, AND gaps between the topics are correct.
+
+        # Wealth Intelligence & Strategic Audit
+        > **Executive Summary:** A 5-10 sentence high-level verdict on the user's current financial trajectory.
+
+        ## 1. The Reality Check: Current State in table html designed for mobile and dynamcially update for laptop
+        **Portfolio Health Score: [X/100]**
+        | Metric | Value | Verdict |
+        | :--- | :--- | :--- |
+        | Net Worth | ₹${formatInr(payload.netWorth)} | [Analysis] |
+        | Savings Rate | [Calculated %] | [Efficient/Inefficient] |
+        | Tax Efficiency | ₹${payload.taxSavings80C}/1.5L | [Warning/Good] |
+
+        ## 2. The Mirror: What You're Doing Right & Wrong
+        ### 🟢 Winning Habits (The Green List)
+        - [Identify specific patterns from the last 20 transactions and SIPs that are building wealth]
+        ### 🔴 Current Friction Points (The Red List)
+        - [Identify specific mistakes: Over-concentration, inconsistent SIPs, or high expense ratios]
+
+        ## 3. The 5-Year Vision: The Cost of Inaction vs. Action
+        - **The "As-Is" Path:** If habits don't change, where will the user be in 2031?
+        - **The "Optimized" Path:** If the user implements your suggestions today, what is the ₹[Amount] difference in 5 years?
+        - **Strategic Benefit:** How current changes in allocation will bulletproof them against market volatility.
+
+        ## 4. The 90-Day Tactical Blueprint
+        ### Phase 1: Immediate Stabilization (Next 30 Days)
+        - [3 specific tasks: e.g., "Top up 80C by ₹X", "Rebalance Category Y"]
+        ### Phase 2: Growth Acceleration (Next 60-90 Days)
+        - [Strategic moves for future planning and goal hitting]
+
+        ## 5. Next-Month Predictive Forecast
+        | Category | Predicted Action | Rationale | Trend |
+        | :--- | :--- | :--- | :--- |
+        [Populate from catMonthly velocity]
+
+
+        ##6. overall feels about user profile
+        </OUTPUT_SCHEMA_RULES>
+        `;
+    }
+    else if (context === 'allocation') {
+        promptBase = `Act as a Risk & Portfolio Manager. DATA: ${JSON.stringify({ current: payload.allocation, targets: payload.targets })}.
+        Analyze current distribution vs targets. 
+        1. Identify Concentration Risks (where user is over-exposed).
+        2. Identify Opportunity Gaps (where user is under-invested).
+        3. Strategic Rebalancing: Provide a step-by-step plan to reach target parity.
+        4. How these changes bulletproof the portfolio for the next 5 years.
+        Format: Direct, analytical, using MD3 cards/tables.`;
+    }
+    else if (context === 'ledger') {
+        promptBase = `Act as a Forensic Financial Auditor. DATA: ${JSON.stringify(payload.recentHistory)}.
+        Deep-dive into the last 40 transactions.
+        1. Behavioral Patterns: Is the user impulsive or disciplined? 
+        2. Hidden Leaks: Identify recurring friction or spending "clutter".
+        3. Winning Streaks: Highlight the best financial decisions seen in the ledger.
+        4. Habit Shift: Suggest 3 psychological shifts to improve cash flow next month.
+        Format: Professional and investigative.`;
+    }
 
     try {
-        let aiResponse = await callAIApi(promptBase, "You are an elite wealth manager. Return a detailed markdown report.");
-        aiContainer.innerHTML = formatAIResponse(aiResponse);
+        const response = await callAIApi(promptBase, "You are a top-tier Financial AI. Your responses are deep, informative, and strategically superior.");
+        aiContainer.innerHTML = formatAIResponse(response);
 
-        if (context === 'full_report') {
-            document.getElementById('ai-report-charts').style.display = 'flex';
+        // Show charts only for relevant contexts
+        if (context === 'full_report' || context === 'allocation') {
+            chartSection.style.display = 'flex';
             renderAIReportCharts(currentTypeTotals);
         }
         haptic([30, 50]);
-    } catch (error) { aiContainer.innerHTML = `<p style="color:var(--md-error);">Failed. Check your internet connection and API keys.</p>`; showSnackbar("API Failed", "error"); }
+    } catch (e) {
+        aiContainer.innerHTML = `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`;
+    }
 }
-
-function openAIPredictSheet() {
-    generateAIForecast();
-}
-
 
 function renderAIReportCharts(typeTotals) {
-    let pieCtx = document.getElementById('aiChartPie');
-    let barCtx = document.getElementById('aiChartBar');
+    const pieCtx = document.getElementById('aiChartPie');
+    const barCtx = document.getElementById('aiChartBar');
     if (!pieCtx || !barCtx) return;
 
-    let labels = []; let data = []; let bgColors = [];
-    Object.keys(typeTotals).forEach(t => { if (typeTotals[t] > 0) { labels.push(t); data.push(typeTotals[t]); bgColors.push(db.categories[t].color); } });
+    const labels = [], data = [], bgColors = [];
+    Object.keys(typeTotals).forEach(t => {
+        if (typeTotals[t] > 0) {
+            labels.push(t);
+            data.push(typeTotals[t]);
+            bgColors.push(db.categories[t]?.color || '#ccc');
+        }
+    });
 
-    if (aiReportCharts.pie) aiReportCharts.pie.destroy();
-    aiReportCharts.pie = new Chart(pieCtx, { type: 'doughnut', data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        layout: { padding: 4 }
+    };
 
-    if (aiReportCharts.bar) aiReportCharts.bar.destroy();
-    aiReportCharts.bar = new Chart(barCtx, { type: 'bar', data: { labels: labels, datasets: [{ data: data, backgroundColor: bgColors }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } } });
+    if (window.aiCharts) {
+        window.aiCharts.pie?.destroy();
+        window.aiCharts.bar?.destroy();
+    } else {
+        window.aiCharts = {};
+    }
+
+    window.aiCharts.pie = new Chart(pieCtx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 0, cutout: '70%' }] },
+        options: chartOptions
+    });
+
+    window.aiCharts.bar = new Chart(barCtx, {
+        type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderRadius: 4 }] },
+        options: { ...chartOptions, scales: { x: { display: false }, y: { display: false } } }
+    });
 }
 
 function downloadAIReport() {
-    let element = document.getElementById('ai-sheet');
-    let opt = { margin: 0.5, filename: 'Wealth_Matrix_Report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    const element = document.getElementById('ai-sheet');
+    const opt = {
+        margin: 0.2,
+        filename: 'Wealth_Strategic_Audit.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
     html2pdf().set(opt).from(element).save();
-    showSnackbar("Downloading PDF...");
+    showSnackbar("Exporting Premium Report...");
 }
 
 async function generateAITags() {
@@ -2771,6 +2891,8 @@ function updateAdvisorWidget() {
         advisorCard.style.display = 'none';
     }
 }
+
+
 
 const WEBRTC_QR_FRAME_LIMIT = 320;
 const WEBRTC_QR_PREFIX = 'TIQR2';

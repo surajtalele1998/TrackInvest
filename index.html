@@ -776,7 +776,7 @@
 
             <button class="btn-primary"
                 style="background:var(--md-primary-container);color:var(--md-on-primary-container);"
-                onclick="openNearbySync()">
+                onclick="openSheet('webrtc-sync-sheet')">
                 <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
             </button>
 
@@ -876,22 +876,24 @@
             </div>
         </div>
 
-        <div id="ai-report-charts" style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;">
-            <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas id="aiChartPie"
-                    height="120"></canvas></div>
-            <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas id="aiChartBar"
-                    height="120"></canvas></div>
-        </div>
+        <div style="overflow-y: auto; overflow-x: hidden; padding: 0 16px 40px 16px; flex-grow: 1;">
 
-        <div id="ai-response-container" class="ai-md" style="overflow-y:auto; padding-bottom:24px;"></div>
+            <div id="ai-report-charts" style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;">
+                <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
+                        id="aiChartPie" height="120"></canvas></div>
+                <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
+                        id="aiChartBar" height="120"></canvas></div>
+            </div>
+
+            <div id="ai-response-container" class="ai-md" style="overflow-y:auto; padding-bottom:24px;"></div>
+        </div>
     </div>
 
     <div class="sheet" id="month-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span id="month-sheet-title">Summary</span>
-            <button class="icon-btn" onclick="closeSheet()"><span
-                    class="material-symbols-rounded">close</span></button>
+            <button class="icon-btn" onclick="closeSheet()"><span class="material-symbols-rounded">close</span></button>
         </h3>
         <div id="month-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
     </div>
@@ -931,7 +933,8 @@
         <div id="xirr-result" style="margin-top:16px;font-size:18px;font-weight:500;text-align:center;"></div>
     </div>
 
-    <div class="sheet sub-sheet" id="webrtc-sync-sheet" style="max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet sub-sheet" id="webrtc-sync-sheet"
+        style="max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
         <div class="sheet-title" style="margin-bottom: 16px; flex-shrink: 0;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
@@ -940,7 +943,8 @@
                     class="material-symbols-rounded">close</span></button>
         </div>
 
-        <div id="nearby-mode-selector" style="display:flex; flex-direction:column; align-items:center; text-align:center; padding:20px 0;">
+        <div id="nearby-mode-selector"
+            style="display:flex; flex-direction:column; align-items:center; text-align:center; padding:20px 0;">
             <div class="radar-container">
                 <div class="radar-pulse"></div>
                 <div class="radar-pulse"></div>
@@ -949,36 +953,44 @@
                     <span class="material-symbols-rounded">sensors</span>
                 </div>
             </div>
-            
+
             <h2 style="margin:24px 0 8px 0; font-size:20px; font-weight:600;">Broadcast or Tune In</h2>
-            <p style="font-size:13px; color:var(--md-on-surface-variant); line-height:1.5; margin-bottom:32px; padding:0 24px;">
-                Securely sync your portfolio with another device offline using high-speed radio frequencies. No internet required.
+            <p
+                style="font-size:13px; color:var(--md-on-surface-variant); line-height:1.5; margin-bottom:32px; padding:0 24px;">
+                Securely sync your portfolio with another device offline using high-speed radio frequencies. No internet
+                required.
             </p>
 
             <div style="display:flex; flex-direction:column; gap:12px; width:100%; padding:0 20px;">
-                <button class="btn-primary nearby-action-btn" onclick="nearbyBroadcast()" style="height:auto; padding:16px; border-radius:20px; justify-content:flex-start; text-align:left;">
+                <button class="btn-primary nearby-action-btn" onclick="nearbyBroadcast()"
+                    style="height:auto; padding:16px; border-radius:20px; justify-content:flex-start; text-align:left;">
                     <span class="material-symbols-rounded" style="font-size:32px; margin-right:16px;">podcasts</span>
                     <div>
                         <div style="font-weight:600;">Broadcast Wealth</div>
                         <div style="font-size:11px; opacity:0.8; font-weight:400;">Share my data to another device</div>
                     </div>
                 </button>
-                
-                <button class="btn-secondary nearby-action-btn" onclick="nearbyTuneIn()" style="height:auto; padding:16px; border-radius:20px; justify-content:flex-start; text-align:left;">
+
+                <button class="btn-secondary nearby-action-btn" onclick="nearbyTuneIn()"
+                    style="height:auto; padding:16px; border-radius:20px; justify-content:flex-start; text-align:left;">
                     <span class="material-symbols-rounded" style="font-size:32px; margin-right:16px;">hearing</span>
                     <div>
                         <div style="font-weight:600;">Tune In</div>
-                        <div style="font-size:11px; opacity:0.8; font-weight:400;">Receive data from another device</div>
+                        <div style="font-size:11px; opacity:0.8; font-weight:400;">Receive data from another device
+                        </div>
                     </div>
                 </button>
             </div>
         </div>
 
-        <div id="nearby-sync-active" style="display:none; flex-direction:column; gap:20px; padding:20px; flex:1; overflow-y:auto;">
-            <div id="nearby-status-badge" style="padding:16px; border-radius:20px; background:var(--md-secondary-container); color:var(--md-on-secondary-container); text-align:center; font-weight:600;">
+        <div id="nearby-sync-active"
+            style="display:none; flex-direction:column; gap:20px; padding:20px; flex:1; overflow-y:auto;">
+            <div id="nearby-status-badge"
+                style="padding:16px; border-radius:20px; background:var(--md-secondary-container); color:var(--md-on-secondary-container); text-align:center; font-weight:600;">
                 Syncing
             </div>
-            <div id="nearby-status-text" style="font-size:14px; opacity:0.9; text-align:center;">Initializing secure connection</div>
+            <div id="nearby-status-text" style="font-size:14px; opacity:0.9; text-align:center;">Initializing secure
+                connection</div>
 
             <div id="nearby-sync-progress-wrap" style="display:none; flex-direction:column; gap:8px;">
                 <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600;">
@@ -990,9 +1002,11 @@
             </div>
 
             <!-- Fallback Manual QR Area (Hidden by default, shown if Share fails) -->
-            <div id="nearby-qr-fallback" style="display:none; flex-direction:column; align-items:center; gap:16px; margin-top:16px;">
+            <div id="nearby-qr-fallback"
+                style="display:none; flex-direction:column; align-items:center; gap:16px; margin-top:16px;">
                 <div style="font-size:12px; font-weight:600; color:var(--md-error);">SHARE FAILED - USE SCANNER</div>
-                <div id="webrtc-qr-display" style="padding:16px; background:white; border-radius:24px; box-shadow: var(--md-shadow-1);">
+                <div id="webrtc-qr-display"
+                    style="padding:16px; background:white; border-radius:24px; box-shadow: var(--md-shadow-1);">
                     <div id="webrtc-qr"></div>
                     <div id="webrtc-qr-page-indicator" style="font-size:11px; color:#666; margin-top:8px;"></div>
                 </div>
@@ -1000,12 +1014,15 @@
             </div>
 
             <div id="webrtc-scanner-ui" style="display:none; flex-direction:column; gap:12px;">
-                <div id="webrtc-reader" style="width:100%; border-radius:24px; overflow:hidden; background:black;"></div>
+                <div id="webrtc-reader" style="width:100%; border-radius:24px; overflow:hidden; background:black;">
+                </div>
                 <button class="btn-secondary" onclick="webrtcStopScanner()">Cancel Scanning</button>
             </div>
 
-            <div id="nearby-sync-actions" style="margin-top:auto; display:flex; flex-direction:column; gap:12px; padding-bottom:12px;">
-                <button id="webrtc-sync-btn" class="btn-primary" style="display:none; background:var(--md-success);" onclick="webrtcSendSync()">✅ Confirm & Import Data</button>
+            <div id="nearby-sync-actions"
+                style="margin-top:auto; display:flex; flex-direction:column; gap:12px; padding-bottom:12px;">
+                <button id="webrtc-sync-btn" class="btn-primary" style="display:none; background:var(--md-success);"
+                    onclick="webrtcSendSync()">✅ Confirm & Import Data</button>
                 <button class="btn-secondary" onclick="location.reload()">Reset & Try Again</button>
             </div>
         </div>
@@ -1059,7 +1076,8 @@
 
     <div class="sheet" id="ai-chat-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
         <div class="drag-handle"></div>
-        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">
+        <div class="sheet-title"
+            style="margin-bottom: 12px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
                     style="color:var(--md-primary);">psychology</span> AI Assistant</div>
             <div style="display:flex;gap:8px;align-items:center;">
