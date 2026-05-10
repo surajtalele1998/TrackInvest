@@ -3,8 +3,9 @@
 // ==========================================
 let db = JSON.parse(localStorage.getItem('appHubInvestDb')) || {};
 
-if (!db.userProfile) db.userProfile = { salary: 0, regime: 'new' };
-if (!db.settingsTable) db.settingsTable = { lastResetMonth: '', monthlyTargetRef: 0 };
+if (!db.userProfile) db.userProfile = { salary: 0, regime: 'new', monthlyExpense: 0 };
+if (!db.userProfile.monthlyExpense) db.userProfile.monthlyExpense = 0;
+if (!db.settingsTable) db.settingsTable = { lastResetMonth: '' };
 if (!db.investments) db.investments = [];
 if (!db.goals) db.goals = [];
 if (!db.recurring) db.recurring = [];
@@ -49,11 +50,15 @@ const milestoneThresholds = [
 let editInvId = null, editGoalId = null, currentInvType = Object.keys(db.categories)[0] || 'Cash';
 // Default field configurations for standard categories if not exists
 const standardFieldConfigs = {
-    'FD': { interest: true, payout: true, maturity: true },
-    'PPF': { interest: true, maturity: true, monthly: true },
-    'PF': { interest: true, monthly: true },
-    'SIP': { mf: true, sipday: true, monthly: true },
-    'Stocks': { mf: true, qty: true }
+    'FD': { interest: true, payout: true, maturity: true, broker: true, subcat: true },
+    'PPF': { interest: true, maturity: true, monthly: true, subcat: true },
+    'PF': { interest: true, monthly: true, subcat: true },
+    'SIP': { mf: true, sipday: true, monthly: true, broker: true, subcat: true },
+    'Stocks': { mf: true, qty: true, broker: true, subcat: true },
+    'Gold': { growth: true },
+    'Real Estate': { growth: true },
+    'Cash': { simple: true },
+    'Liquid': { simple: true }
 };
 Object.keys(db.categories).forEach(cat => {
     if (!db.categoryDetails[cat]) db.categoryDetails[cat] = {};
@@ -94,6 +99,12 @@ function haptic(ms = 30) {
 function getLocalYYYYMMDD(d) {
     const tzOffset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+}
+
+function parseDate(dateStr) {
+    if (!dateStr) return new Date();
+    const p = dateStr.split('-');
+    return new Date(p[0], p[1] - 1, p[2]);
 }
 
 function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
@@ -153,7 +164,7 @@ function copyNetWorth() {
 function exportToCSV() {
     haptic(30);
     let rows = [['Date', 'Type', 'Amount', 'Account', 'Note', 'Tags', 'Dividend']];
-    db.investments.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(inv => {
+    db.investments.sort((a, b) => parseDate(b.date) - parseDate(a.date)).forEach(inv => {
         rows.push([inv.date, inv.type, inv.amount, inv.account || '', inv.note || '', inv.tags || '', inv.isDividend ? 'Yes' : 'No']);
     });
     let csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -221,7 +232,7 @@ function updateStatChips(totalInvested, totalMarketValue, yearTotal, thisMonthTo
     let sal = db.userProfile.salary || 0;
     let pnl = totalMarketValue - totalInvested;
     let roi = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
-    
+
     // Savings rate: use this month's total if it's the current performance we are tracking
     let savRate = sal > 0 ? Math.round((thisMonthTotal / (sal / 12)) * 100) : 0;
 
@@ -233,7 +244,7 @@ function updateStatChips(totalInvested, totalMarketValue, yearTotal, thisMonthTo
     });
     let bestMonth = '—'; let bestAmt = 0;
     Object.entries(monthMap).forEach(([k, v]) => { if (v > bestAmt) { bestAmt = v; bestMonth = k; } });
-    if (bestMonth !== '—') { let d = new Date(bestMonth + '-01'); bestMonth = d.toLocaleString('default', { month: 'short', year: '2-digit' }); }
+    if (bestMonth !== '—') { let d = parseDate(bestMonth + '-01'); bestMonth = d.toLocaleString('default', { month: 'short', year: '2-digit' }); }
 
     // Investment streak (consecutive months)
     let now = new Date(); let streak = 0;
@@ -370,13 +381,13 @@ function checkMilestones(nw) {
 }
 
 window.openMonthlyTargetSheet = function () {
-    document.getElementById('monthly-target-amt').value = db.settingsTable.monthlyTargetRef || '';
+    // Redundant monthlyTargetRef removed
     document.getElementById('scrim').classList.add('active');
     document.getElementById('monthly-target-sheet').classList.add('active');
 };
 
 window.saveMonthlyTarget = function () {
-    db.settingsTable.monthlyTargetRef = parseFloat(document.getElementById('monthly-target-amt').value) || 0;
+    // Redundant monthlyTargetRef removed
     saveData(); closeOverlays(); renderAll(); showSnackbar("Monthly Target Saved");
 };
 
@@ -456,13 +467,24 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
     const defaultRate = db.categoryDetails[type]?.interestRate || govRates[type] || 0;
     let interestEarned = 0;
 
+    // Helper to get virtual investments including initial balance
+    const getEffectiveInvs = () => {
+        let invs = rawInvs.filter(i => !i.isDividend);
+        let initialBal = db.categoryDetails[type]?.initialBal || 0;
+        if (initialBal > 0) {
+            // Use the earliest date from existing investments or fallback to a date far in the past
+            let earliest = invs.reduce((min, i) => i.date < min ? i.date : min, invs[0]?.date || '2023-01-01');
+            invs.push({ date: earliest, amount: initialBal, note: 'Initial Balance' });
+        }
+        return invs;
+    };
+
     if (type === 'FD') {
         let val = 0;
-        rawInvs.forEach(inv => {
-            if (inv.isDividend) return;
+        getEffectiveInvs().forEach(inv => {
             let rate = inv.interestRate || defaultRate;
             let payout = inv.payoutType || 'quarterly';
-            let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
+            let years = Math.max(0, (new Date() - parseDate(inv.date)) / (1000 * 60 * 60 * 24 * 365.25));
             let principal = inv.amount;
             let futureVal = principal;
 
@@ -471,7 +493,6 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
             } else if (payout === 'monthly') {
                 futureVal = principal * Math.pow(1 + (rate / 100) / 12, 12 * years);
             } else {
-                // Simple interest on maturity
                 futureVal = principal * (1 + (rate / 100) * years);
             }
             val += futureVal;
@@ -479,17 +500,18 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
         });
         return { total: val, interest: interestEarned };
     }
+
     if (type === 'PF' || type === 'PPF') {
         let val = 0;
-        let sorted = rawInvs.filter(i => !i.isDividend).sort((a, b) => new Date(a.date) - new Date(b.date));
-        sorted.forEach(inv => {
-            let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
+        getEffectiveInvs().forEach(inv => {
+            let years = Math.max(0, (new Date() - parseDate(inv.date)) / (1000 * 60 * 60 * 24 * 365.25));
             let futureVal = inv.amount * Math.pow(1 + (defaultRate / 100), years);
             val += futureVal;
             interestEarned += (futureVal - inv.amount);
         });
         return { total: val, interest: interestEarned };
     }
+
     if ((type === 'SIP' || type === 'Stocks') && db.navCache) {
         let val = 0; let hasUnits = false;
         rawInvs.forEach(inv => {
@@ -502,16 +524,17 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
                 val += inv.amount;
             }
         });
-        if (hasUnits) return { total: val, interest: interestEarned };
+        // Add initial balance to value if units are not being used for it
+        val += (db.categoryDetails[type]?.initialBal || 0);
+        return { total: val, interest: interestEarned };
     }
 
     let customRate = db.categoryDetails[type]?.interestRate || 0;
     if (customRate > 0) {
         let val = 0;
-        rawInvs.forEach(inv => {
-            if (inv.isDividend) return;
+        getEffectiveInvs().forEach(inv => {
             let rate = inv.interestRate || customRate;
-            let years = (new Date() - new Date(inv.date)) / (1000 * 60 * 60 * 24 * 365);
+            let years = Math.max(0, (new Date() - parseDate(inv.date)) / (1000 * 60 * 60 * 24 * 365.25));
             let futureVal = inv.amount * Math.pow(1 + (rate / 100) / 12, 12 * years);
             val += futureVal;
             interestEarned += (futureVal - inv.amount);
@@ -815,12 +838,24 @@ function setInvestType(type) {
     const showIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'flex' : 'none'; };
     const showBlockIfExist = (id, cond) => { const el = document.getElementById(id); if (el) el.style.display = cond ? 'block' : 'none'; };
 
-    if (config.interest || ['FD', 'PF', 'PPF'].includes(type)) showIfExist('dynamic-fd-fields', true);
-    if (config.maturity || ['FD', 'PF', 'PPF'].includes(type)) showBlockIfExist('maturity-box-simple', true);
-    if (config.sipday || type === 'SIP') showIfExist('dynamic-sip-day-field', true);
-    if (config.mf || type === 'SIP' || type === 'Stocks') showIfExist('dynamic-mf-search', true);
-    if (config.qty || type === 'Stocks') showIfExist('dynamic-qty-price', true);
-    if (config.growth || ['Gold', 'Real Estate'].includes(type)) showIfExist('dynamic-growth-fields', true);
+    if (config.interest) showIfExist('dynamic-fd-fields', true);
+    if (config.maturity) showBlockIfExist('maturity-box-simple', true);
+    if (config.sipday) showIfExist('dynamic-sip-day-field', true);
+    if (config.mf) showIfExist('dynamic-mf-search', true);
+    if (config.qty) showIfExist('dynamic-qty-price', true);
+    if (config.growth) showIfExist('dynamic-growth-fields', true);
+
+    // Dynamic visibility for Sub-Category and Broker
+    const isSimple = config.simple || ['Cash', 'Liquid'].includes(type);
+    const subcatWrapper = document.getElementById('inv-subcat')?.parentElement;
+    const brokerWrapper = document.getElementById('inv-broker')?.parentElement;
+    if (subcatWrapper) subcatWrapper.style.display = isSimple ? 'none' : 'flex';
+    if (brokerWrapper) brokerWrapper.style.display = isSimple ? 'none' : 'flex';
+    // If hidden, clear the row margin
+    const row = subcatWrapper?.parentElement;
+    if (row && row.classList.contains('input-row')) {
+        row.style.display = isSimple ? 'none' : 'flex';
+    }
 
     // Safe DOM access for labels and inputs
     const amtEl = document.getElementById('inv-amt');
@@ -1237,7 +1272,8 @@ function deleteQuickLog(event, idx) { event.stopPropagation(); haptic(40); Swal.
 // ==========================================
 function buildUnifiedItemHTML(inv) {
     let meta = db.categories[inv.type] || { icon: 'savings', color: '#8D6E63' };
-    let dObj = new Date(inv.date); let dateStr = `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })} ${dObj.getFullYear()}`;
+    let dObj = parseDate(inv.date);
+    let dateStr = `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })} ${dObj.getFullYear()}`;
     let tagsHtml = ""; if (inv.tags) { inv.tags.split(',').forEach(t => { if (t.trim()) tagsHtml += `<span class="roi-tag" style="background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);">#${t.trim()}</span> `; }); }
     let intHtml = inv.interestRate ? `<span class="unified-detail-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 4px; border-radius:4px; font-weight:700;">${inv.interestRate}% APY</span>` : '';
     let pClass = inv.isDividend ? "price dividend" : "price";
@@ -1281,7 +1317,7 @@ function renderHistory() {
         let va, vb;
         if (ledgerSort === 'amount') { va = a.amount; vb = b.amount; }
         else if (ledgerSort === 'type') { va = a.type; vb = b.type; return ledgerAsc ? va.localeCompare(vb) : vb.localeCompare(va); }
-        else { va = new Date(a.date); vb = new Date(b.date); }
+        else { va = parseDate(a.date); vb = parseDate(b.date); }
         return ledgerAsc ? va - vb : vb - va;
     });
 
@@ -1321,7 +1357,7 @@ function openDividendSheet() {
     haptic(30);
     document.getElementById('scrim-sub').classList.add('active');
     document.getElementById('dividend-sheet').classList.add('active');
-    let dividends = db.investments.filter(i => i.isDividend).sort((a, b) => new Date(b.date) - new Date(a.date));
+    let dividends = db.investments.filter(i => i.isDividend).sort((a, b) => parseDate(b.date) - parseDate(a.date));
     let html = dividends.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">payments</span><div class="es-title">No Passive Income</div></div>` : dividends.map(buildUnifiedItemHTML).join('');
     document.getElementById('dividend-list').innerHTML = html;
 }
@@ -1351,7 +1387,7 @@ function openCategoryDetails(type) {
         assetHtml += `<div class="unified-item"><div class="unified-title" style="flex:1;"><span class="title-text">${k}</span> <span style="font-size:11px;color:var(--md-outline);margin-left:6px;flex-shrink:0;">${perc}%</span></div><div class="price">${formatMoney(assets[k])}</div></div>`;
     });
     document.getElementById('cat-asset-list').innerHTML = assetHtml || '<div style="color:var(--md-outline);font-size:14px;text-align:center;padding:16px;">No assets found.</div>';
-    renderListToContainer(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)), 'cat-history-list');
+    renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'cat-history-list');
     document.getElementById('scrim').classList.add('active'); document.getElementById('category-sheet').classList.add('active');
 
     setTimeout(() => { renderCategoryChart(type); }, 300);
@@ -1387,6 +1423,7 @@ function saveProfileSettings() {
     haptic(40);
     db.userProfile.salary = parseFloat(document.getElementById('settings-salary').value) || 0;
     db.userProfile.regime = document.getElementById('settings-regime').value;
+    db.userProfile.monthlyExpense = parseFloat(document.getElementById('settings-expenses').value) || 0;
     saveData(); renderAll(); showSnackbar("Profile Updated", "check_circle");
 }
 
@@ -1399,9 +1436,12 @@ function openMonthDetails(offset) {
         if (offset === 1) { m = m === 0 ? 11 : m - 1; y = m === 11 ? y - 1 : y; }
         let monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         document.getElementById('month-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:var(--md-primary);">calendar_month</span> ${monthNames[m]} ${y}`;
-        filtered = db.investments.filter(i => { let d = new Date(i.date); return d.getMonth() === m && d.getFullYear() === y && (activeAccountFilter === 'All' || i.account === activeAccountFilter); });
+        filtered = db.investments.filter(i => {
+            let d = parseDate(i.date);
+            return d.getMonth() === m && d.getFullYear() === y && (activeAccountFilter === 'All' || i.account === activeAccountFilter);
+        });
     }
-    renderListToContainer(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)), 'month-history-list');
+    renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'month-history-list');
     document.getElementById('scrim').classList.add('active'); document.getElementById('month-sheet').classList.add('active');
 }
 
@@ -1409,14 +1449,52 @@ function openSettings() {
     haptic(30);
     document.getElementById('settings-salary').value = db.userProfile.salary || '';
     document.getElementById('settings-regime').value = db.userProfile.regime || 'new';
+    document.getElementById('settings-expenses').value = db.userProfile.monthlyExpense || '';
     document.getElementById('settings-pin').value = db.appPin || '';
     document.getElementById('gemini-api-key').value = db.geminiKey || '';
     document.getElementById('groq-api-key').value = db.groqKey || '';
 
     let accHtml = ""; db.accounts.forEach((a, idx) => { let delBtn = idx === 0 ? '' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteAccount('${a}')">delete</span>`; accHtml += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span>${a}</span>${delBtn}</div>`; }); document.getElementById('account-list').innerHTML = accHtml;
-    let catHtml = ""; Object.keys(db.categories).forEach(c => { let isDefault = defaultCategories.includes(c); let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCustomCategory('${c}')">delete</span>`; catHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span><span class="material-symbols-rounded" style="font-size:16px;color:${db.categories[c].color};vertical-align:text-bottom;margin-right:6px;">${db.categories[c].icon}</span>${c}</span>${delBtn}</div>`; }); document.getElementById('category-crud-list').innerHTML = catHtml;
+
+    let catHtml = "";
+    Object.keys(db.categories).forEach(c => {
+        let isDefault = defaultCategories.includes(c);
+        let cat = db.categories[c];
+        if (!cat.targetMultiplier) cat.targetMultiplier = 0;
+        if (typeof cat.excludeDividend === 'undefined') cat.excludeDividend = false;
+
+        let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCustomCategory('${c}')">delete</span>`;
+
+        catHtml += `
+        <div style="padding:12px;background:var(--md-surface-container-highest);border-radius:12px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <span><span class="material-symbols-rounded" style="font-size:16px;color:${cat.color};vertical-align:text-bottom;margin-right:6px;">${cat.icon}</span>${c}</span>
+                ${delBtn}
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                <div class="input-container" style="margin-bottom:0;">
+                    <label style="font-size:10px;">Target (x Expense)</label>
+                    <input type="number" step="0.1" value="${cat.targetMultiplier || ''}" placeholder="e.g. 6" class="md-input" style="padding:4px 8px;font-size:12px;" onchange="updateCategorySetting('${c}', 'targetMultiplier', this.value)">
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <input type="checkbox" ${cat.excludeDividend ? 'checked' : ''} onchange="updateCategorySetting('${c}', 'excludeDividend', this.checked)">
+                    <label style="font-size:10px;">No Dividend</label>
+                </div>
+            </div>
+        </div>`;
+    });
+    document.getElementById('category-crud-list').innerHTML = catHtml;
+
     let badgeHtml = ""; milestoneThresholds.forEach(t => { let unlocked = db.milestones.includes(t.val); if (unlocked) badgeHtml += `<div class="badge-item"><span class="material-symbols-rounded">workspace_premium</span> ${t.label}</div>`; else badgeHtml += `<div class="badge-item locked"><span class="material-symbols-rounded">lock</span> ${t.label}</div>`; }); document.getElementById('badge-grid').innerHTML = badgeHtml;
     document.getElementById('scrim').classList.add('active'); document.getElementById('settings-sheet').classList.add('active');
+}
+
+function updateCategorySetting(cat, key, val) {
+    if (!db.categories[cat]) return;
+    if (key === 'targetMultiplier') db.categories[cat][key] = parseFloat(val) || 0;
+    else db.categories[cat][key] = val;
+    saveData();
+    // No full re-render here to avoid losing focus on input
 }
 
 function saveApiKeys() { db.geminiKey = document.getElementById('gemini-api-key').value.trim(); db.groqKey = document.getElementById('groq-api-key').value.trim(); saveData(); showSnackbar("API Keys Saved", "key"); }
@@ -1551,7 +1629,7 @@ function restoreData(e) {
             db.userProfile = parsed.userProfile;
             db.investments = parsed.investments || []; db.goals = parsed.goals || []; db.recurring = parsed.recurring || []; db.milestones = parsed.milestones || []; db.projectionNextMonth = parsed.projectionNextMonth || 0; db.categoryDetails = parsed.categoryDetails || parsed.categoryGoals || {}; db.currentMarketValues = parsed.currentMarketValues || {}; db.allocTargets = parsed.allocTargets || {}; db.accounts = parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : ['Main Portfolio']; db.fireTargetMonthly = parsed.fireTargetMonthly || 0; db.templates = parsed.templates || []; db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false; db.theme = parsed.theme || 'indigo'; db.geminiKey = parsed.geminiKey || ''; db.groqKey = parsed.groqKey || ''; db.appPin = parsed.appPin || ''; db.useBiometric = parsed.useBiometric || false; db.chatHistory = parsed.chatHistory || []; db.chatSessions = parsed.chatSessions || []; db.lastBackupPrompt = parsed.lastBackupPrompt || ''; db.navCache = parsed.navCache || {};
             if (parsed.categories && Object.keys(parsed.categories).length > 0) { db.categories = parsed.categories; }
-            if (!db.settingsTable) db.settingsTable = { lastResetMonth: '', monthlyTargetRef: parsed.monthlyTarget || 0 };
+            if (!db.settingsTable) db.settingsTable = { lastResetMonth: '' };
             saveData(); initUI(); renderAll(); closeOverlays(); showSnackbar("Data Restored Instantly", "check_circle"); e.target.value = '';
         } catch (err) { showSnackbar("Invalid or Corrupted Backup", "error"); }
     }; reader.readAsText(file);
@@ -1697,16 +1775,122 @@ function webrtcSendSync() {
     }
 }
 
-function importCSV(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { let text = e.target.result; let rows = text.split('\n'); let added = 0; for (let i = 1; i < rows.length; i++) { let cols = rows[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || []; cols = cols.map(c => c.replace(/^"|"$/g, '')); if (cols.length >= 3 && cols[0] && !isNaN(parseFloat(cols[2]))) { db.investments.push({ id: Date.now() + Math.random(), date: cols[0].trim(), type: cols[1].trim() || 'Cash', amount: parseFloat(cols[2]), note: cols[3] ? cols[3].trim() : '', tags: cols[4] ? cols[4].trim() : '', isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter }); added++; } } if (added > 0) { saveData(); renderAll(); closeOverlays(); showSnackbar(`${added} Entries Imported!`, "check_circle"); } else { showSnackbar("No valid rows found in CSV", "warning"); } } catch (err) { showSnackbar("Failed to parse CSV", "error"); } }; reader.readAsText(file); }
-function exportTaxPDF() { if (!window.jspdf) return showSnackbar("PDF Library loading...", "hourglass_empty"); haptic(40); const { jsPDF } = window.jspdf; const doc = new jsPDF(); doc.setFontSize(18); doc.text("80C Tax Savings Report (FY)", 14, 22); let fyInv = db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).sort((a, b) => new Date(b.date) - new Date(a.date)); let tableData = fyInv.map(i => [i.date, i.type, i.note || '-', formatInr(i.amount)]); let total = fyInv.reduce((sum, i) => sum + i.amount, 0); tableData.push(['', '', 'TOTAL:', formatInr(total)]); doc.autoTable({ startY: 30, head: [['Date', 'Asset', 'Note', 'Amount (Rs)']], body: tableData, theme: 'striped', headStyles: { fillColor: [69, 89, 164] } }); doc.save('InvestPro_Tax_Report.pdf'); showSnackbar("PDF Downloaded", "picture_as_pdf"); }
+function importCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            let text = e.target.result;
+            let rows = text.split('\n'); let added = 0;
+            for (let i = 1; i < rows.length; i++) {
+                let cols = rows[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                cols = cols.map(c => c.replace(/^"|"$/g, ''));
+                if (cols.length >= 3 && cols[0] && !isNaN(parseFloat(cols[2]))) {
+                    db.investments.push({ id: Date.now() + Math.random(), date: cols[0].trim(), type: cols[1].trim() || 'Cash', amount: parseFloat(cols[2]), note: cols[3] ? cols[3].trim() : '', tags: cols[4] ? cols[4].trim() : '', isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
+                    added++;
+                }
+            }
+            if (added > 0) {
+                saveData(); renderAll(); closeOverlays();
+                showSnackbar(`${added} Entries Imported!`, "check_circle");
+            }
+            else { showSnackbar("No valid rows found in CSV", "warning"); }
+        }
+        catch (err) { showSnackbar("Failed to parse CSV", "error"); }
+    };
+    reader.readAsText(file);
+}
+function exportTaxPDF() {
+    if (!window.jspdf)
+        return showSnackbar("PDF Library loading...", "hourglass_empty");
+    haptic(40);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("80C Tax Savings Report (FY)", 14, 22);
+    let fyInv = db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).sort((a, b) => parseDate(b.date) - parseDate(a.date));
+    let tableData = fyInv.map(i => [i.date, i.type, i.note || '-', formatInr(i.amount)]);
+    let total = fyInv.reduce((sum, i) => sum + i.amount, 0);
+    tableData.push(['', '', 'TOTAL:', formatInr(total)]);
+    doc.autoTable({ startY: 30, head: [['Date', 'Asset', 'Note', 'Amount (Rs)']], body: tableData, theme: 'striped', headStyles: { fillColor: [69, 89, 164] } });
+    doc.save('InvestPro_Tax_Report.pdf');
+    showSnackbar("PDF Downloaded", "picture_as_pdf");
+}
 
-function calculateXIRR() { let category = document.getElementById('xirr-category').value; let invs = db.investments.filter(i => i.type === category && (activeAccountFilter === 'All' || i.account === activeAccountFilter) && !i.isDividend); if (invs.length === 0) { document.getElementById('xirr-result').innerText = "No investments."; return; } let guess = 0.1; for (let iter = 0; iter < 1000; iter++) { let f = 0, df = 0; invs.forEach(inv => { let t = (new Date() - new Date(inv.date)) / (365.25 * 24 * 60 * 60 * 1000); f += inv.amount * Math.pow(1 + guess, -t); df += -t * inv.amount * Math.pow(1 + guess, -t - 1); }); f -= (currentTypeTotals[category] || 0); if (Math.abs(f) < 0.01) break; guess -= f / df; if (guess < -0.99) { guess = -0.99; break; } if (guess > 1000) { guess = 1000; break; } } document.getElementById('xirr-result').innerText = `XIRR ≈ ${(guess * 100).toFixed(2)}%`; }
+function calculateXIRR() {
+    let category = document.getElementById('xirr-category').value;
+    let filteredInvs = db.investments.filter(i => i.type === category && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
+
+    if (filteredInvs.length === 0) {
+        document.getElementById('xirr-result').innerText = "No investments in this category.";
+        return;
+    }
+
+    // Cash flows: Investments are OUTFLOWS (Negative), Dividends/CurrentValue are INFLOWS (Positive)
+    let cashFlows = filteredInvs.map(i => ({
+        amount: i.isDividend ? i.amount : -i.amount,
+        date: parseDate(i.date)
+    }));
+
+    // Include initial balance as an outflow at the date of the first investment
+    let initialBal = db.categoryDetails[category]?.initialBal || 0;
+    if (initialBal > 0) {
+        let earliestDate = cashFlows.reduce((min, cf) => cf.date < min ? cf.date : min, cashFlows[0].date);
+        cashFlows.push({ amount: -initialBal, date: earliestDate });
+    }
+
+    // Include terminal current market value as an inflow today
+    let currentValue = currentTypeTotals[category] || 0;
+    if (currentValue > 0) {
+        cashFlows.push({ amount: currentValue, date: new Date() });
+    }
+
+    if (cashFlows.length < 2) {
+        document.getElementById('xirr-result').innerText = "Need at least two data points (e.g., investment and current value).";
+        return;
+    }
+
+    // Sort flows by date
+    cashFlows.sort((a, b) => a.date - b.date);
+    let d0 = cashFlows[0].date;
+
+    const irr = (flows) => {
+        let guess = 0.1;
+        const maxIter = 100;
+        const precision = 0.0001;
+
+        for (let i = 0; i < maxIter; i++) {
+            let f = 0, df = 0;
+            for (let j = 0; j < flows.length; j++) {
+                let t = (flows[j].date - d0) / (365.25 * 24 * 60 * 60 * 1000);
+                let discountFactor = Math.pow(1 + guess, t);
+
+                f += flows[j].amount / discountFactor;
+                df += -t * flows[j].amount / Math.pow(1 + guess, t + 1);
+            }
+
+            if (Math.abs(f) < precision) return guess;
+
+            let nextGuess = guess - f / df;
+            if (isNaN(nextGuess) || !isFinite(nextGuess)) break;
+
+            guess = nextGuess;
+            if (guess <= -1) guess = -0.999; // Cap at near -100% loss
+        }
+        return guess;
+    };
+
+    let result = irr(cashFlows);
+    let resultText = (result * 100).toFixed(2) + '%';
+    document.getElementById('xirr-result').innerHTML = `XIRR: <strong style="color:var(--md-primary); font-size:24px;">${resultText}</strong>`;
+}
 function calculateMonthlySIP() { let target = parseFloat(document.getElementById('sip-target').value); let years = parseFloat(document.getElementById('sip-years').value); let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; let months = years * 12; let monthly = target * rate / (Math.pow(1 + rate, months) - 1); document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; }
 function calculateEMI() { let P = parseFloat(document.getElementById('emi-principal').value); let years = parseFloat(document.getElementById('emi-tenure').value); let rate = parseFloat(document.getElementById('emi-rate').value) / 12 / 100; let n = years * 12; let emi = P * rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1); document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(emi)}</strong>`; }
 function calculateInflation() { let pv = parseFloat(document.getElementById('inf-present').value); let years = parseFloat(document.getElementById('inf-years').value); let rate = parseFloat(document.getElementById('inf-rate').value) / 100; let fv = pv * Math.pow(1 + rate, years); document.getElementById('inf-result').innerHTML = `Future Value: <strong>${formatMoney(fv)}</strong>`; }
 function checkDuplicates(newEntry) { let dups = db.investments.filter(i => i.date === newEntry.date && i.type === newEntry.type && i.amount === newEntry.amount && i.id !== newEntry.id); if (dups.length > 0) { showSnackbar("Possible duplicate entry detected!", "warning"); } }
 function autoBackupReminder() { let now = new Date().toDateString(); if (db.lastBackupPrompt !== now && (new Date() - new Date(db.lastBackupPrompt || 0)) > 7 * 24 * 60 * 60 * 1000) { showSnackbar("Remember to backup your data! (Settings > Backup)", "cloud_download"); db.lastBackupPrompt = now; saveData(); } }
-function dataCleanup() { Swal.fire({ title: 'Cleanup Old Entries', text: 'Enter cutoff date (YYYY-MM-DD) to remove entries older than that date.', input: 'text', showCancelButton: true }).then(res => { if (res.isConfirmed && res.value) { let cutoff = new Date(res.value); let before = db.investments.length; db.investments = db.investments.filter(i => new Date(i.date) >= cutoff); saveData(); renderAll(); showSnackbar(`Removed ${before - db.investments.length} entries.`); } }); }
+function dataCleanup() { Swal.fire({ title: 'Cleanup Old Entries', text: 'Enter cutoff date (YYYY-MM-DD) to remove entries older than that date.', input: 'text', showCancelButton: true }).then(res => { if (res.isConfirmed && res.value) { let cutoff = parseDate(res.value); let before = db.investments.length; db.investments = db.investments.filter(i => parseDate(i.date) >= cutoff); saveData(); renderAll(); showSnackbar(`Removed ${before - db.investments.length} entries.`); } }); }
 
 function renderQuickAddChips() { let chips = document.getElementById('quick-add-chips'); let presetAmounts = [500, 1000, 2000, 5000, 10000]; chips.innerHTML = presetAmounts.map(a => `<div class="quick-chip" onclick="quickAddAmount(${a})">+₹${a}</div>`).join(''); }
 function quickAddAmount(amt) { openInvestSheet(null, amt); }
@@ -1830,7 +2014,7 @@ async function fetchAIPrediction() {
         let m = now.getMonth() - i; let y = now.getFullYear();
         if (m < 0) { m += 12; y -= 1; }
         let monthInv = db.investments.filter(inv => {
-            let d = new Date(inv.date);
+            let d = parseDate(inv.date);
             return d.getMonth() === m && d.getFullYear() === y && !inv.isDividend;
         }).reduce((sum, inv) => sum + inv.amount, 0);
         mSums.push(monthInv);
@@ -1879,7 +2063,7 @@ async function generateAIForecast() {
         let m = now.getMonth() - i; let y = now.getFullYear();
         if (m < 0) { m += 12; y -= 1; }
         Object.keys(db.categories).forEach(cat => {
-            let sum = db.investments.filter(inv => { let d = new Date(inv.date); return inv.type === cat && d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((s, i) => s + i.amount, 0);
+            let sum = db.investments.filter(inv => { let d = parseDate(inv.date); return inv.type === cat && d.getMonth() === m && d.getFullYear() === y && !inv.isDividend; }).reduce((s, i) => s + i.amount, 0);
             catMonthly[cat].push(sum);
         });
     }
@@ -1949,6 +2133,7 @@ async function generateWealthBlueprint() {
         totalNetWorth: currentTotalNW,
         categoryBreakdown: currentTypeTotals,
         monthlyIncome: db.userProfile.salary / 12,
+        monthlyExpenses: db.userProfile.monthlyExpense || 0,
         recurringSips: db.recurring,
         taxSavings80C: db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).reduce((s, i) => s + i.amount, 0),
         goals: db.goals
@@ -1956,8 +2141,9 @@ async function generateWealthBlueprint() {
 
     let prompt = `Act as an elite Wealth Manager. Perform a Full Wealth Audit.
     User Data: ${JSON.stringify(portfolioData)}.
-    Current State: Analyze net worth distribution.
+    Current State: Analyze net worth vs monthly expenses (${portfolioData.monthlyExpenses}).
     Future Planning: Suggest actions for next 12 months.
+    Safety Net: Evaluate if Emergency Fund covers 6-12 months of expenses.
     80C Status: User has saved ₹${portfolioData.taxSavings80C} out of ₹1.5L limit.
     Requirements:
     1. Provide a "Portfolio Health Score" (0-100).
@@ -1976,36 +2162,37 @@ async function generateWealthBlueprint() {
     }
 }
 
-function openMonthDetails(mode) {
-    haptic(20);
-    // This would ideally open a sheet with filtered investments
-    // For now, let's filter the list tab
-    if (mode === 'tax') {
-        // Show only 80C investments
-        showSnackbar("Filtering 80C Tax Savings...", "account_balance");
-    } else {
-        showSnackbar("Filtering month details...", "calendar_month");
-    }
-    // Logic to switch to list tab and filter...
-}
+
 
 async function autoSetGoalsViaAI() {
     haptic(40);
     if (!db.geminiKey && !db.groqKey) { showSnackbar("API Key Required", "key"); return; }
     showSnackbar("AI calculating optimal goals...", "auto_awesome");
     let sal = db.userProfile.salary || 0;
+    let exp = db.userProfile.monthlyExpense || 0;
+
     if (sal === 0) return showSnackbar("Please set Salary in Settings first.", "error");
 
-    let prompt = `User earns ₹${sal} annually. Return ONLY valid JSON: {"Emergency Fund": <suggested_target_6x_monthly_expenses>, "Liquid Cash": <suggested_1x_monthly_expenses>}. No other text.`;
+    let prompt = `User earns ₹${sal} annually. Monthly expenses are ₹${exp}.
+    Calculate targets:
+    1. Emergency Fund: 6x Monthly Expenses.
+    2. Liquid Cash: 1.5x Monthly Expenses.
+    3. Annual Tax Goal: If regime is 'old', suggested is 1.5L for 80C.
+    Return ONLY valid JSON: {"Emergency Fund": <value>, "Liquid Cash": <value>, "Tax Savings": <value>}. No other text.`;
+
     try {
         let res = await callAIApi(prompt, "You return only JSON.");
         let data = JSON.parse(res);
 
-        let ef = db.goals.find(g => g.name === "Emergency Fund");
-        if (ef) ef.target = data["Emergency Fund"]; else db.goals.push({ id: Date.now(), name: "Emergency Fund", target: data["Emergency Fund"], saved: 0, linkedCategory: "Liquid" });
+        const syncGoal = (name, target, cat) => {
+            let g = db.goals.find(x => x.name === name);
+            if (g) g.target = target;
+            else db.goals.push({ id: Date.now() + Math.random(), name: name, target: target, saved: 0, linkedCategory: cat });
+        };
 
-        let lc = db.goals.find(g => g.name === "Liquid Cash");
-        if (lc) lc.target = data["Liquid Cash"]; else db.goals.push({ id: Date.now() + 1, name: "Liquid Cash", target: data["Liquid Cash"], saved: 0, linkedCategory: "Cash" });
+        syncGoal("Emergency Fund", data["Emergency Fund"], "Liquid");
+        syncGoal("Liquid Cash", data["Liquid Cash"], "Cash");
+        syncGoal("Tax Savings", data["Tax Savings"], "PF");
 
         saveData(); renderAll(); showSnackbar("Goals Auto-Synced!", "check_circle");
     } catch (e) { showSnackbar("AI Sync Failed", "error"); }
@@ -2029,7 +2216,7 @@ async function askAIEngine(context) {
         let now = new Date();
         for (let i = 5; i >= 0; i--) {
             let m = now.getMonth() - i; let y = now.getFullYear(); while (m < 0) { m += 12; y -= 1; }
-            let monthTotal = db.investments.filter(inv => { let d = new Date(inv.date); return d.getMonth() === m && d.getFullYear() === y; }).reduce((sum, inv) => sum + inv.amount, 0);
+            let monthTotal = db.investments.filter(inv => { let d = parseDate(inv.date); return d.getMonth() === m && d.getFullYear() === y; }).reduce((sum, inv) => sum + inv.amount, 0);
             history6m.push({ month: new Date(y, m).toLocaleString('default', { month: 'short' }), total: monthTotal });
         }
 
@@ -2128,7 +2315,7 @@ async function generateAITags() {
 function processRecurring() {
     let today = new Date(); let updated = false;
     db.recurring.forEach(rec => {
-        let nextDate = new Date(rec.nextRun); let maxSafety = 24;
+        let nextDate = parseDate(rec.nextRun); let maxSafety = 24;
         while (nextDate <= today && maxSafety > 0) {
             db.investments.push({
                 id: Date.now() + Math.random(), date: getLocalYYYYMMDD(nextDate), type: rec.type, amount: rec.amount, note: rec.note + ' (Auto)', tags: rec.tags || '', isDividend: false, account: rec.account || db.accounts[0]
@@ -2144,7 +2331,7 @@ function processRecurring() {
 // 9. MASTER RENDER ENGINE
 // ==========================================
 function renderAll() {
-    let dividendTotal = db.investments.filter(i => i.isDividend).reduce((s, i) => s + i.amount, 0);
+    let dividendTotal = db.investments.filter(i => i.isDividend && !(db.categories[i.type]?.excludeDividend)).reduce((s, i) => s + i.amount, 0);
     let dtEl = document.getElementById('dashboard-dividend-total'); if (dtEl) dtEl.innerText = formatMoney(dividendTotal);
     let dsEl = document.getElementById('dividend-sheet-total'); if (dsEl) dsEl.innerText = formatMoney(dividendTotal);
 
@@ -2187,7 +2374,7 @@ function renderAll() {
     // Month Totals & Maturities Loop
     db.investments.forEach(inv => {
         if (activeAccountFilter !== 'All' && inv.account !== activeAccountFilter) return;
-        let d = new Date(inv.date);
+        let d = parseDate(inv.date);
         if (inv.maturityDate) { let mDate = new Date(inv.maturityDate); let diffDays = Math.ceil((mDate - now) / (1000 * 60 * 60 * 24)); if (diffDays >= 0 && diffDays <= 90) { maturities.push({ ...inv, days: diffDays, dateObj: mDate }); } }
         if (!inv.isDividend) {
             if (d.getFullYear() === currentY && d.getMonth() === currentM) thisMonthTotal += inv.amount;
@@ -2254,12 +2441,12 @@ function renderAll() {
     let goalsList = document.getElementById('goals-list');
     if (goalsList) { goalsList.innerHTML = db.goals.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">flag</span><div class="es-title">No Goals Set</div></div>` : db.goals.map(g => { let savedAmt = g.saved, isLinked = false; let monthlyContrib = 0; if (g.linkedCategory) { if (typeTotals[g.linkedCategory] !== undefined) { savedAmt = typeTotals[g.linkedCategory]; isLinked = true; } monthlyContrib = db.recurring.filter(r => r.type === g.linkedCategory).reduce((s, r) => s + r.amount, 0); } let perc = Math.min(100, (savedAmt / g.target) * 100); let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${g.linkedCategory}</span>` : ''; let forecastHtml = ''; if (savedAmt < g.target && monthlyContrib > 0) { let monthsLeft = Math.ceil((g.target - savedAmt) / monthlyContrib); let fDate = new Date(); fDate.setMonth(fDate.getMonth() + monthsLeft); forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 Expected hit: ${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}</div>`; } return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${g.name} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`; }).join(''); }
 
-    let sInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+    let sInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 5);
     document.getElementById('dashboard-history-list').innerHTML = sInv.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">history</span><div class="es-title">No Recent Activity</div></div>` : sInv.map(buildUnifiedItemHTML).join('');
 
     renderHistory();
 
-    let monthTarget = db.settingsTable.monthlyTargetRef || 0; let pct = monthTarget > 0 ? Math.min(100, (thisMonthTotal / monthTarget) * 100) : 0;
+    let monthTarget = db.userProfile.monthlyExpense || 0; let pct = monthTarget > 0 ? Math.min(100, (thisMonthTotal / monthTarget) * 100) : 0;
     let mTargetDisplay = document.getElementById('monthly-target-display'); if (mTargetDisplay) mTargetDisplay.innerText = formatMoney(monthTarget);
     let pPercent = document.getElementById('progress-percent'); if (pPercent) pPercent.innerText = Math.round(pct) + '%';
     let pCircle = document.getElementById('progress-circle'); if (pCircle) pCircle.style.strokeDashoffset = 188.4 * (1 - pct / 100);
@@ -2290,7 +2477,7 @@ async function handleNearbyHash() {
     const modeSelector = document.getElementById('nearby-mode-selector');
     const statusText = document.getElementById('nearby-status-text');
     const statusBadge = document.getElementById('nearby-status-badge');
-    
+
     // Switch UI to active sync mode
     if (nearbyUI) nearbyUI.style.display = 'flex';
     if (modeSelector) modeSelector.style.display = 'none';
@@ -2300,7 +2487,7 @@ async function handleNearbyHash() {
     try {
         const payloadStr = hash.replace('#sync:', '');
         const payload = JSON.parse(decodeURIComponent(payloadStr));
-        
+
         if (payload.type === 'offer') {
             console.log("Nearby: Received Offer, generating answer...");
             const pc = webrtcInit(true); // true means nearby mode
@@ -2315,7 +2502,7 @@ async function handleNearbyHash() {
             }))}`;
 
             if (statusText) statusText.innerText = "Handshake Ready. Confirming back...";
-            
+
             // Share the answer back
             if (navigator.share) {
                 await navigator.share({
@@ -2335,7 +2522,7 @@ async function handleNearbyHash() {
             await window.pc.setRemoteDescription(payload.sdp);
             if (statusText) statusText.innerText = "Connection Established. Preparing data...";
         }
-        
+
         // Clean up URL
         window.history.replaceState(null, null, ' ');
     } catch (e) {
@@ -2351,14 +2538,14 @@ async function nearbyBroadcast() {
     const statusBadge = document.getElementById('nearby-status-badge');
     const nearbyUI = document.getElementById('nearby-sync-active');
     const modeSelector = document.getElementById('nearby-mode-selector');
-    
+
     if (nearbyUI) nearbyUI.style.display = 'flex';
     if (modeSelector) modeSelector.style.display = 'none';
 
     try {
         if (statusText) statusText.innerText = "Initializing Secure Pipe...";
         if (statusBadge) statusBadge.innerText = "Broadcasting";
-        
+
         const pc = webrtcInit(true);
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
@@ -2398,10 +2585,10 @@ function nearbyTuneIn() {
     const nearbyUI = document.getElementById('nearby-sync-active');
     const modeSelector = document.getElementById('nearby-mode-selector');
     const qrFallback = document.getElementById('nearby-qr-fallback');
-    
+
     if (nearbyUI) nearbyUI.style.display = 'flex';
     if (modeSelector) modeSelector.style.display = 'none';
-    
+
     if (statusText) statusText.innerText = "Waiting for broadcast link or QR scan...";
     if (statusBadge) statusBadge.innerText = "Listening";
     if (qrFallback) {
@@ -2409,7 +2596,7 @@ function nearbyTuneIn() {
         // Hide the QR display since we are listening, but show the "Open Scanner" button
         document.getElementById('webrtc-qr-display').style.display = 'none';
     }
-    
+
     showSnackbar("Please open the shared link OR tap 'Open Scanner' to scan a QR.", "info");
 }
 
@@ -2506,14 +2693,16 @@ function calculatePortfolioHealth() {
         suggestions.push("Invest in at least 3 categories (e.g. SIP, FD, Cash)");
     }
 
-    let cash = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Bank'] || 0) + (currentTypeTotals['Liquid'] || 0);
+    let cash = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Liquid'] || 0);
     let annualSal = db.userProfile.salary || 0;
-    let monthlyExp = annualSal > 0 ? (annualSal / 12 * 0.5) : 30000;
+    let monthlyExp = db.userProfile.monthlyExpense || (annualSal > 0 ? (annualSal / 12 * 0.6) : 30000);
 
     if (cash < monthlyExp * 3) {
         score -= 15;
         issues.push("Low liquidity buffer");
-        suggestions.push("Increase 'Cash' or 'Bank' balance to cover 3-6 months expenses");
+        suggestions.push(`Save ₹${formatInr(Math.ceil((monthlyExp * 6) - cash))} more to reach 6-month Safety Net (₹${formatInr(monthlyExp * 6)})`);
+    } else if (cash >= monthlyExp * 6) {
+        suggestions.push("✅ Emergency Fund Secured (6+ months)");
     }
 
     let onTrackGoals = db.goals.filter(g => {
@@ -2537,6 +2726,18 @@ function calculatePortfolioHealth() {
         issues.push("Conservative growth");
         suggestions.push("Increase SIPs to beat inflation over the long term");
     }
+
+    // Category Target Multipliers
+    Object.keys(db.categories).forEach(cat => {
+        let meta = db.categories[cat];
+        if (meta.targetMultiplier > 0 && db.userProfile.monthlyExpense > 0) {
+            let target = db.userProfile.monthlyExpense * meta.targetMultiplier;
+            let current = currentTypeTotals[cat] || 0;
+            if (current < target) {
+                suggestions.push(`${cat} Target: Reach ₹${formatInr(target)} (Currently ₹${formatInr(current)})`);
+            }
+        }
+    });
 
     return {
         score: Math.max(0, score),
@@ -2887,8 +3088,8 @@ function setupDataChannel(channel, isNearby = false) {
                     }
                 });
             }
-        } catch (err) { 
-            console.error("Sync parse error", err); 
+        } catch (err) {
+            console.error("Sync parse error", err);
             if (nearbyStatus) nearbyStatus.innerText = "Transfer Error.";
         }
     };
