@@ -96,6 +96,23 @@ function haptic(ms = 30) {
     }
 }
 
+// ── HISTORY & SESSION HELPERS ──────────────────
+function pushSheetState(sheetId) {
+    history.pushState({ sheetId: sheetId }, "");
+}
+
+function handlePopState(event) {
+    const state = event.state;
+    const activeSub = document.querySelector('.sheet.sub-sheet.active');
+    const activeMain = document.querySelector('.sheet.active');
+
+    if (activeSub) {
+        closeSubSheet(true);
+    } else if (activeMain) {
+        closeOverlays(true);
+    }
+}
+
 function getLocalYYYYMMDD(d) {
     const tzOffset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
@@ -117,9 +134,13 @@ function showSnackbar(msg, icon = "info") {
     setTimeout(() => sb.classList.remove("show"), 3000);
 }
 
-function closeOverlays() {
+function closeOverlays(fromPopState = false) {
     document.querySelectorAll('.scrim, .scrim-sub, .sheet').forEach(el => el.classList.remove('active'));
     editInvId = null; editGoalId = null;
+    sessionStorage.removeItem('currentSheet');
+    if (!fromPopState && history.state && history.state.sheetId) {
+        history.back();
+    }
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
@@ -134,24 +155,29 @@ function openSubSheet(sheetId) {
 window.openSubSheet = openSubSheet;
 window.openSettings = openSettings;
 
-function openSheet(sheetId) {
+function openSheet(sheetId, fromRestore = false) {
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
     if (isSubSheet) {
-        // Don't close existing sheets; open on top with sub-scrim
         document.getElementById('scrim-sub').classList.add('active');
         document.getElementById(sheetId).classList.add('active');
     } else {
-        closeOverlays();
+        // If not fromRestore, we want to clear previous main sheets
+        document.querySelectorAll('.scrim, .sheet:not(.sub-sheet)').forEach(el => el.classList.remove('active'));
         document.getElementById('scrim').classList.add('active');
         document.getElementById(sheetId).classList.add('active');
     }
+    sessionStorage.setItem('currentSheet', sheetId);
     if (sheetId === 'history-sync-sheet') populateSyncDropdown();
+    if (!fromRestore) pushSheetState(sheetId);
 }
 
-function closeSubSheet() {
+function closeSubSheet(fromPopState = false) {
     document.getElementById('scrim-sub').classList.remove('active');
     document.querySelectorAll('.sheet.sub-sheet').forEach(el => el.classList.remove('active'));
+    if (!fromPopState && history.state && history.state.sheetId) {
+        history.back();
+    }
 }
 
 // ── COPY NET WORTH ──────────────────────────────
@@ -297,13 +323,7 @@ function isCurrentFY(dateStr) {
     let fyEnd = new Date(fyStartYear + 1, 2, 31, 23, 59, 59); return d >= fyStart && d <= fyEnd;
 }
 
-function checkAppLock() { if (db.appPin) { document.getElementById('app-lock-screen').style.display = 'flex'; } }
-
-function unlockApp() {
-    let val = document.getElementById('pin-input-auth').value;
-    if (val === db.appPin) { document.getElementById('app-lock-screen').style.display = 'none'; document.getElementById('pin-input-auth').value = ''; }
-    else { haptic([50, 50, 50]); showSnackbar("Incorrect PIN", "error"); document.getElementById('pin-input-auth').value = ''; }
-}
+// App Lock functions managed in Section 9
 
 function savePin() {
     let p = document.getElementById('settings-pin').value;
@@ -1355,11 +1375,42 @@ function saveFIRE() { haptic(40); db.fireTargetMonthly = parseFloat(document.get
 
 function openDividendSheet() {
     haptic(30);
-    document.getElementById('scrim-sub').classList.add('active');
-    document.getElementById('dividend-sheet').classList.add('active');
-    let dividends = db.investments.filter(i => i.isDividend).sort((a, b) => parseDate(b.date) - parseDate(a.date));
-    let html = dividends.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">payments</span><div class="es-title">No Passive Income</div></div>` : dividends.map(buildUnifiedItemHTML).join('');
-    document.getElementById('dividend-list').innerHTML = html;
+    // Comprehensive Data Audit for Passive Income
+    let auditCount = 0;
+    const passiveTerms = ['dividend', 'interest', 'payout', 'rent', 'income', 'cashback', 'yield'];
+
+    db.investments.forEach(inv => {
+        const text = ((inv.note || "") + (inv.tags || "") + (inv.type || "")).toLowerCase();
+        const shouldBeDividend = passiveTerms.some(term => text.includes(term));
+
+        if (shouldBeDividend && !inv.isDividend) {
+            inv.isDividend = true;
+            auditCount++;
+        }
+    });
+
+    if (auditCount > 0) {
+        console.log(`Passive Income Audit: Flagged ${auditCount} new entries.`);
+        saveData();
+    }
+
+    const dividends = db.investments.filter(i => i.isDividend).sort((a, b) => parseDate(b.date) - parseDate(a.date));
+    const total = dividends.reduce((s, i) => s + i.amount, 0);
+
+    const totalEl = document.getElementById('dividend-sheet-total');
+    if (totalEl) totalEl.innerText = formatMoney(total);
+
+    let html = dividends.length === 0 ?
+        `<div class="empty-state-premium" style="margin-top:40px;"><span class="material-symbols-rounded">payments</span><div class="es-title">No Passive Income Recorded</div><div class="es-subtitle">Add investments and mark them as 'Dividend' or use tags like #dividend</div></div>` :
+        dividends.map(buildUnifiedItemHTML).join('');
+
+    const listEl = document.getElementById('dividend-list');
+    if (listEl) {
+        listEl.innerHTML = html;
+        attachSwipeListeners(listEl);
+    }
+
+    openSheet('dividend-sheet');
 }
 
 function openCategoryDetails(type) {
@@ -1550,35 +1601,53 @@ function toggleBiometric() {
 }
 async function checkAppLock() {
     if (db.appPin) {
-        document.getElementById('app-lock-screen').style.display = 'flex';
+        if (sessionStorage.getItem('appUnlocked') === 'true') {
+            const lockScreen = document.getElementById('app-lock-screen');
+            if (lockScreen) lockScreen.style.display = 'none';
+            return true;
+        }
+        const lockScreen = document.getElementById('app-lock-screen');
+        if (lockScreen) lockScreen.style.display = 'flex';
+
         if (db.useBiometric && window.PublicKeyCredential) {
             try {
-                await navigator.credentials.create({
-                    publicKey: {
-                        challenge: new Uint8Array(16),
-                        rp: { name: "TrackInvest" },
-                        user: { id: new Uint8Array(16), name: "user", displayName: "User" },
-                        pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-                        authenticatorSelection: { userVerification: "required" },
-                        timeout: 60000
-                    }
-                });
-                document.getElementById('app-lock-screen').style.display = 'none';
+                const cred = await navigator.credentials.get({
+                    publicKey: { challenge: new Uint8Array(16), timeout: 60000, allowCredentials: [] }
+                }).catch(() => null);
+
+                if (cred) {
+                    sessionStorage.setItem('appUnlocked', 'true');
+                    if (lockScreen) lockScreen.style.display = 'none';
+                    return true;
+                }
             } catch (e) {
                 console.log("Biometric auth failed or cancelled", e);
             }
         }
+        return false;
     } else {
-        document.getElementById('app-lock-screen').style.display = 'none';
+        const lockScreen = document.getElementById('app-lock-screen');
+        if (lockScreen) lockScreen.style.display = 'none';
+        return true;
     }
 }
 function unlockApp() {
     let pin = document.getElementById('pin-input-auth').value;
     if (pin === db.appPin) {
+        haptic(50);
+        sessionStorage.setItem('appUnlocked', 'true');
         document.getElementById('app-lock-screen').style.display = 'none';
         document.getElementById('pin-input-auth').value = '';
+
+        // Restore last active sheet if any
+        let lastSheet = sessionStorage.getItem('currentSheet');
+        if (lastSheet) {
+            openSheet(lastSheet);
+        }
     } else {
+        haptic([50, 50]);
         showSnackbar("Incorrect PIN", "error");
+        document.getElementById('pin-input-auth').value = '';
     }
 }
 function encryptData(jsonStr, pin) {
@@ -1923,20 +1992,44 @@ async function callAIApi(promptText, systemPrompt = "Act as an elite financial w
     return responseText.replace(/```html/g, '').replace(/```/g, '').trim();
 }
 
-function openAIChat() { document.getElementById('ai-chat-log').innerHTML = db.chatHistory.map(m => `<div class="chat-bubble ${m.role}">${m.content}</div>`).join(''); document.getElementById('scrim').classList.add('active'); document.getElementById('ai-chat-sheet').classList.add('active'); setTimeout(() => { let log = document.getElementById('ai-chat-log'); log.scrollTop = log.scrollHeight; }, 100); }
+function openAIChat() {
+    const log = document.getElementById('ai-chat-log');
+    log.innerHTML = db.chatHistory.map(m => {
+        const content = m.role === 'ai' ? formatAIResponse(m.content) : m.content;
+        return `<div class="chat-bubble ${m.role}">${content}</div>`;
+    }).join('');
+    document.getElementById('scrim').classList.add('active');
+    document.getElementById('ai-chat-sheet').classList.add('active');
+    sessionStorage.setItem('currentSheet', 'ai-chat-sheet');
+    pushSheetState();
+    setTimeout(() => {
+        log.scrollTop = log.scrollHeight;
+    }, 100);
+}
 function saveChatSession() { haptic(40); if (db.chatHistory.length > 0) { db.chatSessions.push({ date: new Date().toISOString(), messages: [...db.chatHistory] }); db.chatHistory = []; saveData(); document.getElementById('ai-chat-log').innerHTML = ''; showSnackbar("Chat saved. Started new session."); } else { showSnackbar("Already in a new session."); } }
 function viewChatHistory() {
     haptic(30);
     let html = db.chatSessions.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">forum</span><div class="es-title">No past sessions</div></div>` : "";
-    db.chatSessions.slice().reverse().forEach((sess) => {
+    db.chatSessions.slice().reverse().forEach((sess, idxOriginal) => {
+        let idx = db.chatSessions.length - 1 - idxOriginal;
         let dStr = new Date(sess.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         let preview = sess.messages[0] ? sess.messages[0].content.substring(0, 40) + '...' : 'Empty session';
-        html += `<div class="md-card" style="padding:12px; margin-bottom:8px;"><div style="font-size:12px;color:var(--md-primary);font-weight:500;">${dStr}</div><div style="font-size:14px;margin-top:4px;">${preview}</div></div>`;
+        html += `<div class="md-card" style="padding:12px; margin-bottom:8px; cursor:pointer;" onclick="loadChatSession(${idx})"><div style="font-size:12px;color:var(--md-primary);font-weight:500;">${dStr}</div><div style="font-size:14px;margin-top:4px;">${preview}</div></div>`;
     });
     document.getElementById('chat-history-list').innerHTML = html;
     // Open as sub-sheet on top of AI chat sheet
     document.getElementById('scrim-sub').classList.add('active');
     document.getElementById('chat-history-sheet').classList.add('active');
+}
+function loadChatSession(idx) {
+    haptic(40);
+    const sess = db.chatSessions[idx];
+    if (!sess) return;
+    db.chatHistory = [...sess.messages];
+    saveData();
+    closeSubSheet();
+    openAIChat();
+    showSnackbar("Session restored");
 }
 
 async function sendAIChat() {
@@ -2011,6 +2104,47 @@ function formatAIResponse(text) {
         .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
     // 4. PRESERVE SPACING (Only for non-HTML elements)
+    return formatted.split('\n').map(line => {
+        if (line.startsWith('<') || line.endsWith('>')) return line;
+        return line.trim() === '' ? '<br>' : `<p>${line}</p>`;
+    }).join('');
+}
+
+function saveChatSession() {
+    if (db.chatHistory.length === 0) {
+        showSnackbar("No messages to save", "error");
+        return;
+    }
+    haptic(40);
+    const title = db.chatHistory[0].content.substring(0, 30) + "...";
+    db.chatSessions.unshift({
+        id: Date.now(),
+        date: new Date().toISOString(),
+        title: title,
+        messages: [...db.chatHistory]
+    });
+    db.chatHistory = []; // Clear current for new session
+    saveData();
+    updateChatHistoryUI();
+    openAIChat();
+    showSnackbar("Session saved to history");
+}
+
+function updateChatHistoryUI() {
+    let html = "";
+    db.chatSessions.forEach((sess, idx) => {
+        const date = new Date(sess.date).toLocaleDateString();
+        html += `<div class="list-item" onclick="loadChatSession(${idx})">
+            <div style="flex:1;">
+                <div style="font-weight:500;">${sess.title}</div>
+                <div style="font-size:11px;opacity:0.6;">${date} • ${sess.messages.length} messages</div>
+            </div>
+            <span class="material-symbols-rounded" style="opacity:0.3;">chevron_right</span>
+        </div>`;
+    });
+    if (!html) html = '<div style="padding:40px;text-align:center;opacity:0.5;">No saved sessions</div>';
+    document.getElementById('chat-history-list').innerHTML = html;
+
     // We split by tags to ensure we don't add <br> inside a <table> or <ul>
     const parts = formatted.split(/(<[^>]*>)/);
     formatted = parts.map(part => {
@@ -2024,6 +2158,7 @@ function formatAIResponse(text) {
 
     return `<div class="ai-report-body">${formatted}</div>`;
 }
+
 async function fetchAIPrediction() {
     if (!db.geminiKey && !db.groqKey) return;
     let predictEl = document.getElementById('ai-predict-text-dashboard');
@@ -2553,7 +2688,92 @@ function renderAll() {
     if (matSection) { if (maturities.length > 0) { maturities.sort((a, b) => a.days - b.days); document.getElementById('maturity-list').innerHTML = maturities.map(m => `<div class="maturity-card md-card" style="margin-bottom:0; flex-shrink:0; padding:12px; min-width:120px;" onclick="openInvestSheet(${m.id})"><div class="mat-title" style="font-size:14px; font-weight:500;">${m.note || m.type}</div><div class="mat-days" style="color:var(--md-primary); font-size:22px; margin-top:4px;">${m.days} <span style="font-size:12px;">Days</span></div></div>`).join(''); matSection.style.display = 'block'; } else { matSection.style.display = 'none'; } }
 
     let allocBar = document.getElementById('alloc-bar');
-    if (allocBar) { let allocHtml = "", legendHtml = "", rebalanceHtml = "", hasRebalanceTargets = false; Object.keys(typeTotals).forEach(t => { let value = typeTotals[t]; if (value > 0) { let perc = (value / totalMarketValue) * 100; let color = db.categories[t].color; allocHtml += `<div class="alloc-segment" style="width:${perc}%;background:${color};"></div>`; legendHtml += `<span><span class="alloc-dot" style="background:${color}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px;"></span>${t} ${perc.toFixed(0)}%</span>`; } if (db.allocTargets[t]) { hasRebalanceTargets = true; let targetAmt = (db.allocTargets[t] / 100) * (totalMarketValue + db.projectionNextMonth); let diff = targetAmt - value; if (diff > 0 && db.projectionNextMonth > 0) { let investNext = Math.min(diff, db.projectionNextMonth); rebalanceHtml += `<div class="reb-item" style="display:flex; justify-content:space-between; margin-bottom:6px;"><span><span class="alloc-dot" style="background:${db.categories[t].color}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span> <span style="color:var(--md-primary);">+${formatMoney(investNext)}</span></div>`; } } }); allocBar.innerHTML = allocHtml; document.getElementById('alloc-legend').innerHTML = legendHtml; let rebSec = document.getElementById('rebalance-section'); if (hasRebalanceTargets && db.projectionNextMonth > 0 && rebalanceHtml !== "") { rebSec.innerHTML = `<div class="rebalance-card" style="background:var(--md-surface); border:1px solid var(--md-outline-variant); border-radius:16px; padding:16px;"><div class="rebalance-title" style="font-weight:500; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><span class="material-symbols-rounded" style="font-size:18px; color:var(--md-primary);">balance</span> Rebalance Guide</div><div style="font-size:12px;color:var(--md-on-surface-variant);margin-bottom:12px;">Suggested split for your ${formatMoney(db.projectionNextMonth)} target:</div><div class="rebalance-list">${rebalanceHtml}</div></div>`; rebSec.style.display = 'block'; } else { rebSec.style.display = 'none'; } }
+    if (allocBar) {
+        let allocHtml = "", legendHtml = "", rebalanceHtml = "", hasRebalanceTargets = false;
+        let shortfalls = {}, totalShortfall = 0;
+
+        const allCategoriesForRebalance = new Set([...Object.keys(typeTotals), ...Object.keys(db.allocTargets)]);
+
+        allCategoriesForRebalance.forEach(t => {
+            let value = typeTotals[t] || 0;
+            if (value > 0) {
+                let perc = (value / totalMarketValue) * 100;
+                let color = db.categories[t]?.color || "#ccc";
+                allocHtml += `<div class="alloc-segment" style="width:${perc}%;background:${color};"></div>`;
+                legendHtml += `<span><span class="alloc-dot" style="background:${color}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px;"></span>${t} ${perc.toFixed(0)}%</span>`;
+            }
+            if (db.allocTargets[t]) {
+                hasRebalanceTargets = true;
+                let targetAmt = (db.allocTargets[t] / 100) * (totalMarketValue + db.projectionNextMonth);
+                let diff = targetAmt - value;
+                if (diff > 0) {
+                    shortfalls[t] = diff;
+                    totalShortfall += diff;
+                }
+            }
+        });
+
+        if (totalShortfall > 0 && db.projectionNextMonth > 0) {
+            let remainingToInvest = db.projectionNextMonth;
+            let allocatedSoFar = 0;
+
+            // First pass: Fill shortfalls proportionally
+            Object.keys(shortfalls).forEach(t => {
+                let ratio = shortfalls[t] / totalShortfall;
+                let investNext = Math.min(shortfalls[t], db.projectionNextMonth * ratio);
+
+                if (investNext > 0) {
+                    let curValue = typeTotals[t] || 0;
+                    let curPerc = totalMarketValue > 0 ? (curValue / totalMarketValue * 100).toFixed(0) : 0;
+                    let targetPerc = db.allocTargets[t];
+
+                    rebalanceHtml += `<div class="reb-item" style="display:flex; flex-direction:column; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span><span class="alloc-dot" style="background:${db.categories[t]?.color || '#ccc'}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span>
+                            <span style="color:var(--md-primary); font-weight:600;">+${formatMoney(investNext)}</span>
+                        </div>
+                        <div style="font-size:10px; color:var(--md-outline); margin-left:14px;">Current: ${curPerc}% → Target: ${targetPerc}%</div>
+                    </div>`;
+                    allocatedSoFar += investNext;
+                }
+            });
+
+            // Second pass: If there's leftover (e.g. projection is larger than all shortfalls), 
+            // distribute based on target weights to maintain balance
+            remainingToInvest -= allocatedSoFar;
+            if (remainingToInvest > 10) {
+                rebalanceHtml += `<div style="font-size:11px; color:var(--md-primary); margin:8px 0 4px 0; border-top:1px dashed var(--md-outline-variant); padding-top:8px;">Maintain Balance with remainder:</div>`;
+                Object.keys(db.allocTargets).forEach(t => {
+                    let weight = db.allocTargets[t] / 100;
+                    let extra = remainingToInvest * weight;
+                    if (extra > 1) {
+                        rebalanceHtml += `<div class="reb-item" style="display:flex; justify-content:space-between; align-items:center; opacity:0.8; font-size:13px;">
+                            <span style="margin-left:14px;">${t}</span>
+                            <span>+${formatMoney(extra)}</span>
+                        </div>`;
+                    }
+                });
+            }
+        }
+
+        allocBar.innerHTML = allocHtml;
+        document.getElementById('alloc-legend').innerHTML = legendHtml;
+        let rebSec = document.getElementById('rebalance-section');
+        if (hasRebalanceTargets && db.projectionNextMonth > 0 && rebalanceHtml !== "") {
+            rebSec.innerHTML = `<div class="rebalance-card" style="background:var(--md-surface); border:1px solid var(--md-outline-variant); border-radius:16px; padding:16px;">
+                <div class="rebalance-title" style="font-weight:500; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span class="material-symbols-rounded" style="font-size:18px; color:var(--md-primary);">balance</span> Rebalance Guide
+                </div>
+                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-bottom:12px;">
+                    Distribute your <strong>${formatMoney(db.projectionNextMonth)}</strong> investment to match your targets:
+                </div>
+                <div class="rebalance-list">${rebalanceHtml}</div>
+            </div>`;
+            rebSec.style.display = 'block';
+        } else {
+            rebSec.style.display = 'none';
+        }
+    }
 
     let portGrid = document.getElementById('portfolio-grid');
     if (portGrid) { let activeCats = Object.keys(typeTotals).filter(t => typeTotals[t] > 0 || db.allocTargets[t]); portGrid.innerHTML = activeCats.length === 0 ? `<div class="empty-state-premium" style="grid-column:1 / -1;"><span class="material-symbols-rounded">pie_chart</span><div class="es-title">Empty Portfolio</div></div>` : activeCats.map(t => { let meta = db.categories[t]; let dObj = new Date(typeLastDate[t]); let dateStr = typeLastDate[t] ? `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })}` : "No entries"; let cur = typeTotals[t]; let inv = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[t]?.initialBal || 0); let prof = cur - inv; let roiHtml = prof !== 0 ? `<div class="roi-tag ${prof > 0 ? 'positive' : 'negative'}">${prof > 0 ? '+' : ''}${formatMoney(prof)}</div>` : ""; let intRate = db.categoryDetails[t]?.interestRate; let intRateHtml = intRate ? `<div style="font-size:10px;background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-weight:700;color:var(--md-primary);">${intRate}% APY</div>` : ""; return `<div class="port-card" onclick="openCategoryDetails('${t}')"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div class="port-icon" style="background:${meta.color};"><span class="material-symbols-rounded" style="font-size:20px;">${meta.icon}</span></div>${intRateHtml}</div><div class="port-type">${t}</div><div class="port-amt">${formatMoney(cur)}</div>${roiHtml}<div class="port-date" style="font-size:11px; margin-top:4px; color:var(--md-outline);">Last: ${dateStr}</div></div>`; }).join(''); }
@@ -2577,13 +2797,23 @@ function renderAll() {
 // ==========================================
 // 10. EVENT LISTENERS
 // ==========================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    const isUnlocked = await checkAppLock();
     initUI();
     processRecurring();
     renderAll();
-    checkAppLock();
+
     // Handle Nearby Sync Handshake
     if (window.location.hash) handleNearbyHash();
+
+    // Listen for back button
+    window.addEventListener('popstate', handlePopState);
+
+    // Restore previous sheet if unlocked, without pushing new history
+    if (isUnlocked) {
+        const lastSheet = sessionStorage.getItem('currentSheet');
+        if (lastSheet) openSheet(lastSheet, true);
+    }
 });
 
 window.addEventListener('hashchange', handleNearbyHash);
