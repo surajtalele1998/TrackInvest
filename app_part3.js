@@ -163,8 +163,7 @@ function renderAll() {
     currentTypeTotals = typeTotals;
     currentAvgMonthly = (currentM + 1) > 0 ? (yearTotal / (currentM + 1)) : 0;
 
-    let isNowAboveMilestone = Math.floor(currentTotalNW / 100000);
-    if (isNowAboveMilestone > wasBelowMilestone && isNowAboveMilestone >= 1) window.fireMilestoneConfetti();
+    // checkMilestones handles confetti internally — no separate trigger needed
     checkMilestones(currentTotalNW);
 
     document.getElementById('networth-val').innerText = formatMoney(totalMarketValue);

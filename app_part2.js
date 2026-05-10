@@ -84,7 +84,9 @@ function buildUnifiedItemHTML(inv) {
     let meta = db.categories[inv.type] || { icon: 'savings', color: '#8D6E63' };
     let dObj = parseDate(inv.date);
     let dateStr = `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })} ${dObj.getFullYear()}`;
-    let tagsHtml = ""; if (inv.tags) { inv.tags.split(',').forEach(t => { if (t.trim()) tagsHtml += `<span class="roi-tag" style="background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);">#${t.trim()}</span> `; }); }
+    let safeNote = escapeHtml(inv.note || inv.type);
+    let safeType = escapeHtml(inv.type);
+    let tagsHtml = ""; if (inv.tags) { inv.tags.split(',').forEach(t => { if (t.trim()) tagsHtml += `<span class="roi-tag" style="background:var(--md-surface-container-highest);color:var(--md-on-surface-variant);">#${escapeHtml(t.trim())}</span> `; }); }
     let intHtml = inv.interestRate ? `<span class="unified-detail-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 4px; border-radius:4px; font-weight:700;">${inv.interestRate}% APY</span>` : '';
     let pClass = inv.isDividend ? "price dividend" : "price";
 
@@ -98,10 +100,10 @@ function buildUnifiedItemHTML(inv) {
                     <div class="unified-icon" style="background:${meta.color};"><span class="material-symbols-rounded">${meta.icon}</span></div>
                     <div class="unified-content">
                         <div class="unified-title">
-                            <span class="title-text">${inv.note || inv.type}</span> 
+                            <span class="title-text">${safeNote}</span> 
                             <span class="${pClass}">+${formatMoney(inv.amount)}</span>
                         </div>
-                        <span class="unified-subtitle">${dateStr} • ${inv.type} ${intHtml}</span>
+                        <span class="unified-subtitle">${dateStr} • ${safeType} ${intHtml}</span>
                         ${tagsHtml ? `<div style="margin-top:2px;">${tagsHtml}</div>` : ''}
                     </div>
                 </div>
@@ -173,9 +175,9 @@ function openDividendSheet() {
     const passiveTerms = ['dividend', 'interest', 'payout', 'rent', 'income', 'cashback', 'yield', 'div', 'roi', 'passive'];
 
     db.investments.forEach(inv => {
-        const text = ((inv.note || "") + " " + (inv.tags || "") + " " + (inv.type || "")).toLowerCase();
-        const isPassiveCategory = (inv.type || "").toLowerCase().includes('dividend') || (inv.type || "").toLowerCase().includes('interest');
-        const shouldBeDividend = passiveTerms.some(term => text.includes(term)) || isPassiveCategory || inv.isDividend;
+        // Only check note and tags for passive terms, NOT the type field (to avoid false positives)
+        const noteAndTags = ((inv.note || "") + " " + (inv.tags || "")).toLowerCase();
+        const shouldBeDividend = passiveTerms.some(term => noteAndTags.includes(term)) || inv.isDividend;
 
         if (shouldBeDividend && !inv.isDividend) {
             inv.isDividend = true;
@@ -277,7 +279,7 @@ function openMonthDetails(offset) {
         document.getElementById('month-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:var(--md-success);">receipt_long</span> 80C Tax Savings`;
         filtered = db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date) && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
     } else {
-        if (offset === 1) { m = m === 0 ? 11 : m - 1; y = m === 11 ? y - 1 : y; }
+        if (offset === 1) { if (m === 0) { m = 11; y = y - 1; } else { m = m - 1; } }
         let monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
         document.getElementById('month-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:var(--md-primary);">calendar_month</span> ${monthNames[m]} ${y}`;
         filtered = db.investments.filter(i => {
@@ -337,6 +339,7 @@ window.openSettings = openSettings;
 function updateCategorySetting(cat, key, val) {
     if (!db.categories[cat]) return;
     if (key === 'targetMultiplier') db.categories[cat][key] = parseFloat(val) || 0;
+    else if (key === 'excludeDividend') db.categories[cat][key] = (val === true || val === 'true');
     else db.categories[cat][key] = val;
     saveData();
     // No full re-render here to avoid losing focus on input
@@ -382,12 +385,7 @@ function addCustomCategory() {
 }
 function deleteCustomCategory(name) { haptic(40); Swal.fire({ title: `Delete Category '${name}'?`, text: "Existing entries will default to Cash.", showCancelButton: true }).then(r => { if (r.isConfirmed) { db.investments.forEach(i => { if (i.type === name) i.type = 'Cash'; }); delete db.categories[name]; saveData(); initUI(); openSettings(); renderAll(); } }); }
 
-function savePin() {
-    let pin = document.getElementById('settings-pin').value;
-    db.appPin = pin;
-    saveData();
-    showSnackbar(pin ? "PIN Set Successfully" : "PIN Removed");
-}
+// savePin() defined in app_part1.js (removed weaker duplicate)
 function toggleBiometric() {
     db.useBiometric = document.getElementById('use-biometric-toggle').checked;
     saveData();
@@ -444,20 +442,36 @@ function unlockApp() {
         document.getElementById('pin-input-auth').value = '';
     }
 }
-function encryptData(jsonStr, pin) {
+async function encryptData(jsonStr, pin) {
     if (!pin) return btoa(encodeURIComponent(jsonStr));
-    let b64 = btoa(encodeURIComponent(jsonStr));
-    let enc = '';
-    for (let i = 0; i < b64.length; i++) enc += String.fromCharCode(b64.charCodeAt(i) ^ pin.charCodeAt(i % pin.length));
-    return 'ENC:' + btoa(enc);
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(jsonStr));
+    const buf = new Uint8Array(salt.length + iv.length + ct.byteLength);
+    buf.set(salt, 0); buf.set(iv, salt.length); buf.set(new Uint8Array(ct), salt.length + iv.length);
+    return 'ENC2:' + btoa(String.fromCharCode(...buf));
 }
-function decryptData(encStr, pin) {
-    if (!encStr.startsWith('ENC:')) return decodeURIComponent(atob(encStr));
-    if (!pin) throw new Error("PIN required for decryption");
-    let enc = atob(encStr.substring(4));
-    let dec = '';
-    for (let i = 0; i < enc.length; i++) dec += String.fromCharCode(enc.charCodeAt(i) ^ pin.charCodeAt(i % pin.length));
-    return decodeURIComponent(atob(dec));
+async function decryptData(encStr, pin) {
+    if (encStr.startsWith('ENC2:')) {
+        if (!pin) throw new Error('PIN required for decryption');
+        const raw = Uint8Array.from(atob(encStr.substring(5)), c => c.charCodeAt(0));
+        const salt = raw.slice(0, 16); const iv = raw.slice(16, 28); const ct = raw.slice(28);
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
+        const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+        return new TextDecoder().decode(pt);
+    }
+    if (encStr.startsWith('ENC:')) {
+        if (!pin) throw new Error('PIN required for decryption');
+        let enc = atob(encStr.substring(4)); let dec = '';
+        for (let i = 0; i < enc.length; i++) dec += String.fromCharCode(enc.charCodeAt(i) ^ pin.charCodeAt(i % pin.length));
+        return decodeURIComponent(atob(dec));
+    }
+    return decodeURIComponent(atob(encStr));
 }
 
 function exportData() {
@@ -498,145 +512,7 @@ function restoreData(e) {
     }; reader.readAsText(file);
 }
 
-let webrtcScanner;
-async function webrtcStartAsReceiver() {
-    haptic(40);
-    document.getElementById('webrtc-mode-selector').style.display = 'none';
-    document.getElementById('webrtc-active-ui').style.display = 'flex';
-    document.getElementById('webrtc-qr-display').style.display = 'block';
-    document.getElementById('webrtc-status').innerText = 'Status: Generating Receive Code...';
-
-    initWebRTC();
-    // In receiver mode, we create the offer
-    webrtcChannel = webrtcConn.createDataChannel('sync');
-    setupDataChannel();
-
-    let offer = await webrtcConn.createOffer();
-    await webrtcConn.setLocalDescription(offer);
-
-    // The ICE candidates will trigger onicecandidate, which will update the QR
-    // But we might need to wait for candidates if we want a "full" offer QR
-}
-
-async function webrtcStartAsSender() {
-    haptic(40);
-    document.getElementById('webrtc-mode-selector').style.display = 'none';
-    document.getElementById('webrtc-active-ui').style.display = 'flex';
-    document.getElementById('webrtc-scanner-ui').style.display = 'flex';
-    document.getElementById('webrtc-status').innerText = 'Status: Scan Receiver QR...';
-
-    webrtcScanner = new Html5Qrcode("webrtc-reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-    webrtcScanner.start({ facingMode: "environment" }, config, async (decodedText) => {
-        await webrtcStopScanner();
-        haptic([50, 50]);
-        document.getElementById('webrtc-code-input').value = decodedText;
-        await webrtcProcessInput();
-    });
-}
-
-async function webrtcStopScanner() {
-    if (webrtcScanner) {
-        await webrtcScanner.stop();
-        webrtcScanner = null;
-    }
-    document.getElementById('webrtc-scanner-ui').style.display = 'none';
-}
-
-function initWebRTC() {
-    webrtcConn = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-    webrtcConn.onicecandidate = e => {
-        if (!e.candidate) {
-            let code = btoa(JSON.stringify(webrtcConn.localDescription));
-            document.getElementById('webrtc-code-output').value = code;
-
-            // Generate QR
-            const qrDiv = document.getElementById('webrtc-qr');
-            qrDiv.innerHTML = '';
-            new QRCode(qrDiv, {
-                text: code,
-                width: 200,
-                height: 200,
-                colorDark: "#4559A4",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.L
-            });
-
-            document.getElementById('webrtc-status').innerText = 'Status: QR Ready! Scan now.';
-
-            // Add a "Scan Answer QR" button for the receiver
-            if (!document.getElementById('webrtc-scan-answer-btn')) {
-                const btn = document.createElement('button');
-                btn.id = 'webrtc-scan-answer-btn';
-                btn.className = 'btn-secondary';
-                btn.style.marginTop = '12px';
-                btn.style.width = '100%';
-                btn.innerText = 'Step 2: Scan Answer QR';
-                btn.onclick = () => webrtcStartAsSender(); // Reuse sender logic to scan
-                document.getElementById('webrtc-qr-display').appendChild(btn);
-            }
-        }
-    };
-    webrtcConn.ondatachannel = e => {
-        webrtcChannel = e.channel;
-        setupDataChannel();
-    };
-}
-
-function setupDataChannel() {
-    webrtcChannel.onopen = () => {
-        document.getElementById('webrtc-status').innerText = 'Status: Connected! 🚀';
-        document.getElementById('webrtc-sync-btn').style.display = 'block';
-    };
-    webrtcChannel.onmessage = e => {
-        if (e.data.startsWith('SYNC:')) {
-            try {
-                let parsed = JSON.parse(e.data.substring(5));
-                Object.assign(db, parsed);
-                saveData(); initUI(); renderAll();
-                showSnackbar("Data Synced via WebRTC!", "sync");
-                haptic([100, 50, 100]);
-            } catch (err) { showSnackbar("Sync Failed", "error"); }
-        }
-    };
-}
-
-async function webrtcProcessInput() {
-    let input = document.getElementById('webrtc-code-input').value.trim();
-    if (!input) return;
-    try {
-        let desc = JSON.parse(atob(input));
-        if (desc.type === 'offer') {
-            initWebRTC();
-            await webrtcConn.setRemoteDescription(desc);
-            let answer = await webrtcConn.createAnswer();
-            await webrtcConn.setLocalDescription(answer);
-            document.getElementById('webrtc-status').innerText = 'Status: Answer generated. Show this QR to Receiver.';
-            document.getElementById('webrtc-qr-display').style.display = 'block';
-            // QR will be updated via onicecandidate for the answer
-        } else if (desc.type === 'answer') {
-            await webrtcConn.setRemoteDescription(desc);
-            document.getElementById('webrtc-status').innerText = 'Status: Connecting...';
-            document.getElementById('webrtc-qr-display').style.display = 'none';
-            document.getElementById('webrtc-manual-area').style.display = 'none';
-        }
-    } catch (e) {
-        showSnackbar("Invalid QR/Code", "error");
-        console.error(e);
-    }
-}
-
-function webrtcSendSync() {
-    if (webrtcChannel && webrtcChannel.readyState === 'open') {
-        webrtcChannel.send('SYNC:' + JSON.stringify(db));
-        showSnackbar("Data synced successfully!", "check_circle");
-        haptic([100, 50, 100]);
-        setTimeout(() => location.reload(), 2000);
-    } else {
-        showSnackbar("Not connected yet!", "warning");
-    }
-}
+// Legacy WebRTC functions removed — canonical implementation in app_part3.js
 
 function importCSV(e) {
     const file = e.target.files[0];
@@ -749,8 +625,30 @@ function calculateXIRR() {
     document.getElementById('xirr-result').innerHTML = `XIRR: <strong style="color:var(--md-primary); font-size:24px;">${resultText}</strong>`;
 }
 function calculateMonthlySIP() { let target = parseFloat(document.getElementById('sip-target').value); let years = parseFloat(document.getElementById('sip-years').value); let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; let months = years * 12; let monthly = target * rate / (Math.pow(1 + rate, months) - 1); document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; }
-function calculateEMI() { let P = parseFloat(document.getElementById('emi-principal').value); let years = parseFloat(document.getElementById('emi-tenure').value); let rate = parseFloat(document.getElementById('emi-rate').value) / 12 / 100; let n = years * 12; let emi = P * rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1); document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(emi)}</strong>`; }
+function calculateEMI() { let P = parseFloat(document.getElementById('emi-principal').value); let years = parseFloat(document.getElementById('emi-tenure').value); let rate = parseFloat(document.getElementById('emi-rate').value) / 12 / 100; let n = years * 12; if (rate === 0) { document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(P / n)}</strong>`; return; } let emi = P * rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1); document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(emi)}</strong>`; }
 function calculateInflation() { let pv = parseFloat(document.getElementById('inf-present').value); let years = parseFloat(document.getElementById('inf-years').value); let rate = parseFloat(document.getElementById('inf-rate').value) / 100; let fv = pv * Math.pow(1 + rate, years); document.getElementById('inf-result').innerHTML = `Future Value: <strong>${formatMoney(fv)}</strong>`; }
+
+// === Standalone calculator functions (required by tests) ===
+function calculateMonthlySIPValue(target, years, rate) {
+    if (!target || target <= 0) return null;
+    if (!years || years <= 0) return null;
+    let r = rate / 100 / 12; let n = years * 12;
+    if (r === 0) return target / n;
+    return target * r / (Math.pow(1 + r, n) - 1);
+}
+function calculateEMIValue(principal, years, rate) {
+    if (!principal || principal <= 0) return null;
+    if (!years || years <= 0) return null;
+    let r = rate / 100 / 12; let n = years * 12;
+    if (r === 0) return principal / n;
+    return principal * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+}
+function calculateInflationValue(pv, years, rate) {
+    if (!pv || pv <= 0) return null;
+    if (years === undefined || years < 0) return null;
+    if (rate === undefined || rate < 0) return null;
+    return pv * Math.pow(1 + rate / 100, years);
+}
 function checkDuplicates(newEntry) { let dups = db.investments.filter(i => i.date === newEntry.date && i.type === newEntry.type && i.amount === newEntry.amount && i.id !== newEntry.id); if (dups.length > 0) { showSnackbar("Possible duplicate entry detected!", "warning"); } }
 function autoBackupReminder() { let now = new Date().toDateString(); if (db.lastBackupPrompt !== now && (new Date() - new Date(db.lastBackupPrompt || 0)) > 7 * 24 * 60 * 60 * 1000) { showSnackbar("Remember to backup your data! (Settings > Backup)", "cloud_download"); db.lastBackupPrompt = now; saveData(); } }
 function dataCleanup() { Swal.fire({ title: 'Cleanup Old Entries', text: 'Enter cutoff date (YYYY-MM-DD) to remove entries older than that date.', input: 'text', showCancelButton: true }).then(res => { if (res.isConfirmed && res.value) { let cutoff = parseDate(res.value); let before = db.investments.length; db.investments = db.investments.filter(i => parseDate(i.date) >= cutoff); saveData(); renderAll(); showSnackbar(`Removed ${before - db.investments.length} entries.`); } }); }
@@ -801,7 +699,7 @@ function openAIChat() {
         log.scrollTop = log.scrollHeight;
     }, 100);
 }
-function saveChatSession() { haptic(40); if (db.chatHistory.length > 0) { db.chatSessions.push({ date: new Date().toISOString(), messages: [...db.chatHistory] }); db.chatHistory = []; saveData(); document.getElementById('ai-chat-log').innerHTML = ''; showSnackbar("Chat saved. Started new session."); } else { showSnackbar("Already in a new session."); } }
+// saveChatSession() — simple version removed, better version below (with title/unshift)
 function viewChatHistory() {
     haptic(30);
     let html = db.chatSessions.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">forum</span><div class="es-title">No past sessions</div></div>` : "";
@@ -848,56 +746,28 @@ function formatAIResponse(text) {
     // 1. Initial Clean: Remove AI code fences if present
     let formatted = text.replace(/```(html|markdown)?|```/gi, '').trim();
 
-    // 2. PROTECT TABLES: Process tables first while newlines still exist
-    const tableRegex = /((?:\|.*\|(?:\n|\r|\r\n))+)/g;
-    formatted = formatted.replace(tableRegex, (match) => {
-        // Only process if it looks like a real table (contains a separator row)
-        if (match.includes('| ---') || match.includes('|---')) {
-            const lines = match.trim().split(/\n|\r/);
-            let htmlTable = '<div class="table-container"><table><thead>';
+    // 1b. ESCAPE raw HTML to prevent XSS — must happen before markdown processing
+    formatted = escapeHtml(formatted);
 
-            let bodyStarted = false;
+    // 1c. Strip dangerous patterns from escaped text (event handlers, javascript: URIs)
+    formatted = formatted.replace(/\bon\w+\s*=/gi, '').replace(/javascript\s*:/gi, '');
 
-            lines.forEach((line) => {
-                if (line.includes('---')) {
-                    htmlTable += '</thead><tbody>';
-                    bodyStarted = true;
-                    return;
-                }
-
-                const cells = line.split('|').filter(c => c.trim() !== '');
-                if (cells.length === 0) return;
-
-                htmlTable += '<tr>';
-                cells.forEach(cell => {
-                    const tag = bodyStarted ? 'td' : 'th';
-                    htmlTable += `<${tag}>${cell.trim()}</${tag}>`;
-                });
-                htmlTable += '</tr>';
-            });
-
-            htmlTable += '</tbody></table></div>';
-            return htmlTable;
-        }
-        return match;
-    });
-
-    // 3. PROCESS MARKDOWN (Headers, Lists, Blockquotes)
+    // 2. PROCESS MARKDOWN (Headers, Lists, Blockquotes) on escaped text
     formatted = formatted
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
         .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^> (.*$)/gim, '<blockquote>$1</blockquote>')
+        .replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>')
         // Process Lists
         .replace(/^\* (.*$)/gim, '<li>$1</li>')
         .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
         .replace(/<\/ul>\s*<ul>/g, '')
-        // Links
-        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        // Links — only allow safe protocols (http/https)
+        .replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
 
-    // 4. PRESERVE SPACING (Only for non-HTML elements)
+    // 3. PRESERVE SPACING (Only for non-HTML elements)
     return formatted.split('\n').map(line => {
         if (line.startsWith('<') || line.endsWith('>')) return line;
         return line.trim() === '' ? '<br>' : `<p>${line}</p>`;
@@ -974,15 +844,7 @@ function openAIPredictSheet() {
     generateAIForecast();
 }
 
-function openProjectionSheet() {
-    haptic(30);
-    const target = prompt("Enter your monthly investment goal (₹):", db.settingsTable.monthlyTargetRef || 0);
-    if (target !== null && !isNaN(parseFloat(target))) {
-        db.settingsTable.monthlyTargetRef = parseFloat(target);
-        saveData(); renderAll();
-        showSnackbar("Monthly goal updated!", "check_circle");
-    }
-}
+// openProjectionSheet() defined in app_part1.js (removed weaker duplicate that uses prompt())
 
 async function generateAIForecast() {
     haptic(30);

@@ -413,6 +413,16 @@ function getThemeColor() {
     return root.getPropertyValue('--md-primary').trim() || '#4559A4';
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function checkMilestones(nw) {
     let unlocked = false;
     milestoneThresholds.forEach(t => {
@@ -481,7 +491,7 @@ function initUI() {
     }
 }
 
-function getThemeColor() { return getComputedStyle(document.documentElement).getPropertyValue('--md-primary').trim() || '#4559A4'; }
+// getThemeColor defined above (removed duplicate)
 
 // --- Mobile Swipe to Close Sheets ---
 let touchStartY = 0;
@@ -548,9 +558,12 @@ function calculateStrictValuation(type, totalInvested, rawInvs) {
         let invs = rawInvs.filter(i => !i.isDividend);
         let initialBal = db.categoryDetails[type]?.initialBal || 0;
         if (initialBal > 0) {
-            // Use the earliest date from existing investments or fallback to a date far in the past
+            // Use a date BEFORE the earliest investment so initial balance accrues interest from the start
             let earliest = invs.reduce((min, i) => i.date < min ? i.date : min, invs[0]?.date || '2023-01-01');
-            invs.push({ date: earliest, amount: initialBal, note: 'Initial Balance' });
+            let earlyDate = new Date(earliest);
+            earlyDate.setDate(earlyDate.getDate() - 1);
+            let earlyStr = earlyDate.getFullYear() + '-' + String(earlyDate.getMonth() + 1).padStart(2, '0') + '-' + String(earlyDate.getDate()).padStart(2, '0');
+            invs.push({ date: earlyStr, amount: initialBal, note: 'Initial Balance' });
         }
         return invs;
     };
