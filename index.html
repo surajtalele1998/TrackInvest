@@ -862,10 +862,14 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
             <h3 class="sheet-title" style="margin:0;"><span class="material-symbols-rounded"
                     style="color:var(--md-primary);">auto_awesome</span> AI Report</h3>
-            <button class="ai-widget-mini"
-                style="background:var(--md-secondary-container); color:var(--md-on-secondary-container);"
-                onclick="downloadAIReport()"><span class="material-symbols-rounded"
-                    style="font-size:16px;">download</span> PDF</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="ai-widget-mini"
+                    style="background:var(--md-secondary-container); color:var(--md-on-secondary-container);"
+                    onclick="downloadAIReport()"><span class="material-symbols-rounded"
+                        style="font-size:16px;">download</span> PDF</button>
+                <button class="icon-btn" onclick="closeSubSheet()"><span
+                        class="material-symbols-rounded">close</span></button>
+            </div>
         </div>
 
         <div id="ai-report-charts" style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;">
@@ -880,7 +884,11 @@
 
     <div class="sheet" id="month-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title" id="month-sheet-title">Summary</h3>
+        <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <span id="month-sheet-title">Summary</span>
+            <button class="icon-btn" onclick="closeSheet()"><span
+                    class="material-symbols-rounded">close</span></button>
+        </h3>
         <div id="month-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
     </div>
 
@@ -902,7 +910,11 @@
 
     <div class="sheet" id="maturity-calendar-sheet">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title">Maturity Calendar</h3>
+        <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+            <span>Maturity Calendar</span>
+            <button class="icon-btn" onclick="closeSubSheet()"><span
+                    class="material-symbols-rounded">close</span></button>
+        </h3>
         <div id="maturity-calendar-content"></div>
     </div>
 
@@ -1043,16 +1055,18 @@
 
     <div class="sheet" id="ai-chat-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
         <div class="drag-handle"></div>
-        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0;">
+        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
                     style="color:var(--md-primary);">psychology</span> AI Assistant</div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;align-items:center;">
                 <button class="ai-widget-mini"
                     style="background:var(--md-surface-container-highest);color:var(--md-on-surface);"
                     onclick="viewChatHistory()"><span class="material-symbols-rounded"
                         style="font-size:16px;">history</span></button>
                 <button class="ai-widget-mini" onclick="saveChatSession()"><span class="material-symbols-rounded"
                         style="font-size:16px;">add</span> New</button>
+                <button class="icon-btn" onclick="closeSheet()"><span
+                        class="material-symbols-rounded">close</span></button>
             </div>
         </div>
         <div class="ai-chat-log" id="ai-chat-log"></div>

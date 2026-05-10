@@ -112,7 +112,16 @@ function closeOverlays() {
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
-const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet'];
+const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet', 'wealth-blueprint-sheet', 'ai-sheet', 'maturity-calendar-sheet'];
+
+function openSubSheet(sheetId) {
+    if (!SUB_SHEET_IDS.includes(sheetId)) {
+        SUB_SHEET_IDS.push(sheetId);
+    }
+    openSheet(sheetId);
+}
+window.openSubSheet = openSubSheet;
+window.openSettings = openSettings;
 
 function openSheet(sheetId) {
     haptic(20);
@@ -208,11 +217,13 @@ function deleteRecurring(idx) {
 }
 
 // ── STAT CHIPS UPDATE ───────────────────────────
-function updateStatChips(totalInvested, totalMarketValue, yearTotal) {
+function updateStatChips(totalInvested, totalMarketValue, yearTotal, thisMonthTotal) {
     let sal = db.userProfile.salary || 0;
     let pnl = totalMarketValue - totalInvested;
     let roi = totalInvested > 0 ? ((pnl / totalInvested) * 100) : 0;
-    let savRate = sal > 0 ? Math.round((currentAvgMonthly / (sal / 12)) * 100) : 0;
+    
+    // Savings rate: use this month's total if it's the current performance we are tracking
+    let savRate = sal > 0 ? Math.round((thisMonthTotal / (sal / 12)) * 100) : 0;
 
     // Best month
     let monthMap = {};
@@ -226,9 +237,14 @@ function updateStatChips(totalInvested, totalMarketValue, yearTotal) {
 
     // Investment streak (consecutive months)
     let now = new Date(); let streak = 0;
-    for (let i = 0; i < 24; i++) {
+    let startOffset = 0;
+    let currentK = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    if (!(monthMap[currentK] > 0)) {
+        startOffset = 1;
+    }
+    for (let i = startOffset; i < 24 + startOffset; i++) {
         let m = now.getMonth() - i; let y = now.getFullYear();
-        if (m < 0) { m += 12; y--; }
+        while (m < 0) { m += 12; y--; }
         let k = `${y}-${String(m + 1).padStart(2, '0')}`;
         if (monthMap[k] > 0) streak++; else break;
     }
@@ -819,6 +835,7 @@ function setInvestType(type) {
     if (type === 'PF' && intEl && !intEl.value) intEl.value = 8.15;
 
     // Attach listeners for smart preview
+
     const inputIds = ['inv-amt', 'inv-date', 'inv-interest', 'inv-payout', 'inv-growth', 'inv-qty', 'inv-price', 'inv-sip-day', 'inv-mode'];
     inputIds.forEach(id => {
         const el = document.getElementById(id);
@@ -2210,7 +2227,7 @@ function renderAll() {
     if (activeTab && activeTab.id === 'tab-portfolio') renderDonutChart(typeTotals, totalMarketValue);
 
     renderHeatmap(); fetchAIPrediction();
-    updateStatChips(totalInvestedAll, totalMarketValue, yearTotal);
+    updateStatChips(totalInvestedAll, totalMarketValue, yearTotal, thisMonthTotal);
     renderRecurringSheet();
     // Entry count badge
     let badgeEl = document.getElementById('ledger-entry-badge');
