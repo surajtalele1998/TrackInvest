@@ -6,6 +6,7 @@ import { formatMoney, formatInr, haptic, showSnackbar, closeOverlays, formatDate
 import { calculateTax, calculateValuation } from './engine.js';
 import { db, getSetting, setSetting } from './db.js';
 import { renderPortfolioChart } from './charts.js';
+import { askTrackInvestAI } from './ai.js';
 
 /**
  * Main render function - refreshes everything
@@ -27,13 +28,13 @@ export async function renderAll() {
     const totalNW = filtered.reduce((sum, inv) => sum + (inv.amount || 0), 0);
     
     // 2. Update Balance Cards
-    const nwEl = document.getElementById('total-nw');
+    const nwEl = document.getElementById('networth-val');
     if (nwEl) nwEl.innerText = formatMoney(totalNW, privacyMode);
 
     // 3. Render Dashboard Components
-    renderInvestmentList(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)).reverse(), privacyMode);
+    renderInvestmentList(filtered.sort((a, b) => new Date(b.date) - new Date(a.date)), privacyMode);
     renderCategoryChips(filtered);
-    renderSummaryStats(filtered, profile);
+    renderSummaryStats(filtered, profile, totalNW);
     renderGoals();
     renderActivityCalendar(filtered);
 
@@ -61,7 +62,7 @@ export async function renderAll() {
  * Category Chips Rendering
  */
 function renderCategoryChips(investments) {
-    const container = document.getElementById('category-chips');
+    const container = document.getElementById('quick-add-chips');
     if (!container) return;
     
     const typeTotals = investments.reduce((acc, inv) => {
@@ -81,23 +82,115 @@ function renderCategoryChips(investments) {
 /**
  * Summary Stats Rendering
  */
-function renderSummaryStats(investments, profile) {
-    const investedEl = document.getElementById('total-invested');
-    const gainEl = document.getElementById('total-gain');
+function renderSummaryStats(investments, profile, currentNW) {
+    const investedEl = document.getElementById('sc-invested');
+    const gainEl = document.getElementById('sc-pnl');
     if (!investedEl) return;
 
     const totalInvested = investments.filter(i => !i.isDividend).reduce((s, i) => s + i.amount, 0);
     investedEl.innerText = formatInr(totalInvested);
+    gainEl.innerText = formatInr(currentNW - totalInvested);
+    gainEl.style.color = (currentNW - totalInvested) >= 0 ? 'var(--md-success)' : 'var(--md-error)';
+
+    // Additional Stats
+    const savingsRateEl = document.getElementById('sc-savings-rate');
+    if (savingsRateEl) {
+        const monthlyIncome = (profile.salary || 0) / 12;
+        const currentMonth = dayjs().format('YYYY-MM');
+        const currentMonthInvested = investments
+            .filter(inv => inv.date.startsWith(currentMonth) && !inv.isDividend)
+            .reduce((s, i) => s + (i.amount || 0), 0);
+        
+        const rate = monthlyIncome > 0 ? (currentMonthInvested / monthlyIncome) * 100 : 0;
+        savingsRateEl.innerText = `${Math.min(rate, 100).toFixed(0)}%`;
+        
+        // Tooltip or alternate display for "Achievement" if no salary
+        if (monthlyIncome === 0) {
+            const monthlyTarget = profile.monthlyTarget || 50000;
+            const targetRate = (currentMonthInvested / monthlyTarget) * 100;
+            savingsRateEl.innerText = `${Math.min(targetRate, 100).toFixed(0)}%`;
+        }
+    }
+
+    const lastMonthValEl = document.getElementById('last-month-val');
+    if (lastMonthValEl) {
+        const lastMonth = dayjs().subtract(1, 'month').format('YYYY-MM');
+        const lastMonthInvested = investments
+            .filter(inv => inv.date.startsWith(lastMonth))
+            .reduce((s, i) => s + (i.amount || 0), 0);
+        lastMonthValEl.innerText = formatInr(lastMonthInvested);
+    }
+
+    const goalTargetEl = document.getElementById('next-month-val');
+    if (goalTargetEl) {
+        goalTargetEl.innerText = formatInr(profile.monthlyGoal || 0);
+    }
     
-    // Mock gain for now or calculate if current market values exist
-    gainEl.innerText = "+₹12,450 (Est.)";
+    // Best Month and Streak
+    const bestMonthEl = document.getElementById('sc-best-month');
+    const streakEl = document.getElementById('sc-streak');
+    
+    const monthlyTotals = investments.reduce((acc, inv) => {
+        const m = inv.date.substring(0, 7);
+        acc[m] = (acc[m] || 0) + inv.amount;
+        return acc;
+    }, {});
+    
+    if (bestMonthEl) {
+        const best = Math.max(0, ...Object.values(monthlyTotals));
+        bestMonthEl.innerText = formatInr(best);
+    }
+    
+    if (streakEl) {
+        let streak = 0;
+        let d = dayjs();
+        // Check current month and backwards
+        while(monthlyTotals[d.format('YYYY-MM')] > 0) {
+            streak++;
+            d = d.subtract(1, 'month');
+        }
+        streakEl.innerText = `${streak} mo`;
+    }
+}
+
+/**
+ * Global Sheet Opener
+ */
+export function openSheet(id) {
+    haptic(30);
+    const scrim = document.getElementById('scrim');
+    const sheet = document.getElementById(id);
+    if (scrim && sheet) {
+        scrim.classList.add('active');
+        sheet.classList.add('active');
+    }
+}
+
+export function openSubSheet(id) {
+    haptic(30);
+    const scrim = document.getElementById('scrim-sub');
+    const sheet = document.getElementById(id);
+    if (scrim && sheet) {
+        scrim.classList.add('active');
+        sheet.classList.add('active');
+    }
+}
+
+export function openAIChat() {
+    haptic(30);
+    openSheet('ai-chat-sheet');
+}
+
+export function openDividendSheet() {
+    haptic(30);
+    openSheet('dividend-sheet');
 }
 
 /**
  * Goals Rendering
  */
 async function renderGoals() {
-    const container = document.getElementById('goals-container');
+    const container = document.getElementById('goals-list');
     if (!container) return;
     const goals = await db.goals.toArray();
     
@@ -128,7 +221,7 @@ async function renderGoals() {
  * Activity Heatmap Rendering
  */
 function renderActivityCalendar(investments) {
-    const container = document.getElementById('activity-calendar');
+    const container = document.getElementById('heatmap-grid');
     if (!container) return;
     
     const activity = {};
@@ -152,7 +245,7 @@ function renderActivityCalendar(investments) {
  * Renders the primary investment list
  */
 function renderInvestmentList(investments, privacyMode) {
-    const container = document.getElementById('recent-list');
+    const container = document.getElementById('dashboard-history-list');
     if (!container) return;
 
     if (investments.length === 0) {
@@ -188,7 +281,7 @@ export function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
-    document.getElementById(tabId + '-tab').classList.add('active');
+    document.getElementById('tab-' + tabId).classList.add('active');
     document.getElementById('nav-' + tabId).classList.add('active');
     
     setSetting('lastTab', tabId);
@@ -435,6 +528,117 @@ export async function openGoalSheet(id = null) {
     }
     document.getElementById('scrim').classList.add('active');
     sheet.classList.add('active');
+    
+    // Feature specific initializers
+    if (id === 'ai-chat-sheet') {
+        loadChatMessages();
+    }
+}
+
+/**
+ * Load Chat History into UI
+ */
+async function loadChatMessages() {
+    const container = document.getElementById('ai-chat-container');
+    if (!container) return;
+    
+    const history = await db.chatHistory.orderBy('timestamp').toArray();
+    container.innerHTML = history.map(h => `
+        <div class="chat-bubble user">${h.prompt}</div>
+        <div class="chat-bubble ai">${h.response.replace(/\n/g, '<br>')}</div>
+    `).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Send Message to AI
+ */
+export async function sendAIChat() {
+    const input = document.getElementById('ai-chat-input');
+    const container = document.getElementById('ai-chat-container');
+    if (!input || !container) return;
+    
+    const prompt = input.value.trim();
+    if (!prompt) return;
+
+    haptic(30);
+    input.value = '';
+    
+    // Add User Bubble
+    container.innerHTML += `<div class="chat-bubble user">${prompt}</div>`;
+    container.scrollTop = container.scrollHeight;
+
+    // Loading indicator
+    const loadingId = 'ai-loading-' + Date.now();
+    container.innerHTML += `<div class="chat-bubble ai" id="${loadingId}"><div class="dot-flashing"></div></div>`;
+    container.scrollTop = container.scrollHeight;
+    
+    try {
+        const userProfile = await getSetting('userProfile', {});
+        const investments = await db.investments.toArray();
+        const history = await db.chatHistory.orderBy('timestamp').reverse().limit(5).toArray();
+        
+        const response = await askTrackInvestAI(prompt, userProfile, investments, history);
+        
+        const bubble = document.getElementById(loadingId);
+        if (bubble) {
+            bubble.innerHTML = response.replace(/\n/g, '<br>');
+            
+            // Save to history
+            await db.chatHistory.add({
+                prompt,
+                response,
+                timestamp: Date.now()
+            });
+        }
+    } catch (err) {
+        const bubble = document.getElementById(loadingId);
+        if (bubble) bubble.innerHTML = "I'm having trouble connecting. Please verify your Gemini API key in Settings.";
+        console.error("AI Error:", err);
+    }
+    container.scrollTop = container.scrollHeight;
+}
+
+/**
+ * Ask AI Engine with Context
+ */
+export function askAIEngine(type) {
+    haptic(30);
+    openSubSheet('ai-chat-sheet');
+    const input = document.getElementById('ai-chat-input');
+    if (!input) return;
+    
+    let prompt = "";
+    if (type === 'audit') prompt = "Audit my portfolio and identify risks or over-allocation.";
+    if (type === 'predict') prompt = "Project my wealth for the next 10 years based on my current saving rate.";
+    
+    input.value = prompt;
+    setTimeout(() => sendAIChat(), 600);
+}
+
+/**
+ * Inflation & Retirement Calculator
+ */
+export function calculateInflation() {
+    haptic(30);
+    const monthlyTarget = parseFloat(document.getElementById('fire-monthly-target')?.value) || 50000;
+    const inflation = parseFloat(document.getElementById('fire-inflation')?.value) || 6;
+    const years = parseFloat(document.getElementById('fire-years')?.value) || 20;
+    
+    const futureMonthly = monthlyTarget * Math.pow(1 + inflation/100, years);
+    const corpusRequired = futureMonthly * 12 * 25; // 4% Rule
+    
+    const res = document.getElementById('fire-result');
+    if (res) {
+        res.innerHTML = `
+            <div class="stat-card" style="margin-top:15px; background: var(--md-sys-color-secondary-container); animation: slideUp 0.4s ease;">
+                <div class="stat-label">Monthly Expenses in ${years}Y</div>
+                <div class="stat-value">₹${formatInr(Math.round(futureMonthly))}</div>
+                <div class="stat-label" style="margin-top:12px;">FIRE Target Corpus (at 4% SWR)</div>
+                <div class="stat-value" style="color: var(--md-sys-color-primary); font-size: 24px;">₹${(corpusRequired / 10000000).toFixed(2)} Cr</div>
+            </div>
+        `;
+    }
 }
 
 /**
@@ -486,8 +690,7 @@ export async function openCategoryDetails(type) {
         `).join('');
     }
 
-    document.getElementById('scrim').classList.add('active');
-    document.getElementById('category-sheet').classList.add('active');
+    openSheet('category-sheet');
 }
 
 /**
@@ -600,6 +803,48 @@ export async function openRebalanceSheet() {
     import('./ai.js').then(ai => ai.generateRebalanceAudit());
 }
 
+/**
+ * Open AI Chat Sheet
+ */
+export function openAIChat() {
+    haptic(30);
+    openSubSheet('ai-chat-sheet');
+}
+
+/**
+ * Dividend Sheet
+ */
+export async function openDividendSheet() {
+    haptic(30);
+    openSubSheet('dividend-sheet');
+    const investments = await db.investments.where('dividend').equals(1).toArray();
+    const total = investments.reduce((s, i) => s + (i.amount || 0), 0);
+    const display = document.getElementById('dividend-sheet-total');
+    if (display) display.innerText = formatInr(total);
+    
+    const container = document.getElementById('dividend-list');
+    if (container) {
+        container.innerHTML = investments.length ? investments.map(inv => `
+            <div class="unified-item">
+                <div class="unified-content">
+                    <div class="unified-title">
+                        <span>${inv.note || inv.type}</span>
+                        <span>${formatInr(inv.amount)}</span>
+                    </div>
+                    <div class="unified-subtitle">${inv.date} • ${inv.broker || 'Direct'}</div>
+                </div>
+            </div>
+        `).join('') : '<div style="padding:20px;text-align:center;opacity:0.5;">No passive income logged yet.</div>';
+    }
+}
+
+/**
+ * FIRE Sheet Alias
+ */
+export function openFIRESheet() {
+    openAIPredictSheet();
+}
+
 export function copyBlueprint() {
     const content = document.getElementById('wealth-blueprint-content').innerText;
     if (!content || content.includes('Drafting')) return;
@@ -608,3 +853,72 @@ export function copyBlueprint() {
         import('./utils.js').then(u => u.showSnackbar("Strategy copied to clipboard!", "check_circle"));
     });
 }
+
+/**
+ * App Lock & Unlock Logic
+ */
+export async function unlockApp() {
+    const pin = document.getElementById('pin-input-auth').value;
+    const savedPin = await getSetting('appPin');
+
+    if (pin === savedPin) {
+        document.getElementById('app-lock-screen').style.display = 'none';
+        haptic(50);
+        showSnackbar("App Unlocked", "lock_open");
+        
+        // Initial render after unlock
+        renderAll();
+    } else {
+        haptic([50, 30, 50]);
+        showSnackbar("Incorrect PIN", "error");
+        document.getElementById('pin-input-auth').value = '';
+    }
+}
+
+export async function checkAppLock() {
+    const pin = await getSetting('appPin');
+    if (pin) {
+        document.getElementById('app-lock-screen').style.display = 'flex';
+        // Focus the input
+        setTimeout(() => document.getElementById('pin-input-auth').focus(), 100);
+    }
+}
+
+/**
+ * Nearby Sync Sheet
+ */
+export function openNearbySync() {
+    haptic(30);
+    openSheet('webrtc-sync-sheet');
+}
+
+/**
+ * History Generator Helpers
+ */
+export function viewChatHistory() {
+    showSnackbar("Previous chats are shown above.", "history");
+}
+
+export function saveChatSession() {
+    showSnackbar("Chat session persisted.", "save");
+}
+
+/**
+ * Toggle Sync Fields for History Generator
+ */
+export function toggleSyncFields() {
+    const type = document.getElementById('sync-asset-type').value;
+    const mfBlock = document.getElementById('sync-mf-block');
+    if (mfBlock) {
+        mfBlock.style.display = (type === 'Mutual Fund' || type === 'Stock') ? 'flex' : 'none';
+    }
+}
+
+/**
+ * Settings Sheet
+ */
+export function openSettings() {
+    haptic(30);
+    openSheet('settings-sheet');
+}
+

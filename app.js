@@ -55,6 +55,43 @@ window.openWealthBlueprint = ui.openWealthBlueprint;
 window.openRebalanceSheet = ui.openRebalanceSheet;
 window.copyBlueprint = ui.copyBlueprint;
 window.updateProjectionSlider = ui.updateProjectionSlider;
+window.unlockApp = ui.unlockApp;
+window.openAIChat = ui.openAIChat;
+window.openDividendSheet = ui.openDividendSheet;
+window.openFIRESheet = ui.openFIRESheet;
+window.openNearbySync = ui.openNearbySync;
+window.toggleSyncFields = ui.toggleSyncFields;
+window.openSettings = ui.openSettings;
+window.openSubSheet = ui.openSubSheet;
+window.sendAIChat = ui.sendAIChat;
+window.askAIEngine = ui.askAIEngine;
+window.calculateInflation = ui.calculateInflation;
+window.viewChatHistory = ui.viewChatHistory;
+window.saveChatSession = ui.saveChatSession;
+window.exportData = () => utils.exportData(db, getSetting);
+window.restoreData = (e) => utils.restoreData(e, db);
+window.importCSV = (e) => utils.importCSV(e, db);
+window.dataCleanup = () => utils.dataCleanup(db);
+window.exportTaxPDF = () => utils.exportTaxPDF(db);
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) installBtn.style.display = 'flex';
+});
+
+window.triggerPWAInstall = async () => {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            document.getElementById('pwa-install-btn').style.display = 'none';
+        }
+        deferredPrompt = null;
+    }
+};
 
 /**
  * Main Initialization Sequence
@@ -62,9 +99,11 @@ window.updateProjectionSlider = ui.updateProjectionSlider;
 async function initApp() {
     console.log("🚀 Initializing TrackInvest Next-Gen...");
     
-    // 1. Database Migration & Setup
     await migrateLegacyData();
     await loadSettings();
+    
+    // Check for App Lock
+    await ui.checkAppLock();
     
     // Auto-sync NAVs in background
     market.syncPortfolioNAVs();
