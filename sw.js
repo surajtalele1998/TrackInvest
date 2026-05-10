@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v36';
+const CACHE_NAME = 'invest-pro-v43';
 
 const CORE_ASSETS = [
     './',
@@ -8,7 +8,9 @@ const CORE_ASSETS = [
     './icons/icon-512.svg',
     './icons/icon-maskable-512.svg',
     './style.css',
-    './app.js'
+    './app_part1.js',
+    './app_part2.js',
+    './app_part3.js'
 ];
 
 const CDN_ASSETS = [

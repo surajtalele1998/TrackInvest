@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#F3F3F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
-    <title>TrackInvest</title>
+    <title>TrackInvest | Premium Wealth Intelligence</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
 
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -878,7 +880,8 @@
 
         <div style="overflow-y: auto; overflow-x: hidden; padding: 0 16px 40px 16px; flex-grow: 1;">
 
-            <div id="ai-report-charts" style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;">
+            <div id="ai-report-charts"
+                style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;overflow-y: auto;">
                 <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
                         id="aiChartPie" height="120"></canvas></div>
                 <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
@@ -893,7 +896,8 @@
         <div class="drag-handle"></div>
         <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span id="month-sheet-title">Summary</span>
-            <button class="icon-btn" onclick="closeSheet()"><span class="material-symbols-rounded">close</span></button>
+            <button class="icon-btn" onclick="closeSubSheet()"><span
+                    class="material-symbols-rounded">close</span></button>
         </h3>
         <div id="month-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
     </div>
@@ -1087,7 +1091,7 @@
                         style="font-size:16px;">history</span></button>
                 <button class="ai-widget-mini" onclick="saveChatSession()"><span class="material-symbols-rounded"
                         style="font-size:16px;">add</span> New</button>
-                <button class="icon-btn" onclick="closeSheet()"><span
+                <button class="icon-btn" onclick="closeSubSheet()"><span
                         class="material-symbols-rounded">close</span></button>
             </div>
         </div>
@@ -1183,7 +1187,9 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="./app.js"></script>
+    <script src="./app_part1.js"></script>
+    <script src="./app_part2.js"></script>
+    <script src="./app_part3.js"></script>
 </body>
 
 </html>
