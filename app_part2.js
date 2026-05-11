@@ -21,13 +21,77 @@ function saveInvestment() {
     let investMode = document.getElementById('inv-mode').value;
     let sipDay = parseInt(document.getElementById('inv-sip-day').value) || null;
 
-    // Validation
-    if (!date || isNaN(amt)) return showSnackbar("Date and Amount required", "error");
-    if (amt <= 0) return showSnackbar("Amount must be greater than zero", "error");
-    if (units !== null && units <= 0) return showSnackbar("Units must be greater than zero", "error");
-    if (intRate !== null && (intRate < 0 || intRate > 50)) return showSnackbar("Interest rate must be between 0% and 50%", "error");
-    if (matDate && date && new Date(matDate) <= new Date(date)) return showSnackbar("Maturity date must be after investment date", "error");
-    if (initialPayment !== null && initialPayment <= 0) return showSnackbar("Initial payment must be greater than zero", "error");
+    // Validation with field-specific error messages
+    if (!date || isNaN(amt)) {
+        showSnackbar("Date and Amount required", "error");
+        document.getElementById('inv-date')?.focus();
+        return;
+    }
+    if (amt <= 0) {
+        showSnackbar("Amount must be greater than zero", "error");
+        document.getElementById('inv-amt')?.focus();
+        return;
+    }
+    if (units !== null && units <= 0) {
+        showSnackbar("Units must be greater than zero", "error");
+        document.getElementById('inv-qty')?.focus();
+        return;
+    }
+    if (intRate !== null && (intRate < 0 || intRate > 25)) {
+        showSnackbar("Interest rate must be between 0% and 25%", "error");
+        document.getElementById('inv-interest')?.focus();
+        return;
+    }
+    if (matDate && date) {
+        let matD = new Date(matDate);
+        let invD = new Date(date);
+        if (matD <= invD) {
+            showSnackbar("Maturity date must be after investment date", "error");
+            document.getElementById('inv-maturity-simple')?.focus();
+            return;
+        }
+        // Check if maturity is unreasonably far (>50 years)
+        let yearsDiff = (matD - invD) / (1000 * 60 * 60 * 24 * 365.25);
+        if (yearsDiff > 50) {
+            showSnackbar("Maturity cannot exceed 50 years from investment", "warning");
+        }
+    }
+    if (initialPayment !== null && initialPayment <= 0) {
+        showSnackbar("Initial payment must be greater than zero", "error");
+        document.getElementById('inv-initial-payment')?.focus();
+        return;
+    }
+    
+    // Date range validation - prevent future dates more than 1 day ahead
+    let investmentDate = new Date(date);
+    let today = new Date();
+    today.setHours(23, 59, 59, 999);
+    if (investmentDate > today) {
+        showSnackbar("Investment date cannot be in the future", "error");
+        document.getElementById('inv-date')?.focus();
+        return;
+    }
+    // Prevent very old dates (before 2000)
+    let year2000 = new Date('2000-01-01');
+    if (investmentDate < year2000) {
+        showSnackbar("Investment date cannot be before year 2000", "error");
+        document.getElementById('inv-date')?.focus();
+        return;
+    }
+    
+    // Duplicate detection within 1 hour for same date/type/amount
+    if (!editInvId) {
+        let oneHourAgo = Date.now() - (60 * 60 * 1000);
+        let recentDuplicate = db.investments.find(i => 
+            i.date === date && 
+            i.type === currentInvType && 
+            i.amount === amt && 
+            db.lastUpdated > oneHourAgo
+        );
+        if (recentDuplicate) {
+            showSnackbar("Similar entry added recently. Check for duplicates.", "warning");
+        }
+    }
     let newEntry = {
         id: editInvId || generateUniqueId(),
         date,
@@ -116,7 +180,72 @@ function buildUnifiedItemHTML(inv) {
             </div>`;
 }
 
-function renderListToContainer(arr, containerId) { let html = arr.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : arr.map(buildUnifiedItemHTML).join(''); let container = document.getElementById(containerId); if (container) { container.innerHTML = html; attachSwipeListeners(container); } }
+function getEmptyStateHTML(context = 'default') {
+    const emptyStates = {
+        default: {
+            icon: 'inbox',
+            title: 'No Entries Yet',
+            subtitle: 'Start tracking your wealth journey',
+            action: { text: 'Add First Entry', icon: 'add', onclick: 'openInvestSheet()' }
+        },
+        dashboard: {
+            icon: 'account_balance_wallet',
+            title: 'Welcome to TrackInvest',
+            subtitle: 'Your financial journey starts here. Add your first investment to see your portfolio grow.',
+            action: { text: 'Add Investment', icon: 'add_circle', onclick: 'openInvestSheet()' }
+        },
+        history: {
+            icon: 'history',
+            title: 'No Transaction History',
+            subtitle: 'Your investment history will appear here',
+            action: { text: 'Log Investment', icon: 'edit_note', onclick: 'openInvestSheet()' }
+        },
+        portfolio: {
+            icon: 'pie_chart',
+            title: 'Portfolio is Empty',
+            subtitle: 'Add investments across different categories to build a diversified portfolio',
+            action: { text: 'Start Investing', icon: 'trending_up', onclick: 'openInvestSheet()' }
+        },
+        goals: {
+            icon: 'flag',
+            title: 'No Goals Set',
+            subtitle: 'Set financial goals to track your progress towards financial freedom',
+            action: { text: 'Create Goal', icon: 'target', onclick: 'openGoalSheet()' }
+        },
+        recurring: {
+            icon: 'autorenew',
+            title: 'No Recurring SIPs',
+            subtitle: 'Set up automatic monthly investments to build wealth consistently',
+            action: { text: 'Add SIP', icon: 'schedule', onclick: 'openInvestSheet(); setTimeout(()=>document.getElementById(\'inv-is-monthly\').checked=true, 100)' }
+        },
+        dividend: {
+            icon: 'payments',
+            title: 'No Passive Income Yet',
+            subtitle: 'Mark investments as dividends to track your passive income stream',
+            action: { text: 'Add Dividend', icon: 'payments', onclick: 'openInvestSheet(); setTimeout(()=>document.getElementById(\'inv-dividend\').checked=true, 100)' }
+        }
+    };
+    
+    const state = emptyStates[context] || emptyStates.default;
+    return `<div class="empty-state-premium" style="padding: 40px 24px; text-align: center;">
+        <span class="material-symbols-rounded" style="font-size: 48px; color: var(--md-outline); margin-bottom: 16px;">${state.icon}</span>
+        <div class="es-title" style="font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--md-on-surface);">${state.title}</div>
+        <div style="font-size: 14px; color: var(--md-on-surface-variant); margin-bottom: 24px; max-width: 280px; margin-left: auto; margin-right: auto;">${state.subtitle}</div>
+        <button class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px;" onclick="${state.action.onclick}">
+            <span class="material-symbols-rounded" style="font-size: 18px;">${state.action.icon}</span>
+            ${state.action.text}
+        </button>
+    </div>`;
+}
+
+function renderListToContainer(arr, containerId, context = 'default') { 
+    let html = arr.length === 0 ? getEmptyStateHTML(context) : arr.map(buildUnifiedItemHTML).join(''); 
+    let container = document.getElementById(containerId); 
+    if (container) { 
+        container.innerHTML = html; 
+        attachSwipeListeners(container); 
+    } 
+}
 
 function renderHistory() {
     let searchEl = document.getElementById("search-history"), filterEl = document.getElementById("ledger-filter-type"); if (!searchEl || !filterEl) return;
@@ -149,15 +278,16 @@ function renderHistory() {
     let html = '';
     if (window.ledgerSort === 'date') {
         let groups = {}; filtered.forEach(inv => { let dStr = new Date(inv.date).toLocaleString('default', { month: 'long', year: 'numeric' }); if (!groups[dStr]) groups[dStr] = []; groups[dStr].push(inv); });
-        html = Object.keys(groups).length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : Object.keys(groups).map(m => `<div class="ledger-month-header">${m}</div>` + groups[m].map(buildUnifiedItemHTML).join('')).join('');
+        html = Object.keys(groups).length === 0 ? getEmptyStateHTML('history') : Object.keys(groups).map(m => `<div class="ledger-month-header">${m}</div>` + groups[m].map(buildUnifiedItemHTML).join('')).join('');
     } else {
-        html = filtered.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">inbox</span><div class="es-title">No Entries</div></div>` : filtered.map(buildUnifiedItemHTML).join('');
+        html = filtered.length === 0 ? getEmptyStateHTML('history') : filtered.map(buildUnifiedItemHTML).join('');
     }
     let container = document.getElementById('ledger-history-list'); if (container) { container.innerHTML = html; attachSwipeListeners(container); }
 }
 window.renderHistory = renderHistory;
 window.buildUnifiedItemHTML = buildUnifiedItemHTML;
 window.attachSwipeListeners = attachSwipeListeners;
+window.getEmptyStateHTML = getEmptyStateHTML;
 
 function attachSwipeListeners(cE) {
     if (!cE) return; let sX = 0, sY = 0, cX = 0, aI = null, isSw = false;
@@ -314,15 +444,79 @@ function openMonthDetails(offset) {
 
 function openSettings() {
     haptic(30);
-    document.getElementById('settings-salary').value = db.userProfile.salary || '';
-    document.getElementById('settings-regime').value = db.userProfile.regime || 'new';
-    document.getElementById('settings-expenses').value = db.userProfile.monthlyExpense || '';
-    document.getElementById('settings-pin').value = db.appPin || '';
-    document.getElementById('gemini-api-key').value = db.geminiKey || '';
-    document.getElementById('groq-api-key').value = db.groqKey || '';
+    
+    // Group settings into organized sections
+    const settingsData = {
+        profile: {
+            salary: db.userProfile.salary || '',
+            regime: db.userProfile.regime || 'new',
+            expenses: db.userProfile.monthlyExpense || ''
+        },
+        security: {
+            pin: db.appPin || '',
+            useBiometric: db.useBiometric || false
+        },
+        ai: {
+            geminiKey: db.geminiKey || '',
+            groqKey: db.groqKey || ''
+        }
+    };
+    
+    // Populate form fields
+    const salaryEl = document.getElementById('settings-salary');
+    const regimeEl = document.getElementById('settings-regime');
+    const expensesEl = document.getElementById('settings-expenses');
+    const pinEl = document.getElementById('settings-pin');
+    const geminiEl = document.getElementById('gemini-api-key');
+    const groqEl = document.getElementById('groq-api-key');
+    const biometricEl = document.getElementById('use-biometric-toggle');
+    
+    if (salaryEl) salaryEl.value = settingsData.profile.salary;
+    if (regimeEl) regimeEl.value = settingsData.profile.regime;
+    if (expensesEl) expensesEl.value = settingsData.profile.expenses;
+    if (pinEl) pinEl.value = settingsData.security.pin;
+    if (geminiEl) geminiEl.value = settingsData.ai.geminiKey;
+    if (groqEl) groqEl.value = settingsData.ai.groqKey;
+    if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
+    
+    // Update settings UI with helpful tips
+    updateSettingsHelpText();
+    
+    openSheet('settings-sheet');
+}
 
-    let accHtml = ""; db.accounts.forEach((a, idx) => { let delBtn = idx === 0 ? '' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteAccount('${a}')">delete</span>`; accHtml += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span>${a}</span>${delBtn}</div>`; }); document.getElementById('account-list').innerHTML = accHtml;
+function updateSettingsHelpText() {
+    // Add/Update help text for various settings
+    const helpTexts = [
+        { id: 'salary-help', text: 'Used to calculate savings rate and tax estimates', after: 'settings-salary' },
+        { id: 'pin-help', text: '4-digit PIN for app lock. Leave empty to disable.', after: 'settings-pin' },
+        { id: 'api-help', text: 'Get keys from: Groq (groq.com) or Gemini (makersuite.google.com)', after: 'gemini-api-key' }
+    ];
+    
+    helpTexts.forEach(help => {
+        let el = document.getElementById(help.id);
+        const target = document.getElementById(help.after);
+        if (target && !el) {
+            el = document.createElement('div');
+            el.id = help.id;
+            el.style.cssText = 'font-size:11px;color:var(--md-outline);margin-top:4px;margin-bottom:12px;';
+            el.textContent = help.text;
+            target.parentNode.insertBefore(el, target.nextSibling);
+        }
+    });
+}
 
+function renderSettingsSections() {
+    // Accounts section
+    let accHtml = "";
+    db.accounts.forEach((a, idx) => {
+        let delBtn = idx === 0 ? '' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteAccount('${a}')">delete</span>`;
+        accHtml += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span>${a}</span>${delBtn}</div>`;
+    });
+    let accList = document.getElementById('account-list');
+    if (accList) accList.innerHTML = accHtml;
+
+    // Categories section
     let catHtml = "";
     Object.keys(db.categories).forEach(c => {
         let isDefault = defaultCategories.includes(c);
@@ -350,11 +544,26 @@ function openSettings() {
             </div>
         </div>`;
     });
-    document.getElementById('category-crud-list').innerHTML = catHtml;
+    let catList = document.getElementById('category-crud-list');
+    if (catList) catList.innerHTML = catHtml;
 
-    let badgeHtml = ""; milestoneThresholds.forEach(t => { let unlocked = db.milestones.includes(t.val); if (unlocked) badgeHtml += `<div class="badge-item"><span class="material-symbols-rounded">workspace_premium</span> ${t.label}</div>`; else badgeHtml += `<div class="badge-item locked"><span class="material-symbols-rounded">lock</span> ${t.label}</div>`; }); document.getElementById('badge-grid').innerHTML = badgeHtml;
-    openSheet('settings-sheet');
+    // Badges section
+    let badgeHtml = "";
+    milestoneThresholds.forEach(t => {
+        let unlocked = db.milestones.includes(t.val);
+        if (unlocked) badgeHtml += `<div class="badge-item"><span class="material-symbols-rounded">workspace_premium</span> ${t.label}</div>`;
+        else badgeHtml += `<div class="badge-item locked"><span class="material-symbols-rounded">lock</span> ${t.label}</div>`;
+    });
+    let badgeGrid = document.getElementById('badge-grid');
+    if (badgeGrid) badgeGrid.innerHTML = badgeHtml;
 }
+
+// Call renderSettingsSections after opening settings
+const originalOpenSettings = openSettings;
+openSettings = function() {
+    originalOpenSettings();
+    renderSettingsSections();
+};
 window.openSettings = openSettings;
 
 function updateCategorySetting(cat, key, val) {
@@ -412,57 +621,243 @@ function toggleBiometric() {
     saveData();
     showSnackbar(db.useBiometric ? "Biometric Enabled" : "Biometric Disabled");
 }
+// App Lock System with Biometric, PIN fallback, rate limiting, and auto-lock
+let appLockState = {
+    failedAttempts: 0,
+    lockoutEndTime: null,
+    lastActivity: Date.now(),
+    autoLockTimer: null
+};
+
+const LOCKOUT_DURATION = 5 * 60 * 1000; // 5 minutes
+const MAX_ATTEMPTS = 5;
+const AUTO_LOCK_DELAY = 5 * 60 * 1000; // 5 minutes of inactivity
+
 async function checkAppLock() {
-    if (db.appPin) {
-        if (sessionStorage.getItem('appUnlocked') === 'true') {
-            const lockScreen = document.getElementById('app-lock-screen');
-            if (lockScreen) lockScreen.style.display = 'none';
-            return true;
-        }
-        const lockScreen = document.getElementById('app-lock-screen');
-        if (lockScreen) lockScreen.style.display = 'flex';
-
-        if (db.useBiometric && window.PublicKeyCredential) {
-            try {
-                const cred = await navigator.credentials.get({
-                    publicKey: { challenge: new Uint8Array(16), timeout: 60000, allowCredentials: [] }
-                }).catch(() => null);
-
-                if (cred) {
-                    sessionStorage.setItem('appUnlocked', 'true');
-                    if (lockScreen) lockScreen.style.display = 'none';
-                    return true;
-                }
-            } catch (e) {
-                console.log("Biometric auth failed or cancelled", e);
-            }
-        }
-        return false;
-    } else {
-        const lockScreen = document.getElementById('app-lock-screen');
-        if (lockScreen) lockScreen.style.display = 'none';
+    if (!db.appPin) {
+        hideLockScreen();
         return true;
     }
-}
-function unlockApp() {
-    let pin = document.getElementById('pin-input-auth').value;
-    if (pin === db.appPin) {
-        haptic(50);
-        sessionStorage.setItem('appUnlocked', 'true');
-        document.getElementById('app-lock-screen').style.display = 'none';
-        document.getElementById('pin-input-auth').value = '';
-
-        // Restore last active sheet if any
-        let lastSheet = sessionStorage.getItem('currentSheet');
-        if (lastSheet) {
-            openSheet(lastSheet);
+    
+    // Check if already unlocked in this session
+    if (sessionStorage.getItem('appUnlocked') === 'true') {
+        hideLockScreen();
+        startAutoLockTimer();
+        return true;
+    }
+    
+    // Check lockout
+    if (appLockState.lockoutEndTime && Date.now() < appLockState.lockoutEndTime) {
+        const remaining = Math.ceil((appLockState.lockoutEndTime - Date.now()) / 1000);
+        updateLockScreenMessage(`Too many attempts. Try again in ${remaining}s`);
+        showLockScreen();
+        return false;
+    }
+    
+    showLockScreen();
+    
+    // Try biometric first if enabled
+    if (db.useBiometric && window.PublicKeyCredential) {
+        try {
+            const result = await attemptBiometricAuth();
+            if (result) {
+                unlockSuccess();
+                return true;
+            }
+        } catch (e) {
+            console.log("Biometric auth failed, falling back to PIN", e);
         }
-    } else {
-        haptic([50, 50]);
-        showSnackbar("Incorrect PIN", "error");
-        document.getElementById('pin-input-auth').value = '';
+    }
+    
+    // Focus PIN input for manual entry
+    setTimeout(() => {
+        const pinInput = document.getElementById('pin-input-auth');
+        if (pinInput) pinInput.focus();
+    }, 300);
+    
+    return false;
+}
+
+async function attemptBiometricAuth() {
+    try {
+        const cred = await navigator.credentials.get({
+            publicKey: { 
+                challenge: new Uint8Array(32),
+                timeout: 30000,
+                allowCredentials: [],
+                userVerification: 'required'
+            }
+        });
+        return !!cred;
+    } catch (e) {
+        return false;
     }
 }
+
+function showLockScreen() {
+    const lockScreen = document.getElementById('app-lock-screen');
+    if (!lockScreen) return;
+    
+    // Update lock screen UI with biometric option if available
+    const biometricBtn = document.getElementById('biometric-auth-btn') || createBiometricButton();
+    
+    lockScreen.style.display = 'flex';
+    lockScreen.classList.add('active');
+    
+    // Update message based on state
+    updateLockScreenMessage('Enter your 4-digit PIN');
+}
+
+function hideLockScreen() {
+    const lockScreen = document.getElementById('app-lock-screen');
+    if (lockScreen) {
+        lockScreen.style.display = 'none';
+        lockScreen.classList.remove('active');
+    }
+}
+
+function createBiometricButton() {
+    const btn = document.createElement('button');
+    btn.id = 'biometric-auth-btn';
+    btn.className = 'icon-btn';
+    btn.style.cssText = 'width:56px;height:56px;border-radius:50%;background:var(--md-primary-container);margin-top:16px;';
+    btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">fingerprint</span>';
+    btn.onclick = async () => {
+        const result = await attemptBiometricAuth();
+        if (result) {
+            unlockSuccess();
+        } else {
+            showSnackbar('Biometric authentication failed', 'error');
+        }
+    };
+    
+    const lockScreen = document.getElementById('app-lock-screen');
+    if (lockScreen) {
+        const pinSection = lockScreen.querySelector('div') || lockScreen;
+        pinSection.appendChild(btn);
+    }
+    return btn;
+}
+
+function updateLockScreenMessage(msg) {
+    const msgEl = document.getElementById('lock-screen-message');
+    if (msgEl) {
+        msgEl.textContent = msg;
+    } else {
+        const lockScreen = document.getElementById('app-lock-screen');
+        if (lockScreen) {
+            const h2 = lockScreen.querySelector('h2');
+            const newMsg = document.createElement('div');
+            newMsg.id = 'lock-screen-message';
+            newMsg.style.cssText = 'font-size:14px;color:var(--md-error);margin:8px 0;text-align:center;';
+            newMsg.textContent = msg;
+            if (h2) h2.after(newMsg);
+        }
+    }
+}
+
+function unlockApp() {
+    // Check lockout
+    if (appLockState.lockoutEndTime && Date.now() < appLockState.lockoutEndTime) {
+        const remaining = Math.ceil((appLockState.lockoutEndTime - Date.now()) / 1000);
+        updateLockScreenMessage(`Locked. Try again in ${remaining}s`);
+        haptic([100, 100, 100]);
+        return;
+    }
+    
+    let pin = document.getElementById('pin-input-auth').value;
+    
+    // Validate PIN format
+    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+        updateLockScreenMessage('Enter a valid 4-digit PIN');
+        haptic([50, 50]);
+        return;
+    }
+    
+    if (pin === db.appPin) {
+        unlockSuccess();
+    } else {
+        handleFailedAttempt();
+    }
+}
+
+function unlockSuccess() {
+    haptic(50);
+    appLockState.failedAttempts = 0;
+    appLockState.lockoutEndTime = null;
+    sessionStorage.setItem('appUnlocked', 'true');
+    hideLockScreen();
+    
+    const pinInput = document.getElementById('pin-input-auth');
+    if (pinInput) pinInput.value = '';
+    
+    updateLockScreenMessage('Enter your 4-digit PIN');
+    
+    // Restore last active sheet if any
+    let lastSheet = sessionStorage.getItem('currentSheet');
+    if (lastSheet) {
+        setTimeout(() => openSheet(lastSheet), 100);
+    }
+    
+    startAutoLockTimer();
+    showSnackbar('Welcome back!', 'check_circle');
+}
+
+function handleFailedAttempt() {
+    appLockState.failedAttempts++;
+    const remaining = MAX_ATTEMPTS - appLockState.failedAttempts;
+    
+    haptic([100, 50, 100]);
+    
+    if (remaining <= 0) {
+        appLockState.lockoutEndTime = Date.now() + LOCKOUT_DURATION;
+        updateLockScreenMessage(`Too many attempts. Locked for 5 minutes.`);
+        showSnackbar('Too many failed attempts. App locked for 5 minutes.', 'error');
+    } else {
+        updateLockScreenMessage(`Incorrect PIN. ${remaining} attempts remaining.`);
+        showSnackbar(`Incorrect PIN. ${remaining} attempts remaining.`, 'warning');
+    }
+    
+    const pinInput = document.getElementById('pin-input-auth');
+    if (pinInput) {
+        pinInput.value = '';
+        pinInput.classList.add('shake');
+        setTimeout(() => pinInput.classList.remove('shake'), 500);
+    }
+}
+
+function startAutoLockTimer() {
+    if (appLockState.autoLockTimer) {
+        clearTimeout(appLockState.autoLockTimer);
+    }
+    
+    appLockState.lastActivity = Date.now();
+    
+    appLockState.autoLockTimer = setInterval(() => {
+        if (Date.now() - appLockState.lastActivity > AUTO_LOCK_DELAY) {
+            lockApp();
+        }
+    }, 30000); // Check every 30 seconds
+}
+
+function updateActivity() {
+    appLockState.lastActivity = Date.now();
+}
+
+function lockApp() {
+    sessionStorage.removeItem('appUnlocked');
+    checkAppLock();
+    showSnackbar('App locked due to inactivity', 'info');
+}
+
+// Track user activity
+['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+    document.addEventListener(event, updateActivity, { passive: true });
+});
+
+window.checkAppLock = checkAppLock;
+window.unlockApp = unlockApp;
+window.lockApp = lockApp;
 async function encryptData(jsonStr, pin) {
     if (!pin) return btoa(encodeURIComponent(jsonStr));
     const enc = new TextEncoder();
@@ -623,7 +1018,22 @@ function calculateXIRR() {
     let filteredInvs = db.investments.filter(i => i.type === category && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
 
     if (filteredInvs.length === 0) {
-        document.getElementById('xirr-result').innerText = "No investments in this category.";
+        document.getElementById('xirr-result').innerHTML = `<div style="color:var(--md-outline); text-align:center; padding:20px;"><span class="material-symbols-rounded" style="font-size:32px; display:block; margin-bottom:8px;">inbox</span>No investments in this category.</div>`;
+        return;
+    }
+
+    // Check for all-dividend case (no actual investments)
+    let hasInvestments = filteredInvs.some(i => !i.isDividend);
+    let allDividends = filteredInvs.every(i => i.isDividend);
+    
+    if (allDividends) {
+        let totalDividends = filteredInvs.reduce((s, i) => s + i.amount, 0);
+        document.getElementById('xirr-result').innerHTML = `
+            <div style="text-align:center; padding:16px;">
+                <div style="font-size:14px; color:var(--md-outline); margin-bottom:8px;">📥 Dividend/Income Category</div>
+                <div style="font-size:28px; font-weight:600; color:var(--md-success);">${formatMoney(totalDividends)}</div>
+                <div style="font-size:12px; color:var(--md-outline); margin-top:8px;">Total passive income received</div>
+            </div>`;
         return;
     }
 
@@ -646,10 +1056,36 @@ function calculateXIRR() {
         cashFlows.push({ amount: currentValue, date: new Date() });
     }
 
-    if (cashFlows.length < 2) {
-        document.getElementById('xirr-result').innerText = "Need at least two data points (e.g., investment and current value).";
+    // Filter out zero amounts
+    cashFlows = cashFlows.filter(cf => cf.amount !== 0);
+
+    // Check for single transaction case
+    let nonDividendFlows = cashFlows.filter(cf => cf.amount < 0);
+    if (nonDividendFlows.length === 1 && cashFlows.length < 2) {
+        let holdingDays = (new Date() - nonDividendFlows[0].date) / (1000 * 60 * 60 * 24);
+        let invested = Math.abs(nonDividendFlows[0].amount);
+        let current = currentValue || invested;
+        let simpleReturn = ((current - invested) / invested) * 100;
+        
+        document.getElementById('xirr-result').innerHTML = `
+            <div style="text-align:center; padding:16px;">
+                <div style="font-size:12px; color:var(--md-outline); margin-bottom:8px;">📊 Single Investment (XIRR not applicable)</div>
+                <div style="font-size:24px; font-weight:600; color:var(--md-primary);">${simpleReturn.toFixed(2)}%</div>
+                <div style="font-size:12px; color:var(--md-outline); margin-top:8px;">${holdingDays.toFixed(0)} days • Simple Return</div>
+                <div style="font-size:11px; color:var(--md-primary); margin-top:12px; padding:8px; background:var(--md-primary-container); border-radius:8px;">Add more transactions to see XIRR</div>
+            </div>`;
         return;
     }
+
+    if (cashFlows.length < 2) {
+        document.getElementById('xirr-result').innerHTML = `<div style="color:var(--md-outline); text-align:center; padding:20px;">Need at least one investment and current value to calculate returns.</div>`;
+        return;
+    }
+
+    // Check holding period - warn if very short
+    let firstInvestmentDate = cashFlows.filter(cf => cf.amount < 0).reduce((min, cf) => cf.date < min ? cf.date : min, new Date());
+    let holdingDays = (new Date() - firstInvestmentDate) / (1000 * 60 * 60 * 24);
+    let shortPeriodWarning = holdingDays < 30 ? `<div style="font-size:11px; color:var(--md-warning); margin-top:8px;">⚠️ Short holding period (${holdingDays.toFixed(0)} days) - returns may be volatile</div>` : '';
 
     // Sort flows by date
     cashFlows.sort((a, b) => a.date - b.date);
@@ -679,7 +1115,7 @@ function calculateXIRR() {
             }
 
             if (Math.abs(f) < precision) return guess;
-            if (Math.abs(df) < 1e-10) break; // Derivative too small, switch to binary search
+            if (Math.abs(df) < 1e-10) break;
 
             let nextGuess = guess - f / df;
             if (isNaN(nextGuess) || !isFinite(nextGuess)) break;
@@ -688,7 +1124,7 @@ function calculateXIRR() {
         }
 
         // Binary search fallback for robust convergence
-        let low = -0.9999, high = 10; // Allow up to -99.99% loss to 1000% gain
+        let low = -0.9999, high = 10;
         let bestGuess = guess;
         let bestError = Math.abs(npv(flows, guess));
 
@@ -704,7 +1140,6 @@ function calculateXIRR() {
 
             if (Math.abs(midVal) < precision) return mid;
 
-            // Narrow the range
             if (midVal * lowVal < 0) {
                 high = mid;
             } else {
@@ -716,14 +1151,51 @@ function calculateXIRR() {
     };
 
     let result = irr(cashFlows);
-    // Handle total loss case (-100%)
-    let resultText;
-    if (result <= -0.9999) {
-        resultText = '-100.00%';
+    
+    // Handle different return scenarios with better messaging
+    let resultText, colorClass, message;
+    if (result <= -0.99) {
+        resultText = '-99.99%';
+        colorClass = 'var(--md-error)';
+        message = 'Significant loss - review investment';
+    } else if (result < -0.5) {
+        resultText = (result * 100).toFixed(2) + '%';
+        colorClass = 'var(--md-error)';
+        message = 'Major decline - assess strategy';
+    } else if (result < 0) {
+        resultText = (result * 100).toFixed(2) + '%';
+        colorClass = 'var(--md-error)';
+        message = 'Temporary dip';
+    } else if (result === 0) {
+        resultText = '0.00%';
+        colorClass = 'var(--md-on-surface-variant)';
+        message = 'Break-even';
+    } else if (result < 0.08) {
+        resultText = (result * 100).toFixed(2) + '%';
+        colorClass = 'var(--md-success)';
+        message = 'Moderate returns';
+    } else if (result < 0.15) {
+        resultText = (result * 100).toFixed(2) + '%';
+        colorClass = 'var(--md-success)';
+        message = 'Strong performance';
     } else {
         resultText = (result * 100).toFixed(2) + '%';
+        colorClass = 'var(--md-success)';
+        message = 'Exceptional returns!';
     }
-    document.getElementById('xirr-result').innerHTML = `XIRR: <strong style="color:var(--md-primary); font-size:24px;">${resultText}</strong>`;
+    
+    // Calculate annualized for multi-year
+    let years = holdingDays / 365.25;
+    let annualizedNote = years >= 1 ? `<div style="font-size:11px; color:var(--md-outline); margin-top:4px;">Annualized over ${years.toFixed(1)} years</div>` : '';
+    
+    document.getElementById('xirr-result').innerHTML = `
+        <div style="text-align:center; padding:16px;">
+            <div style="font-size:14px; color:var(--md-outline); margin-bottom:8px;">XIRR</div>
+            <div style="font-size:32px; font-weight:600; color:${colorClass};">${resultText}</div>
+            <div style="font-size:12px; color:var(--md-outline); margin-top:8px;">${message}</div>
+            ${annualizedNote}
+            ${shortPeriodWarning}
+        </div>`;
 }
 function calculateMonthlySIP() { 
     let target = parseFloat(document.getElementById('sip-target').value); 
@@ -860,32 +1332,202 @@ function formatAIResponse(text) {
     // 1. Initial Clean: Remove AI code fences if present
     let formatted = text.replace(/```(html|markdown)?|```/gi, '').trim();
 
-    // 1b. ESCAPE raw HTML to prevent XSS — must happen before markdown processing
+    // 2. Process TABLES - Markdown table format | Col1 | Col2 |
+    formatted = processAITables(formatted);
+    
+    // 3. Process CHARTS - Special [CHART: type data] format
+    formatted = processAICharts(formatted);
+    
+    // 4. Process PROGRESS BARS - [PROGRESS: value% label]
+    formatted = processAIProgress(formatted);
+    
+    // 5. Process CALLOUTS - [!INFO], [!WARNING], [!TIP]
+    formatted = processAICallouts(formatted);
+
+    // 6. ESCAPE raw HTML to prevent XSS
     formatted = escapeHtml(formatted);
 
-    // 1c. Strip dangerous patterns from escaped text (event handlers, javascript: URIs)
+    // 7. Strip dangerous patterns
     formatted = formatted.replace(/\bon\w+\s*=/gi, '').replace(/javascript\s*:/gi, '');
 
-    // 2. PROCESS MARKDOWN (Headers, Lists, Blockquotes) on escaped text
+    // 8. Process MARKDOWN on escaped text
     formatted = formatted
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^&gt; (.*$)/gim, '<blockquote>$1</blockquote>')
-        // Process Lists
-        .replace(/^\* (.*$)/gim, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
-        .replace(/<\/ul>\s*<ul>/g, '')
-        // Links — only allow safe protocols (http/https)
-        .replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        .replace(/^### (.*$)/gim, '<h3 style="margin:16px 0 8px;color:var(--md-on-surface-variant);font-size:16px;">$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2 style="margin:20px 0 10px;color:var(--md-on-surface);font-size:18px;font-weight:600;">$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1 style="margin:24px 0 12px;color:var(--md-primary);font-size:20px;font-weight:700;">$1</h1>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:var(--md-on-surface);font-weight:600;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="color:var(--md-on-surface-variant);">$1</em>')
+        .replace(/^&gt; (.*$)/gim, '<blockquote style="border-left:3px solid var(--md-primary);padding-left:12px;margin:12px 0;color:var(--md-on-surface-variant);font-style:italic;">$1</blockquote>')
+        .replace(/^\* (.*$)/gim, '<li style="margin:4px 0;padding-left:8px;">$1</li>')
+        .replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul style="margin:12px 0;padding-left:20px;list-style-type:disc;">$&</ul>')
+        .replace(/<\/ul>\s*<ul[^>]*>/g, '')
+        .replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--md-primary);text-decoration:underline;">$1</a>');
 
-    // 3. PRESERVE SPACING (Only for non-HTML elements)
+    // 9. Process inline code
+    formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:90%;">$1</code>');
+
+    // 10. PRESERVE SPACING
     return formatted.split('\n').map(line => {
-        if (line.startsWith('<') || line.endsWith('>')) return line;
-        return line.trim() === '' ? '<br>' : `<p>${line}</p>`;
+        if (line.trim().startsWith('<') || line.trim().endsWith('>')) return line;
+        if (line.trim() === '') return '<div style="height:8px;"></div>';
+        return `<p style="margin:8px 0;line-height:1.5;">${line}</p>`;
     }).join('');
+}
+
+// Process AI-generated tables
+function processAITables(text) {
+    // Match markdown tables: | Header1 | Header2 | ...\n|-------|-------|...\n| Data | Data |
+    const tableRegex = /\|(.+)\|\n\|[-\s|]+\|\n((?:\|.+\|\n?)+)/g;
+    return text.replace(tableRegex, (match, headers, rows) => {
+        const headerCells = headers.split('|').map(h => h.trim()).filter(h => h);
+        const rowLines = rows.trim().split('\n');
+        
+        let tableHtml = '<div style="overflow-x:auto;margin:16px 0;border-radius:12px;border:1px solid var(--md-outline-variant);"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        
+        // Headers
+        tableHtml += '<thead><tr style="background:var(--md-primary-container);">';
+        headerCells.forEach(h => {
+            tableHtml += `<th style="padding:12px;text-align:left;color:var(--md-on-primary-container);font-weight:600;border-bottom:2px solid var(--md-outline-variant);">${h}</th>`;
+        });
+        tableHtml += '</tr></thead><tbody>';
+        
+        // Rows
+        rowLines.forEach((line, idx) => {
+            const cells = line.split('|').map(c => c.trim()).filter(c => c);
+            const bg = idx % 2 === 0 ? 'var(--md-surface)' : 'var(--md-surface-container-low)';
+            tableHtml += `<tr style="background:${bg};">`;
+            cells.forEach(c => {
+                tableHtml += `<td style="padding:10px 12px;border-bottom:1px solid var(--md-outline-variant);color:var(--md-on-surface);">${c}</td>`;
+            });
+            tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</tbody></table></div>';
+        return tableHtml;
+    });
+}
+
+// Process AI-generated charts using simple HTML/CSS
+function processAICharts(text) {
+    // Match [CHART: bar data="10,20,30" labels="A,B,C" colors="#ff0000,#00ff00,#0000ff"]
+    const chartRegex = /\[CHART:\s*(\w+)\s+data="([^"]+)"(?:\s+labels="([^"]*)")?(?:\s+colors="([^"]*)")?\]/g;
+    
+    return text.replace(chartRegex, (match, type, dataStr, labelsStr, colorsStr) => {
+        const data = dataStr.split(',').map(v => parseFloat(v.trim()) || 0);
+        const labels = labelsStr ? labelsStr.split(',').map(l => l.trim()) : data.map((_, i) => i + 1);
+        const colors = colorsStr ? colorsStr.split(',').map(c => c.trim()) : generateChartColors(data.length);
+        
+        const max = Math.max(...data, 1);
+        const total = data.reduce((a, b) => a + b, 0);
+        
+        if (type === 'bar' || type === 'column') {
+            return renderAIBarChart(data, labels, colors, max);
+        } else if (type === 'pie' || type === 'donut') {
+            return renderAIPieChart(data, labels, colors, total);
+        } else if (type === 'progress') {
+            return renderAIProgressChart(data, labels, colors);
+        }
+        return match;
+    });
+}
+
+function renderAIBarChart(data, labels, colors, max) {
+    let bars = '';
+    data.forEach((val, i) => {
+        const pct = (val / max) * 100;
+        bars += `
+            <div style="display:flex;align-items:center;margin:6px 0;">
+                <div style="width:60px;font-size:11px;color:var(--md-on-surface-variant);text-align:right;padding-right:8px;flex-shrink:0;">${labels[i]}</div>
+                <div style="flex:1;background:var(--md-surface-container-highest);border-radius:4px;height:24px;position:relative;overflow:hidden;">
+                    <div style="width:${pct}%;background:${colors[i % colors.length]};height:100%;border-radius:4px;transition:width 0.5s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;">
+                        <span style="font-size:10px;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);">${val}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+    return `<div style="margin:16px 0;padding:16px;background:var(--md-surface-container-low);border-radius:12px;">${bars}</div>`;
+}
+
+function renderAIPieChart(data, labels, colors, total) {
+    let slices = [];
+    let currentAngle = 0;
+    
+    data.forEach((val, i) => {
+        const pct = (val / total) * 100;
+        const angle = (val / total) * 360;
+        slices.push({ val, pct, angle, color: colors[i % colors.length], label: labels[i] });
+    });
+    
+    // Create simple legend-based visualization
+    let legend = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;margin-top:12px;">';
+    slices.forEach(s => {
+        legend += `
+            <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--md-surface);border-radius:8px;">
+                <div style="width:12px;height:12px;border-radius:50%;background:${s.color};flex-shrink:0;"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;color:var(--md-on-surface);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.label}</div>
+                    <div style="font-size:10px;color:var(--md-on-surface-variant);">${s.pct.toFixed(1)}% (${s.val})</div>
+                </div>
+            </div>`;
+    });
+    legend += '</div>';
+    
+    return `<div style="margin:16px 0;padding:16px;background:var(--md-surface-container-low);border-radius:12px;">
+        <div style="font-size:14px;font-weight:600;color:var(--md-on-surface);margin-bottom:12px;text-align:center;">Total: ${total}</div>
+        ${legend}
+    </div>`;
+}
+
+function generateChartColors(count) {
+    const base = ['#6750A4', '#006874', '#B3261E', '#D96200', '#0288D1', '#4CAF50', '#FF9800', '#9C27B0'];
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+        colors.push(base[i % base.length]);
+    }
+    return colors;
+}
+
+// Process progress indicators
+function processAIProgress(text) {
+    const progressRegex = /\[PROGRESS:\s*(\d+(?:\.\d+)?)%\s*([^\]]*)\]/g;
+    return text.replace(progressRegex, (match, value, label) => {
+        const num = parseFloat(value);
+        const color = num >= 80 ? 'var(--md-success)' : num >= 50 ? 'var(--md-primary)' : num >= 25 ? 'var(--md-warning)' : 'var(--md-error)';
+        return `<div style="margin:12px 0;">
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;color:var(--md-on-surface-variant);">
+                <span>${label.trim()}</span>
+                <span style="font-weight:600;color:${color};">${num}%</span>
+            </div>
+            <div style="height:8px;background:var(--md-surface-container-highest);border-radius:4px;overflow:hidden;">
+                <div style="width:${num}%;height:100%;background:${color};border-radius:4px;transition:width 0.5s;"></div>
+            </div>
+        </div>`;
+    });
+}
+
+// Process callout boxes
+function processAICallouts(text) {
+    const callouts = {
+        'INFO': { icon: 'info', color: 'var(--md-primary)', bg: 'var(--md-primary-container)' },
+        'WARNING': { icon: 'warning', color: 'var(--md-warning)', bg: 'var(--md-warning-container)' },
+        'TIP': { icon: 'lightbulb', color: 'var(--md-success)', bg: 'var(--md-success-container)' },
+        'ERROR': { icon: 'error', color: 'var(--md-error)', bg: 'var(--md-error-container)' }
+    };
+    
+    let result = text;
+    Object.entries(callouts).forEach(([type, config]) => {
+        const regex = new RegExp(`\\[!${type}\\]([^\\n]*(?:\\n(?!!|\[|$)[^\\n]*)*)`, 'g');
+        result = result.replace(regex, (match, content) => {
+            return `<div style="margin:16px 0;padding:16px;background:${config.bg};border-radius:12px;border-left:4px solid ${config.color};">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span class="material-symbols-rounded" style="color:${config.color};font-size:20px;">${config.icon}</span>
+                    <span style="font-weight:600;color:${config.color};font-size:13px;text-transform:uppercase;letter-spacing:0.5px;">${type}</span>
+                </div>
+                <div style="color:var(--md-on-surface);line-height:1.5;">${content.trim()}</div>
+            </div>`;
+        });
+    });
+    return result;
 }
 
 function saveChatSession() {
@@ -907,6 +1549,386 @@ function saveChatSession() {
     openAIChat();
     showSnackbar("Session saved to history");
 }
+
+// ==========================================
+// 8.1 FLOATING AI CHAT BUBBLE
+// ==========================================
+let aiBubbleInitialized = false;
+let aiBubbleExpanded = false;
+
+function initAIFloatingBubble() {
+    if (aiBubbleInitialized) return;
+    
+    // Create floating bubble container
+    const bubble = document.createElement('div');
+    bubble.id = 'ai-floating-bubble';
+    bubble.innerHTML = `
+        <div id="ai-bubble-button" onclick="toggleAIBubble()">
+            <span class="material-symbols-rounded" id="ai-bubble-icon">smart_toy</span>
+            <span id="ai-bubble-badge" style="display:none;"></span>
+        </div>
+        <div id="ai-bubble-chat" style="display:none;">
+            <div id="ai-bubble-header">
+                <span class="material-symbols-rounded" style="color:var(--md-primary);">smart_toy</span>
+                <span>AI Assistant</span>
+                <div style="flex:1;"></div>
+                <button class="icon-btn" onclick="viewChatHistoryFromBubble()" title="History">
+                    <span class="material-symbols-rounded">history</span>
+                </button>
+                <button class="icon-btn" onclick="toggleAIBubble()" title="Close">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div id="ai-bubble-messages"></div>
+            <div id="ai-bubble-input-area">
+                <input type="text" id="ai-bubble-input" placeholder="Ask about your portfolio..." 
+                    onkeydown="if(event.key==='Enter')sendAIBubbleMessage()">
+                <button onclick="sendAIBubbleMessage()" id="ai-bubble-send">
+                    <span class="material-symbols-rounded">send</span>
+                </button>
+            </div>
+            <div id="ai-bubble-quick-actions">
+                <button onclick="sendBubbleQuick('How am I doing?')">Portfolio health</button>
+                <button onclick="sendBubbleQuick('What should I invest in?')">Invest tips</button>
+                <button onclick="sendBubbleQuick('Analyze my goals')">Goal check</button>
+            </div>
+        </div>
+    `;
+    
+    // Add styles
+    const style = document.createElement('style');
+    style.textContent = `
+        #ai-floating-bubble {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            font-family: 'Roboto', sans-serif;
+        }
+        #ai-bubble-button {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--md-elevation-3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+        #ai-bubble-button:hover {
+            transform: scale(1.05);
+            box-shadow: var(--md-elevation-4);
+        }
+        #ai-bubble-button:active {
+            transform: scale(0.95);
+        }
+        #ai-bubble-icon {
+            font-size: 28px;
+        }
+        #ai-bubble-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 20px;
+            height: 20px;
+            background: var(--md-error);
+            border-radius: 50%;
+            border: 2px solid var(--md-surface);
+        }
+        #ai-bubble-chat {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            width: 360px;
+            max-width: calc(100vw - 48px);
+            height: 480px;
+            max-height: calc(100vh - 120px);
+            background: var(--md-surface);
+            border-radius: 20px;
+            box-shadow: var(--md-elevation-4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: aiBubbleSlideIn 0.3s ease-out;
+        }
+        @keyframes aiBubbleSlideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        #ai-bubble-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: var(--md-on-surface);
+        }
+        #ai-bubble-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #ai-bubble-messages .user-msg {
+            align-self: flex-end;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            padding: 12px 16px;
+            border-radius: 16px 16px 4px 16px;
+            max-width: 85%;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        #ai-bubble-messages .ai-msg {
+            align-self: flex-start;
+            background: var(--md-surface-container-highest);
+            color: var(--md-on-surface);
+            padding: 12px 16px;
+            border-radius: 16px 16px 16px 4px;
+            max-width: 95%;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #ai-bubble-messages .ai-msg table {
+            font-size: 12px;
+            margin: 8px 0;
+        }
+        #ai-bubble-messages .ai-msg h1, 
+        #ai-bubble-messages .ai-msg h2,
+        #ai-bubble-messages .ai-msg h3 {
+            margin: 8px 0;
+        }
+        #ai-bubble-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid var(--md-outline-variant);
+            display: flex;
+            gap: 8px;
+        }
+        #ai-bubble-input {
+            flex: 1;
+            border: none;
+            background: var(--md-surface-container-highest);
+            padding: 12px 16px;
+            border-radius: 24px;
+            font-size: 14px;
+            outline: none;
+            color: var(--md-on-surface);
+        }
+        #ai-bubble-input::placeholder {
+            color: var(--md-on-surface-variant);
+        }
+        #ai-bubble-send {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--md-primary);
+            color: var(--md-on-primary);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        #ai-bubble-send:hover {
+            transform: scale(1.05);
+        }
+        #ai-bubble-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #ai-bubble-quick-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+            border-top: 1px solid var(--md-outline-variant);
+        }
+        #ai-bubble-quick-actions button {
+            white-space: nowrap;
+            padding: 8px 14px;
+            background: var(--md-surface-container-highest);
+            border: none;
+            border-radius: 16px;
+            font-size: 12px;
+            color: var(--md-primary);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #ai-bubble-quick-actions button:hover {
+            background: var(--md-primary-container);
+        }
+        #ai-bubble-typing {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+        }
+        #ai-bubble-typing span {
+            width: 8px;
+            height: 8px;
+            background: var(--md-outline);
+            border-radius: 50%;
+            animation: typingBounce 1.4s ease-in-out infinite;
+        }
+        #ai-bubble-typing span:nth-child(2) { animation-delay: 0.2s; }
+        #ai-bubble-typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+        @media (max-width: 480px) {
+            #ai-floating-bubble {
+                bottom: 16px;
+                right: 16px;
+            }
+            #ai-bubble-chat {
+                width: calc(100vw - 32px);
+                right: -8px;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(bubble);
+    
+    aiBubbleInitialized = true;
+}
+
+function toggleAIBubble() {
+    if (!aiBubbleInitialized) initAIFloatingBubble();
+    
+    const chat = document.getElementById('ai-bubble-chat');
+    const button = document.getElementById('ai-bubble-button');
+    
+    if (aiBubbleExpanded) {
+        chat.style.display = 'none';
+        button.style.display = 'flex';
+        aiBubbleExpanded = false;
+    } else {
+        haptic(30);
+        chat.style.display = 'flex';
+        renderAIBubbleMessages();
+        setTimeout(() => {
+            const input = document.getElementById('ai-bubble-input');
+            if (input) input.focus();
+        }, 100);
+        aiBubbleExpanded = true;
+    }
+}
+
+function renderAIBubbleMessages() {
+    const container = document.getElementById('ai-bubble-messages');
+    if (!container) return;
+    
+    if (db.chatHistory.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:var(--md-outline);">
+                <span class="material-symbols-rounded" style="font-size:48px;margin-bottom:16px;display:block;">smart_toy</span>
+                <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Hi! I'm your AI Assistant</div>
+                <div style="font-size:13px;">Ask me about your portfolio, goals, or investment strategies.</div>
+            </div>`;
+        return;
+    }
+    
+    container.innerHTML = db.chatHistory.map(m => {
+        const content = m.role === 'ai' ? formatAIResponse(m.content) : escapeHtml(m.content);
+        const className = m.role === 'ai' ? 'ai-msg' : 'user-msg';
+        return `<div class="${className}">${content}</div>`;
+    }).join('');
+    
+    container.scrollTop = container.scrollHeight;
+}
+
+async function sendAIBubbleMessage() {
+    const input = document.getElementById('ai-bubble-input');
+    const msg = input.value.trim();
+    if (!msg) return;
+    
+    if (!db.geminiKey && !db.groqKey) {
+        showSnackbar("Add API key in Settings → AI", "key");
+        return;
+    }
+    
+    // Add user message
+    db.chatHistory.push({ role: 'user', content: msg });
+    input.value = '';
+    renderAIBubbleMessages();
+    
+    // Show typing
+    const container = document.getElementById('ai-bubble-messages');
+    const typingId = 'typing-' + Date.now();
+    container.innerHTML += `<div class="ai-msg" id="${typingId}">
+        <div id="ai-bubble-typing"><span></span><span></span><span></span></div>
+    </div>`;
+    container.scrollTop = container.scrollHeight;
+    
+    // Build context-rich prompt
+    const historyStr = db.chatHistory.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    const portfolioData = JSON.stringify(currentTypeTotals);
+    const goalsData = JSON.stringify(db.goals.map(g => ({ name: g.name, target: g.target, saved: g.saved })));
+    const sipData = JSON.stringify(db.recurring.map(r => ({ type: r.type, amount: r.amount })));
+    
+    const prompt = `You are a personal financial advisor analyzing this user's portfolio.
+
+USER FINANCIAL DATA:
+- Net Worth: ₹${formatInr(currentTotalNW)}
+- Monthly Investment: ₹${formatInr(currentAvgMonthly)}
+- Portfolio Breakdown: ${portfolioData}
+- Financial Goals: ${goalsData}
+- Active SIPs: ${sipData}
+
+Recent conversation:
+${historyStr}
+
+User's new question: "${msg}"
+
+Provide a helpful, specific response using their actual financial data. 
+You can use these special formats:
+- Tables: | Header | Header | with | separators
+- Progress: [PROGRESS: 75% Goal Progress]
+- Charts: [CHART: bar data="10000,20000,30000" labels="Jan,Feb,Mar"]
+- Callouts: [!TIP] for tips, [!WARNING] for warnings, [!INFO] for info
+
+Keep it concise (2-3 paragraphs max) and actionable.`;
+
+    try {
+        const reply = await callAIApi(prompt, "You are a concise financial advisor. Use visual elements when helpful.");
+        document.getElementById(typingId).remove();
+        db.chatHistory.push({ role: 'ai', content: reply });
+        saveData();
+        renderAIBubbleMessages();
+        haptic([30, 50]);
+    } catch (e) {
+        document.getElementById(typingId).innerHTML = 'Sorry, I had trouble connecting. Check your API keys in Settings.';
+    }
+}
+
+function sendBubbleQuick(text) {
+    const input = document.getElementById('ai-bubble-input');
+    input.value = text;
+    sendAIBubbleMessage();
+}
+
+function viewChatHistoryFromBubble() {
+    toggleAIBubble(); // Close bubble
+    viewChatHistory(); // Open history sheet
+}
+
+// Initialize bubble on app load
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initAIFloatingBubble, 2000);
+}, { once: true });
+
+window.toggleAIBubble = toggleAIBubble;
+window.sendAIBubbleMessage = sendAIBubbleMessage;
+window.sendBubbleQuick = sendBubbleQuick;
+window.viewChatHistoryFromBubble = viewChatHistoryFromBubble;
 
 function updateChatHistoryUI() {
     let html = "";

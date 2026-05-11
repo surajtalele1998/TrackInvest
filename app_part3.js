@@ -42,35 +42,94 @@ function renderAIReportCharts(typeTotals) {
 async function downloadAIReport() {
     const element = document.getElementById('ai-sheet');
 
-    // 1. Ensure the element exists and is visible
-    if (!element || element.clientHeight === 0) {
-        console.error("Target element is missing or has 0 height.");
+    // 1. Ensure the element exists
+    if (!element) {
+        console.error("Target element 'ai-sheet' is missing.");
+        showSnackbar("Report element not found", "error");
+        return;
+    }
+
+    // 2. Temporarily make element visible for capture if hidden
+    const wasHidden = element.style.display === 'none';
+    const originalStyles = {
+        display: element.style.display,
+        position: element.style.position,
+        visibility: element.style.visibility,
+        zIndex: element.style.zIndex
+    };
+    
+    if (wasHidden) {
+        element.style.display = 'block';
+        element.style.position = 'fixed';
+        element.style.visibility = 'hidden';
+        element.style.zIndex = '-9999';
+        element.style.left = '0';
+        element.style.top = '0';
+        // Force layout calculation
+        element.offsetHeight;
+    }
+
+    // 3. Wait for charts to render
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Check dimensions
+    if (element.clientHeight === 0 || element.clientWidth === 0) {
+        console.error("Target element has 0 dimensions.", {
+            height: element.clientHeight,
+            width: element.clientWidth,
+            scrollHeight: element.scrollHeight
+        });
+        // Restore styles
+        Object.assign(element.style, originalStyles);
+        showSnackbar("Report content not ready", "error");
         return;
     }
 
     const opt = {
-        margin: 0.2,
-        filename: 'Wealth_Strategic_Audit.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
+        margin: [0.3, 0.3, 0.3, 0.3],
+        filename: `Wealth_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.95, compression: 'FAST' },
         html2canvas: {
-            scale: 1, // Lower this to 1 for testing to rule out memory issues
+            scale: 2,
             useCORS: true,
             allowTaint: true,
-            letterRendering: true
+            letterRendering: true,
+            logging: false,
+            windowWidth: 800,
+            windowHeight: element.scrollHeight + 100
         },
-        jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
     };
 
     try {
-        showSnackbar("Preparing Report...");
-        // 2. Use the Worker API (This is the most stable way)
-        await html2pdf().set(opt).from(element).toPdf().get('pdf').save().then(() => {
-            showSnackbar("Exporting Premium Report...");
+        showSnackbar("Generating PDF...", "hourglass_empty");
+        
+        // Make visible for capture
+        element.style.visibility = 'visible';
+        
+        // Generate PDF
+        const pdf = await html2pdf().set(opt).from(element).toPdf().get('pdf');
+        
+        // Add metadata
+        pdf.setProperties({
+            title: 'Wealth Strategic Report',
+            subject: 'Portfolio Analysis',
+            author: 'TrackInvest',
+            keywords: 'finance, investment, portfolio',
+            creator: 'TrackInvest AI'
         });
-        showSnackbar("Download Complete!");
+        
+        pdf.save(opt.filename);
+        
+        // Restore original styles
+        Object.assign(element.style, originalStyles);
+        
+        showSnackbar("PDF Downloaded!", "check_circle");
     } catch (error) {
         console.error("PDF Generation failed:", error);
-        showSnackbar("Export failed. Check console.");
+        // Restore styles on error
+        Object.assign(element.style, originalStyles);
+        showSnackbar("Export failed. Try again.", "error");
     }
 }
 
@@ -271,48 +330,107 @@ function renderAll() {
             }
         });
 
-        if (totalShortfall > 0 && db.projectionNextMonth > 0) {
+        // Check for over-allocated categories (>50% or >20% above target)
+        let overAllocated = {};
+        Object.keys(typeTotals).forEach(t => {
+            if (db.allocTargets[t] && totalMarketValue > 0) {
+                let currentPerc = (typeTotals[t] / totalMarketValue) * 100;
+                let targetPerc = db.allocTargets[t];
+                if (currentPerc > targetPerc * 1.2 || currentPerc > 50) {
+                    let excess = typeTotals[t] - (targetPerc / 100 * totalMarketValue);
+                    if (excess > 0) overAllocated[t] = excess;
+                }
+            }
+        });
+
+        // Build rebalancing suggestions
+        if ((totalShortfall > 0 || Object.keys(overAllocated).length > 0) && db.projectionNextMonth > 0) {
             let remainingToInvest = db.projectionNextMonth;
             let allocatedSoFar = 0;
 
-            rebalanceHtml += `<div style="font-size:11px; color:var(--md-on-surface-variant); margin-bottom:8px;">To reach targets using your ₹${db.projectionNextMonth} next investment:</div>`;
-
-            // First pass: Fill shortfalls proportionally
-            Object.keys(shortfalls).forEach(t => {
-                let ratio = shortfalls[t] / totalShortfall;
-                let investNext = Math.min(shortfalls[t], db.projectionNextMonth * ratio);
-
-                if (investNext > 0) {
-                    let curValue = typeTotals[t] || 0;
-                    let curPerc = totalMarketValue > 0 ? (curValue / totalMarketValue * 100).toFixed(0) : 0;
+            // Show over-allocation warnings first
+            if (Object.keys(overAllocated).length > 0) {
+                rebalanceHtml += `<div style="font-size:11px; color:var(--md-error); margin-bottom:8px; font-weight:500;">⚠️ Consider reducing:</div>`;
+                Object.keys(overAllocated).forEach(t => {
+                    let excess = overAllocated[t];
+                    let curPerc = ((typeTotals[t] / totalMarketValue) * 100).toFixed(0);
                     let targetPerc = db.allocTargets[t];
-
-                    rebalanceHtml += `<div class="reb-item" style="display:flex; flex-direction:column; margin-bottom:10px;">
+                    
+                    // Estimate tax implication (simplified)
+                    let invs = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
+                    let stcg = 0, ltcg = 0;
+                    let now = new Date();
+                    invs.forEach(i => {
+                        let days = (now - new Date(i.date)) / (1000 * 60 * 60 * 24);
+                        if (days <= 365) stcg += i.amount;
+                        else ltcg += i.amount;
+                    });
+                    let taxHint = stcg > 0 ? `<span style="color:var(--md-error); font-size:9px;">(${formatMoney(stcg)} STCG taxable)</span>` : 
+                                  ltcg > 0 ? `<span style="color:var(--md-success); font-size:9px;">(LTCG - check exemption)</span>` : '';
+                    
+                    rebalanceHtml += `<div class="reb-item" style="display:flex; flex-direction:column; margin-bottom:10px; padding:8px; background:var(--md-error-container); border-radius:8px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span><span class="alloc-dot" style="background:${db.categories[t]?.color || '#ccc'}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span>
-                            <span style="color:var(--md-primary); font-weight:600;">+${formatMoney(investNext)}</span>
+                            <span style="color:var(--md-error); font-weight:600;">-${formatMoney(Math.min(excess, db.projectionNextMonth * 0.5))}</span>
                         </div>
-                        <div style="font-size:10px; color:var(--md-outline); margin-left:14px;">Current: ${curPerc}% → Target: ${targetPerc}%</div>
+                        <div style="font-size:10px; color:var(--md-on-error-container); margin-left:14px;">${curPerc}% allocated (Target: ${targetPerc}%) ${taxHint}</div>
                     </div>`;
-                    allocatedSoFar += investNext;
-                }
-            });
+                });
+                rebalanceHtml += `<div style="margin:12px 0; border-top:1px solid var(--md-outline-variant);"></div>`;
+            }
 
-            // Second pass: Leftover distribution
-            remainingToInvest -= allocatedSoFar;
-            if (remainingToInvest > 10) {
-                rebalanceHtml += `<div style="font-size:11px; color:var(--md-primary); margin:8px 0 4px 0; border-top:1px dashed var(--md-outline-variant); padding-top:8px;">Maintain balance with remainder:</div>`;
-                Object.keys(db.allocTargets).forEach(t => {
-                    let weight = db.allocTargets[t] / 100;
-                    let extra = remainingToInvest * weight;
-                    if (extra > 1) {
-                        rebalanceHtml += `<div class="reb-item" style="display:flex; justify-content:space-between; align-items:center; opacity:0.8; font-size:13px;">
-                            <span style="margin-left:14px;">${t}</span>
-                            <span>+${formatMoney(extra)}</span>
+            if (totalShortfall > 0) {
+                rebalanceHtml += `<div style="font-size:11px; color:var(--md-on-surface-variant); margin-bottom:8px;">Invest ₹${db.projectionNextMonth} in under-allocated categories:</div>`;
+
+                // First pass: Fill shortfalls proportionally
+                Object.keys(shortfalls).forEach(t => {
+                    let ratio = shortfalls[t] / totalShortfall;
+                    let investNext = Math.min(shortfalls[t], db.projectionNextMonth * ratio);
+
+                    if (investNext > 0) {
+                        let curValue = typeTotals[t] || 0;
+                        let curPerc = totalMarketValue > 0 ? (curValue / totalMarketValue * 100).toFixed(0) : 0;
+                        let targetPerc = db.allocTargets[t];
+
+                        rebalanceHtml += `<div class="reb-item" style="display:flex; flex-direction:column; margin-bottom:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span><span class="alloc-dot" style="background:${db.categories[t]?.color || '#ccc'}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span>
+                                <span style="color:var(--md-primary); font-weight:600;">+${formatMoney(investNext)}</span>
+                            </div>
+                            <div style="font-size:10px; color:var(--md-outline); margin-left:14px;">Current: ${curPerc}% → Target: ${targetPerc}%</div>
                         </div>`;
+                        allocatedSoFar += investNext;
                     }
                 });
+
+                // Second pass: Leftover distribution
+                remainingToInvest -= allocatedSoFar;
+                if (remainingToInvest > 10) {
+                    rebalanceHtml += `<div style="font-size:11px; color:var(--md-primary); margin:8px 0 4px 0; border-top:1px dashed var(--md-outline-variant); padding-top:8px;">Distribute remaining ₹${formatMoney(remainingToInvest)}:</div>`;
+                    Object.keys(db.allocTargets).forEach(t => {
+                        let weight = db.allocTargets[t] / 100;
+                        let extra = remainingToInvest * weight;
+                        if (extra > 1) {
+                            rebalanceHtml += `<div class="reb-item" style="display:flex; justify-content:space-between; align-items:center; opacity:0.8; font-size:13px;">
+                                <span style="margin-left:14px;">${t}</span>
+                                <span>+${formatMoney(extra)}</span>
+                            </div>`;
+                        }
+                    });
+                }
             }
+        } else if (Object.keys(overAllocated).length > 0 && db.projectionNextMonth === 0) {
+            // Only showing reduction suggestions, no new investment
+            rebalanceHtml += `<div style="font-size:11px; color:var(--md-error); margin-bottom:8px; font-weight:500;">⚠️ Portfolio Over-Concentrated:</div>`;
+            Object.keys(overAllocated).forEach(t => {
+                let curPerc = ((typeTotals[t] / totalMarketValue) * 100).toFixed(0);
+                let targetPerc = db.allocTargets[t];
+                rebalanceHtml += `<div class="reb-item" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:8px; background:var(--md-error-container); border-radius:8px;">
+                    <span><span class="alloc-dot" style="background:${db.categories[t]?.color || '#ccc'}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span>
+                    <span style="color:var(--md-error);">${curPerc}% (Target: ${targetPerc}%)</span>
+                </div>`;
+            });
+            rebalanceHtml += `<div style="font-size:11px; color:var(--md-outline); text-align:center; margin-top:12px;">Consider rebalancing by pausing new investments in over-allocated categories.</div>`;
         } else if (hasRebalanceTargets && db.projectionNextMonth === 0) {
             rebalanceHtml = `<div style="font-size:12px; color:var(--md-outline); text-align:center; padding:12px;">Set 'Next Month Projection' in Dashboard to see rebalancing guide.</div>`;
         }
@@ -352,20 +470,84 @@ function renderAll() {
             let perc = Math.min(100, (savedAmt / g.target) * 100);
             let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${escapeHtml(g.linkedCategory)}</span>` : '';
             let forecastHtml = '';
-            if (savedAmt < g.target && monthlyContrib > 0) {
-                let monthsLeft = Math.ceil((g.target - savedAmt) / monthlyContrib);
-                if (monthsLeft <= 600) { // Only show if within 50 years
-                    let fDate = new Date();
-                    fDate.setMonth(fDate.getMonth() + monthsLeft);
-                    forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 Expected hit: ${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}</div>`;
+            let shortfall = g.target - savedAmt;
+            
+            if (shortfall > 0) {
+                if (monthlyContrib > 0) {
+                    // Enhanced forecast with growth consideration
+                    let growthRate = 0;
+                    if (g.linkedCategory) {
+                        // Estimate growth based on category type
+                        const catGrowthRates = { 'SIP': 0.12, 'Stocks': 0.12, 'PPF': 0.071, 'PF': 0.0815, 'FD': 0.07, 'Cash': 0, 'Liquid': 0.06 };
+                        growthRate = catGrowthRates[g.linkedCategory] || 0.08;
+                    }
+                    
+                    // Calculate months needed considering growth
+                    let monthsLeft;
+                    if (growthRate > 0 && savedAmt > 0) {
+                        // Compound growth formula: FV = PV*(1+r)^n + PMT*(((1+r)^n - 1)/r)
+                        let r = growthRate / 12;
+                        let n = Math.log((g.target * r + monthlyContrib) / (savedAmt * r + monthlyContrib)) / Math.log(1 + r);
+                        monthsLeft = Math.ceil(n);
+                    } else {
+                        monthsLeft = Math.ceil(shortfall / monthlyContrib);
+                    }
+                    
+                    if (monthsLeft <= 600 && monthsLeft > 0) {
+                        let fDate = new Date();
+                        fDate.setMonth(fDate.getMonth() + monthsLeft);
+                        let fDateStr = `${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}`;
+                        
+                        // Confidence range (±20% variation in returns)
+                        let pessimisticMonths = growthRate > 0 ? Math.ceil(monthsLeft * 1.3) : monthsLeft;
+                        let optimisticMonths = growthRate > 0 ? Math.ceil(monthsLeft * 0.8) : monthsLeft;
+                        let pDate = new Date(); pDate.setMonth(pDate.getMonth() + pessimisticMonths);
+                        let oDate = new Date(); oDate.setMonth(oDate.getMonth() + optimisticMonths);
+                        
+                        forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 ${fDateStr}`;
+                        if (growthRate > 0) {
+                            forecastHtml += ` <span style="opacity:0.7;">(${oDate.toLocaleString('default', { month: 'short' })}-${pDate.toLocaleString('default', { month: 'short' })})</span>`;
+                        }
+                        forecastHtml += `</div>`;
+                    } else if (monthsLeft > 600) {
+                        forecastHtml = `<div style="font-size:11px;color:var(--md-outline);margin-top:8px;">⏳ 50+ years to reach</div>`;
+                    }
+                } else if (savedAmt > 0 && g.linkedCategory) {
+                    // No monthly contribution but has existing value with growth
+                    let growthRate = 0.08; // Default 8%
+                    const catGrowthRates = { 'SIP': 0.12, 'Stocks': 0.12, 'PPF': 0.071, 'PF': 0.0815, 'FD': 0.07 };
+                    growthRate = catGrowthRates[g.linkedCategory] || 0.08;
+                    
+                    let yearsToTarget = Math.log(g.target / savedAmt) / Math.log(1 + growthRate);
+                    if (yearsToTarget > 0 && yearsToTarget <= 50) {
+                        let fDate = new Date();
+                        fDate.setFullYear(fDate.getFullYear() + Math.ceil(yearsToTarget));
+                        forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">📈 Growth only: ${fDate.getFullYear()} @ ${(growthRate * 100).toFixed(1)}%</div>`;
+                    }
+                } else {
+                    forecastHtml = `<div style="font-size:11px;color:var(--md-outline);margin-top:8px;">⚠️ Add SIP to reach goal</div>`;
                 }
+            } else {
+                forecastHtml = `<div style="font-size:11px;color:var(--md-success);margin-top:8px;font-weight:500;">✅ Goal Achieved!</div>`;
             }
             return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${escapeHtml(g.name)} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`;
         }).join('');
     }
 
+    // Recent activity with context-aware empty state
     let sInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 5);
-    document.getElementById('dashboard-history-list').innerHTML = sInv.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">history</span><div class="es-title">No Recent Activity</div></div>` : sInv.map(buildUnifiedItemHTML).join('');
+    let dashboardList = document.getElementById('dashboard-history-list');
+    if (dashboardList) {
+        if (sInv.length === 0) {
+            dashboardList.innerHTML = getEmptyStateHTML('dashboard');
+        } else {
+            dashboardList.innerHTML = sInv.map(buildUnifiedItemHTML).join('');
+            attachSwipeListeners(dashboardList);
+        }
+    }
+
+    // Add Frequent Actions section for quick navigation
+    renderFrequentActions();
 
     renderHistory();
 
@@ -377,6 +559,60 @@ function renderAll() {
     renderQuickAddChips(); updateRebalanceBadge(); autoBackupReminder();
 }
 window.renderAll = renderAll;
+window.getEmptyStateHTML = getEmptyStateHTML;
+
+// Frequent Actions Quick Navigation
+function renderFrequentActions() {
+    let container = document.getElementById('frequent-actions');
+    if (!container) return;
+    
+    // Determine most relevant actions based on user state
+    let actions = [];
+    let totalInvestments = db.investments.length;
+    let hasGoals = db.goals.length > 0;
+    let hasRecurring = db.recurring.length > 0;
+    let categoriesUsed = Object.keys(currentTypeTotals).filter(k => currentTypeTotals[k] > 0);
+    
+    // Always show Add Investment
+    actions.push({ icon: 'add_circle', label: 'Invest', action: 'openInvestSheet()', color: 'var(--md-primary)' });
+    
+    // Show Set Goal for new users or if no goals
+    if (!hasGoals || totalInvestments < 5) {
+        actions.push({ icon: 'flag', label: 'Set Goal', action: 'openGoalSheet()', color: 'var(--md-success)' });
+    }
+    
+    // Show Add SIP if user has investments but no recurring
+    if (totalInvestments > 0 && !hasRecurring) {
+        actions.push({ icon: 'autorenew', label: 'Auto-SIP', action: 'openRecurringSheet()', color: 'var(--md-tertiary)' });
+    }
+    
+    // Show most used category for quick add
+    if (categoriesUsed.length > 0) {
+        let topCategory = categoriesUsed.sort((a, b) => currentTypeTotals[b] - currentTypeTotals[a])[0];
+        let catMeta = db.categories[topCategory] || { icon: 'savings', color: '#8D6E63' };
+        actions.push({ 
+            icon: catMeta.icon, 
+            label: topCategory, 
+            action: `openInvestSheet(null, 1000); setInvestType('${topCategory}')`, 
+            color: catMeta.color 
+        });
+    }
+    
+    // Show Settings for configuration
+    actions.push({ icon: 'settings', label: 'Settings', action: 'openSettings()', color: 'var(--md-outline)' });
+    
+    // Build HTML
+    let html = `<div style="display:flex; gap:12px; overflow-x:auto; padding: 4px 0; scrollbar-width:none;">`;
+    actions.forEach(a => {
+        html += `<button onclick="${a.action}" style="flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding: 12px 16px; background:var(--md-surface-container-low); border:none; border-radius:16px; cursor:pointer; min-width:72px; transition:transform 0.2s, background 0.2s;" onmouseover="this.style.transform='scale(1.05)';this.style.background='var(--md-surface-container)'" onmouseout="this.style.transform='scale(1)';this.style.background='var(--md-surface-container-low)'">
+            <span class="material-symbols-rounded" style="font-size:24px; color:${a.color};">${a.icon}</span>
+            <span style="font-size:11px; color:var(--md-on-surface-variant); font-weight:500;">${a.label}</span>
+        </button>`;
+    });
+    html += `</div>`;
+    
+    container.innerHTML = html;
+}
 
 // ==========================================
 // 10. EVENT LISTENERS
@@ -398,6 +634,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         const lastSheet = sessionStorage.getItem('currentSheet');
         if (lastSheet) openSheet(lastSheet, true);
     }
+    
+    // Show first-time tips for new users (after a short delay)
+    setTimeout(() => {
+        if (!db.firstTimeTipsShown && db.investments.length === 0) {
+            showFirstTimeTips();
+        }
+    }, 1000);
 });
 
 window.addEventListener('hashchange', handleNearbyHash);
@@ -619,65 +862,160 @@ function calculatePortfolioHealth() {
     let score = 100;
     let issues = [];
     let suggestions = [];
+    let quickWins = [];
+    let trend = 'stable'; // improving, stable, declining
+
+    // Calculate trend based on recent investment activity
+    let now = new Date();
+    let lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
+    let threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    
+    let recentInvestments = db.investments.filter(i => 
+        !i.isDividend && 
+        (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
+        new Date(i.date) >= lastMonth
+    ).reduce((s, i) => s + i.amount, 0);
+    
+    let previousInvestments = db.investments.filter(i => 
+        !i.isDividend && 
+        (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
+        new Date(i.date) >= threeMonthsAgo &&
+        new Date(i.date) < lastMonth
+    ).reduce((s, i) => s + i.amount, 0);
+    
+    if (recentInvestments > previousInvestments * 1.2) {
+        trend = 'improving';
+    } else if (recentInvestments < previousInvestments * 0.8) {
+        trend = 'declining';
+    }
 
     let categoriesCount = Object.keys(currentTypeTotals).filter(k => currentTypeTotals[k] > 0).length;
     if (categoriesCount < 3) {
         score -= 20;
         issues.push("Low diversification");
-        suggestions.push("Invest in at least 3 categories (e.g. SIP, FD, Cash)");
+        let neededCats = 3 - categoriesCount;
+        suggestions.push({
+            text: `Add ${neededCats} more investment type${neededCats > 1 ? 's' : ''} (SIP, FD, or Cash)`,
+            impact: 'high',
+            priority: 1
+        });
+        quickWins.push({
+            text: `Start a ₹1000 SIP in a new category`,
+            action: `onclick="openInvestSheet(null, 1000); setInvestType('SIP');"`
+        });
+    } else {
+        quickWins.push({
+            text: `✅ Well diversified across ${categoriesCount} categories`,
+            action: null
+        });
     }
 
     let cash = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Liquid'] || 0);
     let annualSal = db.userProfile.salary || 0;
     let monthlyExp = db.userProfile.monthlyExpense || (annualSal > 0 ? (annualSal / 12 * 0.6) : 30000);
+    let safetyGap = (monthlyExp * 6) - cash;
 
     if (cash < monthlyExp * 3) {
         score -= 15;
         issues.push("Low liquidity buffer");
-        suggestions.push(`Save ₹${formatInr(Math.ceil((monthlyExp * 6) - cash))} more to reach 6-month Safety Net (₹${formatInr(monthlyExp * 6)})`);
+        suggestions.push({
+            text: `Build emergency fund: Save ₹${formatInr(Math.ceil(safetyGap))} to reach 6-month buffer (₹${formatInr(monthlyExp * 6)})`,
+            impact: 'high',
+            priority: 1
+        });
+        quickWins.push({
+            text: `Move ₹${formatInr(Math.min(5000, Math.ceil(safetyGap / 3)))} to Liquid fund this month`,
+            action: `onclick="openInvestSheet(null, ${Math.min(5000, Math.ceil(safetyGap / 3))}); setInvestType('Liquid');"`
+        });
     } else if (cash >= monthlyExp * 6) {
-        suggestions.push("✅ Emergency Fund Secured (6+ months)");
+        suggestions.push({
+            text: `✅ Emergency Fund Secured (6+ months)`,
+            impact: 'positive',
+            priority: 0
+        });
     }
 
-    let onTrackGoals = db.goals.filter(g => {
+    // Goals analysis with specific amounts
+    let underfundedGoals = db.goals.filter(g => {
         let saved = g.saved || 0;
-        if (g.link && currentTypeTotals[g.link]) saved += currentTypeTotals[g.link];
-        return saved >= (g.target * 0.1);
-    }).length;
-    if (db.goals.length > 0 && onTrackGoals === 0) {
+        if (g.linkedCategory && currentTypeTotals[g.linkedCategory]) saved += currentTypeTotals[g.linkedCategory];
+        return saved < (g.target * 0.1);
+    });
+    
+    if (db.goals.length > 0 && underfundedGoals.length > 0) {
         score -= 10;
         issues.push("Goals underfunded");
-        suggestions.push("Direct more SIPs towards your primary Financial Goals");
+        let topGoal = underfundedGoals[0];
+        let gap = topGoal.target * 0.1 - (topGoal.saved || 0);
+        suggestions.push({
+            text: `"${topGoal.name}" needs ₹${formatInr(Math.ceil(gap))} more to be on track`,
+            impact: 'medium',
+            priority: 2
+        });
+        if (topGoal.linkedCategory) {
+            quickWins.push({
+                text: `Add SIP to "${topGoal.name}" linked to ${topGoal.linkedCategory}`,
+                action: `onclick="openInvestSheet(); setInvestType('${topGoal.linkedCategory}'); document.getElementById('inv-is-monthly').checked = true;"`
+            });
+        }
     }
 
-    // Allocation check
+    // Allocation check with specific rebalancing amounts
     let equity = (currentTypeTotals['SIP'] || 0) + (currentTypeTotals['Stocks'] || 0);
     let safe = (currentTypeTotals['FD'] || 0) + (currentTypeTotals['PPF'] || 0) + (currentTypeTotals['PF'] || 0) + cash;
-    if (equity > safe * 2) {
+    let total = equity + safe;
+    
+    if (equity > safe * 2 && total > 0) {
         issues.push("Aggressive equity exposure");
-        suggestions.push("Rebalance: Move some gains to FD or Debt funds");
-    } else if (safe > equity * 3 && annualSal > 0) {
+        let rebalanceAmt = Math.floor((equity - safe * 2) / 3);
+        suggestions.push({
+            text: `Rebalance: Move ₹${formatInr(rebalanceAmt)} from equity to FD/Debt for stability`,
+            impact: 'high',
+            priority: 1
+        });
+    } else if (safe > equity * 3 && annualSal > 0 && total > 50000) {
         issues.push("Conservative growth");
-        suggestions.push("Increase SIPs to beat inflation over the long term");
+        let investMore = Math.floor(safe * 0.1);
+        suggestions.push({
+            text: `Increase equity exposure: Add ₹${formatInr(investMore)} to SIPs to beat inflation`,
+            impact: 'medium',
+            priority: 2
+        });
+        quickWins.push({
+            text: `Start ₹${formatInr(Math.min(1000, investMore))} monthly SIP in index fund`,
+            action: `onclick="openInvestSheet(null, ${Math.min(1000, investMore)}); setInvestType('SIP'); document.getElementById('inv-is-monthly').checked = true;"`
+        });
     }
 
-    // Category Target Multipliers
+    // Category Target Multipliers with specific gaps
     Object.keys(db.categories).forEach(cat => {
         let meta = db.categories[cat];
         if (meta.targetMultiplier > 0 && db.userProfile.monthlyExpense > 0) {
             let target = db.userProfile.monthlyExpense * meta.targetMultiplier;
             let current = currentTypeTotals[cat] || 0;
             if (current < target) {
-                suggestions.push(`${cat} Target: Reach ₹${formatInr(target)} (Currently ₹${formatInr(current)})`);
+                let gap = target - current;
+                suggestions.push({
+                    text: `${cat}: ₹${formatInr(current)}/₹${formatInr(target)} (gap: ₹${formatInr(Math.ceil(gap))})`,
+                    impact: gap > target * 0.5 ? 'high' : 'medium',
+                    priority: gap > target * 0.5 ? 2 : 3
+                });
             }
         }
     });
 
+    // Sort suggestions by priority
+    suggestions.sort((a, b) => a.priority - b.priority);
+
     return {
-        score: Math.max(0, score),
+        score: Math.max(0, Math.min(100, score)),
         status: score > 80 ? "Excellent" : score > 60 ? "Good" : "Needs Attention",
+        statusColor: score > 80 ? 'var(--md-success)' : score > 60 ? 'var(--md-primary)' : 'var(--md-error)',
         issues: issues,
-        suggestions: suggestions
+        suggestions: suggestions,
+        quickWins: quickWins,
+        trend: trend,
+        trendIcon: trend === 'improving' ? 'trending_up' : trend === 'declining' ? 'trending_down' : 'trending_flat'
     };
 }
 
@@ -687,23 +1025,71 @@ function updateAdvisorWidget() {
     const advisorCard = document.getElementById('advisor-card');
     if (!advisorText || !advisorCard) return;
 
+    // Always show the advisor card now with the enhanced health display
+    advisorCard.style.display = 'block';
+    
+    let html = `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+        <div style="font-weight:600; color:var(--md-primary); display:flex; align-items:center; gap:8px;">
+            <span class="material-symbols-rounded" style="font-size:18px;">health_and_safety</span>
+            Portfolio Health
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:4px; font-size:12px; color:var(--md-outline);">
+                <span class="material-symbols-rounded" style="font-size:16px;">${health.trendIcon}</span>
+                ${health.trend === 'improving' ? 'Improving' : health.trend === 'declining' ? 'Declining' : 'Stable'}
+            </div>
+            <div style="font-size:24px; font-weight:700; color:${health.statusColor};">${health.score}</div>
+        </div>
+    </div>`;
+    
+    // Status badge
+    html += `<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <span style="font-size:11px; padding:4px 12px; border-radius:12px; background:${health.statusColor}20; color:${health.statusColor}; font-weight:500;">${health.status}</span>`;
+    
+    if (health.issues.length > 0) {
+        html += `<span style="font-size:11px; padding:4px 12px; border-radius:12px; background:var(--md-error-container); color:var(--md-error);">${health.issues.length} issue${health.issues.length > 1 ? 's' : ''}</span>`;
+    }
+    html += `</div>`;
+    
+    // Quick Wins section (actionable items)
+    if (health.quickWins.length > 0) {
+        html += `<div style="margin-bottom:16px;">
+            <div style="font-size:12px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Quick Wins</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">`;
+        health.quickWins.slice(0, 2).forEach(qw => {
+            if (qw.action) {
+                html += `<div ${qw.action} style="font-size:13px; padding:10px 12px; background:var(--md-primary-container); color:var(--md-on-primary-container); border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:8px; transition:opacity 0.2s;">
+                    <span class="material-symbols-rounded" style="font-size:16px;">flash_on</span>
+                    ${escapeHtml(qw.text)}
+                </div>`;
+            } else {
+                html += `<div style="font-size:13px; padding:10px 12px; background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); border-radius:10px; display:flex; align-items:center; gap:8px;">
+                    <span class="material-symbols-rounded" style="font-size:16px; color:var(--md-success);">check_circle</span>
+                    ${escapeHtml(qw.text)}
+                </div>`;
+            }
+        });
+        html += `</div></div>`;
+    }
+    
+    // Priority suggestions
     if (health.suggestions.length > 0) {
-        advisorCard.style.display = 'block';
-        let html = `<div style="font-weight:600; margin-bottom:8px; color:var(--md-primary); display:flex; align-items:center; gap:8px;">
-            <span class="material-symbols-rounded" style="font-size:18px;">tips_and_updates</span> Smart Recommendations
-        </div>`;
-        html += `<div style="display:flex; flex-direction:column; gap:8px;">`;
-        health.suggestions.slice(0, 2).forEach(s => {
-            html += `<div style="font-size:13px; display:flex; gap:8px; line-height:1.4;">
-                <span class="material-symbols-rounded" style="font-size:16px; color:var(--md-primary);">check_circle</span>
-                <span>${escapeHtml(s)}</span>
+        html += `<div>
+            <div style="font-size:12px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Recommendations</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">`;
+        
+        health.suggestions.filter(s => s.impact !== 'positive').slice(0, 3).forEach(s => {
+            let icon = s.impact === 'high' ? 'priority_high' : s.impact === 'medium' ? 'flag' : 'info';
+            let color = s.impact === 'high' ? 'var(--md-error)' : s.impact === 'medium' ? 'var(--md-warning)' : 'var(--md-primary)';
+            html += `<div style="font-size:13px; display:flex; gap:8px; line-height:1.4; padding:8px; background:var(--md-surface-container-highest); border-radius:8px;">
+                <span class="material-symbols-rounded" style="font-size:16px; color:${color}; flex-shrink:0;">${icon}</span>
+                <span>${escapeHtml(s.text)}</span>
             </div>`;
         });
-        html += `</div>`;
-        advisorText.innerHTML = html;
-    } else {
-        advisorCard.style.display = 'none';
+        html += `</div></div>`;
     }
+    
+    advisorText.innerHTML = html;
 }
 
 
