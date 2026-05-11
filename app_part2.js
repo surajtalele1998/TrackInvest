@@ -808,6 +808,7 @@ async function checkAppLock() {
     
     return false;
 }
+window.checkAppLock = checkAppLock;
 
 async function attemptBiometricAuth() {
     try {
@@ -1647,7 +1648,7 @@ function processAICallouts(text) {
     
     let result = text;
     Object.entries(callouts).forEach(([type, config]) => {
-        const regex = new RegExp(`\\[!${type}\\]([^\\n]*(?:\\n(?!!|\[|$)[^\\n]*)*)`, 'g');
+        const regex = new RegExp(`\\[!${type}\\]([^\\n]*(?:\\n(?!!|\\[|$)[^\\n]*)*)`, 'g');
         result = result.replace(regex, (match, content) => {
             return `<div style="margin:16px 0;padding:16px;background:${config.bg};border-radius:12px;border-left:4px solid ${config.color};">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">

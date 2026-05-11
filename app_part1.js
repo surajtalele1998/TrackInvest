@@ -446,7 +446,6 @@ function exportToCSV() {
 
 // ── LEDGER SORT & FILTER ────────────────────────
 window.escapeHtml = escapeHtml;
-window.checkAppLock = checkAppLock;
 window.saveSmartDefault = saveSmartDefault;
 window.getSmartDefault = getSmartDefault;
 window.debounce = debounce;
