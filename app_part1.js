@@ -29,6 +29,50 @@ if (!db.navCache) db.navCache = {};
 if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: April (month index 3) for India FY
 if (typeof db.firstTimeTipsShown === 'undefined') db.firstTimeTipsShown = false;
 
+// Extended user profile with smart defaults (all optional, progressive disclosure)
+if (!db.userProfileExtended) db.userProfileExtended = {
+    // Layer 1: Basics (auto-detected or simple)
+    ageGroup: null, // '20s', '30s', '40s', '50s', '60+'
+    employmentType: null, // 'salaried', 'business', 'freelance', 'retired'
+    location: null, // 'india', 'nri', 'other'
+    
+    // Layer 2: Financial Context (asked contextually)
+    riskTolerance: null, // 'conservative', 'moderate', 'aggressive'
+    investmentHorizon: null, // 'short', 'medium', 'long'
+    emergencyFundMonths: null, // number of months expenses saved
+    
+    // Layer 3: Advanced (optional health check)
+    hasHealthInsurance: null,
+    hasLifeInsurance: null,
+    hasHomeLoan: null,
+    hasCarLoan: null,
+    creditScoreRange: null, // 'poor', 'fair', 'good', 'excellent'
+    
+    // Smart tracking (auto-calculated from data)
+    profileCompleteness: 0, // 0-100%
+    lastProfilePrompt: null, // timestamp to avoid nagging
+};
+
+// Expense categories (simplified - just 4 essential ones)
+if (!db.expenseCategories) db.expenseCategories = {
+    fixed: 0, // rent, emi, utilities
+    essentials: 0, // groceries, transport, healthcare
+    lifestyle: 0, // dining, entertainment, shopping
+    savings: 0 // already tracked from investments
+};
+
+// Smart suggestions system (what to ask next)
+if (!db.smartSuggestions) db.smartSuggestions = [];
+
+// User preferences for notifications
+if (!db.userPreferences) db.userPreferences = {
+    sipReminders: true,
+    maturityAlerts: true,
+    goalProgressUpdates: true,
+    weeklyDigest: false,
+    priceAlerts: false
+};
+
 const defaultCategories = ['FD', 'PPF', 'PF', 'SIP', 'Liquid', 'Home', 'Cash', 'Stocks'];
 
 if (!db.categories || Object.keys(db.categories).length === 0) {
@@ -130,7 +174,7 @@ function setButtonLoading(buttonId, isLoading) {
     }
 }
 
-// Add CSS animation for spinner
+// Add CSS animation for spinner and skeleton screens
 const style = document.createElement('style');
 style.textContent = `
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -140,8 +184,83 @@ style.textContent = `
         display: flex; align-items: center; justify-content: center;
         z-index: 100; border-radius: inherit;
     }
+    @keyframes skeleton-pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+    .skeleton {
+        background: var(--md-surface-container-highest);
+        border-radius: 8px;
+        animation: skeleton-pulse 1.5s ease-in-out infinite;
+    }
+    .skeleton-text { height: 16px; margin: 8px 0; }
+    .skeleton-title { height: 24px; width: 60%; margin: 12px 0; }
+    .skeleton-circle { border-radius: 50%; }
+    .skeleton-card {
+        background: var(--md-surface-container-low);
+        border-radius: 16px;
+        padding: 16px;
+        margin: 12px 0;
+    }
+    .chart-skeleton {
+        height: 200px;
+        border-radius: 16px;
+        background: var(--md-surface-container-highest);
+        animation: skeleton-pulse 1.5s ease-in-out infinite;
+    }
 `;
 document.head.appendChild(style);
+
+// Skeleton screen utilities
+function showSkeleton(containerId, type = 'list') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    let skeletonHtml = '';
+    if (type === 'list') {
+        skeletonHtml = Array(4).fill(0).map(() => `
+            <div class="skeleton-card">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div class="skeleton skeleton-circle" style="width:40px;height:40px;"></div>
+                    <div style="flex:1;">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-text" style="width:40%;"></div>
+                    </div>
+                    <div class="skeleton" style="width:60px;height:24px;"></div>
+                </div>
+            </div>
+        `).join('');
+    } else if (type === 'chart') {
+        skeletonHtml = '<div class="chart-skeleton"></div>';
+    } else if (type === 'stats') {
+        skeletonHtml = `
+            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;">
+                ${Array(3).fill(0).map(() => `
+                    <div class="skeleton-card" style="text-align:center;">
+                        <div class="skeleton skeleton-text" style="width:80%;margin:0 auto;"></div>
+                        <div class="skeleton" style="width:60%;height:32px;margin:8px auto 0;"></div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    container.dataset.originalContent = container.innerHTML;
+    container.innerHTML = skeletonHtml;
+    container.classList.add('skeleton-active');
+}
+
+function hideSkeleton(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || !container.classList.contains('skeleton-active')) return;
+    
+    if (container.dataset.originalContent) {
+        container.innerHTML = container.dataset.originalContent;
+        delete container.dataset.originalContent;
+    }
+    container.classList.remove('skeleton-active');
+}
 
 // Generate cache key from relevant data
 function generateChartCacheKey(type) {
@@ -165,6 +284,19 @@ Chart.defaults.plugins.tooltip.padding = 10;
 Chart.defaults.plugins.tooltip.cornerRadius = 8;
 Chart.defaults.plugins.tooltip.callbacks.label = function (c) { return '₹' + Number(c.raw).toLocaleString('en-IN'); };
 Chart.defaults.animation = { duration: 1500, easing: 'easeOutQuart' };
+
+// Utility: Debounce function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 // ==========================================
 // 2. GLOBAL HELPER FUNCTIONS
@@ -313,7 +445,11 @@ function exportToCSV() {
 }
 
 // ── LEDGER SORT & FILTER ────────────────────────
-window.ledgerSort = 'date'; window.ledgerAsc = false;
+window.escapeHtml = escapeHtml;
+window.checkAppLock = checkAppLock;
+window.saveSmartDefault = saveSmartDefault;
+window.getSmartDefault = getSmartDefault;
+window.debounce = debounce;
 function setLedgerSort(field, btn) {
     window.ledgerSort = field;
     document.querySelectorAll('.sort-chip[id^="sort-"]').forEach(c => c.classList.remove('active'));
@@ -589,13 +725,14 @@ function savePin() {
 }
 
 function switchTab(tabId) {
-    haptic(20);
+    haptic(20); // Subtle feedback on tab switch
     if (!document.startViewTransition) {
         performTabSwitch(tabId);
         return;
     }
     document.startViewTransition(() => performTabSwitch(tabId));
 }
+window.switchTab = switchTab;
 
 function performTabSwitch(tabId, fromPopState = false) {
     const currentTab = document.querySelector('.tab-content.active')?.id?.replace('tab-', '');
@@ -1278,6 +1415,19 @@ function showDayDetails(dateStr) {
 // 5. INPUT FORMS & DATA OPERATIONS
 // ==========================================
 
+// Smart defaults memory - remembers last choices per category
+let smartDefaults = JSON.parse(sessionStorage.getItem('smartDefaults') || '{}');
+
+function saveSmartDefault(key, value) {
+    if (!value) return;
+    smartDefaults[key] = value;
+    sessionStorage.setItem('smartDefaults', JSON.stringify(smartDefaults));
+}
+
+function getSmartDefault(key, fallback = '') {
+    return smartDefaults[key] || fallback;
+}
+
 function setInvestType(type) {
     haptic(20); currentInvType = type;
     document.querySelectorAll('#type-chips .quick-chip').forEach(el => {
@@ -1342,6 +1492,19 @@ function setInvestType(type) {
     // Set Gov rates if not specified
     if (type === 'PPF' && intEl && !intEl.value) intEl.value = 7.1;
     if (type === 'PF' && intEl && !intEl.value) intEl.value = 8.15;
+    
+    // Apply smart defaults for this category (only if not editing)
+    if (!editInvId) {
+        const sdAccount = document.getElementById('inv-account');
+        const sdBroker = document.getElementById('inv-broker');
+        const sdSubcat = document.getElementById('inv-subcat');
+        const sdDate = document.getElementById('inv-date');
+        
+        if (sdAccount && !sdAccount.value) sdAccount.value = getSmartDefault(`account_${type}`, getSmartDefault('account_last', sdAccount.options[0]?.value || ''));
+        if (sdBroker && !sdBroker.value) sdBroker.value = getSmartDefault(`broker_${type}`, getSmartDefault('broker_last', ''));
+        if (sdSubcat && !sdSubcat.value) sdSubcat.value = getSmartDefault(`subcat_${type}`, '');
+        if (sdDate && !sdDate.value) sdDate.value = getLocalYYYYMMDD(new Date()); // Always default to today
+    }
 
     // Attach listeners for smart preview
 
@@ -1641,6 +1804,77 @@ async function syncHistoricalSIP() {
     }
 }
 
+const FORM_DRAFT_KEY = 'investFormDraft';
+
+function saveFormDraft() {
+    if (editInvId) return; // Don't save drafts when editing
+    const draft = {
+        type: currentInvType,
+        date: document.getElementById('inv-date')?.value,
+        amount: document.getElementById('inv-amt')?.value,
+        note: document.getElementById('inv-note')?.value,
+        tags: document.getElementById('inv-tags')?.value,
+        subcat: document.getElementById('inv-subcat')?.value,
+        broker: document.getElementById('inv-broker')?.value,
+        interest: document.getElementById('inv-interest')?.value,
+        maturity: document.getElementById('inv-maturity-simple')?.value,
+        account: document.getElementById('inv-account')?.value,
+        isMonthly: document.getElementById('inv-is-monthly')?.checked,
+        mfQuery: document.getElementById('inv-mf-query')?.value,
+        mfCode: document.getElementById('inv-mf-code-hidden')?.value,
+        qty: document.getElementById('inv-qty')?.value,
+        price: document.getElementById('inv-price')?.value,
+        timestamp: Date.now()
+    };
+    sessionStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft));
+}
+
+function loadFormDraft() {
+    const draftJson = sessionStorage.getItem(FORM_DRAFT_KEY);
+    if (!draftJson) return false;
+    
+    try {
+        const draft = JSON.parse(draftJson);
+        const age = Date.now() - draft.timestamp;
+        if (age > 24 * 60 * 60 * 1000) { // Older than 24h
+            sessionStorage.removeItem(FORM_DRAFT_KEY);
+            return false;
+        }
+        
+        // Restore fields
+        if (draft.type) setInvestType(draft.type);
+        setTimeout(() => {
+            const safeSet = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+            const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
+            
+            safeSet('inv-date', draft.date);
+            safeSet('inv-amt', draft.amount);
+            safeSet('inv-note', draft.note);
+            safeSet('inv-tags', draft.tags);
+            safeSet('inv-subcat', draft.subcat);
+            safeSet('inv-broker', draft.broker);
+            safeSet('inv-interest', draft.interest);
+            safeSet('inv-maturity-simple', draft.maturity);
+            safeSet('inv-account', draft.account);
+            safeSet('inv-mf-query', draft.mfQuery);
+            safeSet('inv-mf-code-hidden', draft.mfCode);
+            safeSet('inv-qty', draft.qty);
+            safeSet('inv-price', draft.price);
+            safeCheck('inv-is-monthly', draft.isMonthly);
+            
+            updateSmartPreview();
+            showSnackbar('Draft restored', 'restore');
+        }, 100);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function clearFormDraft() {
+    sessionStorage.removeItem(FORM_DRAFT_KEY);
+}
+
 function openInvestSheet(id = null, presetAmt = null) {
     haptic(30); editInvId = id;
     const sheetTitle = document.getElementById('invest-sheet-title');
@@ -1655,30 +1889,48 @@ function openInvestSheet(id = null, presetAmt = null) {
             let amtField = document.getElementById('inv-amt');
             if (amtField) amtField.focus();
         } else {
-            // New entry - smart focus based on category type
-            let type = currentInvType;
-            let focusField = 'inv-amt'; // default
-            
-            // For SIP/Stocks with MF search enabled, focus the search first
-            let config = db.categoryDetails[type]?.fields || {};
-            if ((type === 'SIP' || type === 'Stocks') && config.mf) {
-                let mfQuery = document.getElementById('inv-mf-query');
-                if (mfQuery && !mfQuery.value) {
-                    focusField = 'inv-mf-query';
+            // Try to restore draft first
+            const draftRestored = loadFormDraft();
+            if (!draftRestored) {
+                // New entry - smart focus based on category type
+                let type = currentInvType;
+                let focusField = 'inv-amt'; // default
+                
+                // For SIP/Stocks with MF search enabled, focus the search first
+                let config = db.categoryDetails[type]?.fields || {};
+                if ((type === 'SIP' || type === 'Stocks') && config.mf) {
+                    let mfQuery = document.getElementById('inv-mf-query');
+                    if (mfQuery && !mfQuery.value) {
+                        focusField = 'inv-mf-query';
+                    }
                 }
-            }
-            // For FD with interest, focus interest rate
-            else if (type === 'FD' && config.interest) {
-                let intField = document.getElementById('inv-interest');
-                if (intField && !intField.value) {
-                    focusField = 'inv-interest';
+                // For FD with interest, focus interest rate
+                else if (type === 'FD' && config.interest) {
+                    let intField = document.getElementById('inv-interest');
+                    if (intField && !intField.value) {
+                        focusField = 'inv-interest';
+                    }
                 }
+                
+                let field = document.getElementById(focusField);
+                if (field) field.focus();
             }
-            
-            let field = document.getElementById(focusField);
-            if (field) field.focus();
         }
     }, 150);
+    
+    // Attach auto-save listeners
+    setTimeout(() => {
+        const fields = ['inv-date', 'inv-amt', 'inv-note', 'inv-tags', 'inv-subcat', 'inv-broker', 
+                         'inv-interest', 'inv-maturity-simple', 'inv-account', 'inv-mf-query', 
+                         'inv-qty', 'inv-price', 'inv-is-monthly'];
+        fields.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', saveFormDraft);
+                el.addEventListener('input', debounce(saveFormDraft, 1000));
+            }
+        });
+    }, 200);
 
     const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };

@@ -135,9 +135,65 @@ function saveInvestment() {
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
         if (isRecurring) { let nextDate = new Date(date); nextDate.setMonth(nextDate.getMonth() + 1); db.recurring.push({ type: currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
+        
+        // Save smart defaults for next time
+        saveSmartDefault('account_last', acc);
+        saveSmartDefault(`account_${currentInvType}`, acc);
+        saveSmartDefault('broker_last', broker);
+        saveSmartDefault(`broker_${currentInvType}`, broker);
+        saveSmartDefault('subcat_last', subCat);
+        saveSmartDefault(`subcat_${currentInvType}`, subCat);
     }
 
-    saveData(); renderAll(); closeOverlays(); showSnackbar(editInvId ? "Entry Updated" : "Investment Logged!", "check_circle"); if (!editInvId) checkDuplicates(newEntry);
+    saveData(); renderAll(); closeOverlays(); clearFormDraft();
+    
+    // Show undo-capable toast for new entries
+    if (!editInvId) {
+        const lastEntryId = newEntry.id;
+        showUndoSnackbar("Investment Logged!", () => {
+            // Undo: remove the entry
+            db.investments = db.investments.filter(i => i.id !== lastEntryId);
+            saveData();
+            renderAll();
+            showSnackbar("Entry removed", 'undo');
+        });
+        checkDuplicates(newEntry);
+    } else {
+        showSnackbar("Entry Updated", "check_circle");
+    }
+}
+
+// Enhanced snackbar with undo option
+function showUndoSnackbar(message, undoCallback) {
+    const sb = document.getElementById("snackbar");
+    const undoId = 'undo-' + Date.now();
+    
+    sb.innerHTML = `
+        <span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>
+        <span style="flex:1;">${message}</span>
+        <button id="${undoId}" style="background:none;border:none;color:var(--md-primary);font-weight:600;cursor:pointer;padding:4px 8px;margin-left:8px;border-radius:4px;">
+            UNDO
+        </button>
+    `;
+    sb.classList.add("show");
+    sb.style.display = 'flex';
+    sb.style.alignItems = 'center';
+    
+    // Attach undo handler
+    setTimeout(() => {
+        const undoBtn = document.getElementById(undoId);
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                undoCallback();
+                sb.classList.remove("show");
+            });
+        }
+    }, 50);
+    
+    // Auto-hide after 5 seconds (longer for undo)
+    setTimeout(() => {
+        sb.classList.remove("show");
+    }, 5000);
 }
 
 function deleteInvestment() {
@@ -247,11 +303,80 @@ function renderListToContainer(arr, containerId, context = 'default') {
     } 
 }
 
+const SEARCH_HISTORY_KEY = 'ledgerSearchHistory';
+const MAX_RECENT_SEARCHES = 5;
+
+function getSearchHistory() {
+    try {
+        return JSON.parse(sessionStorage.getItem(SEARCH_HISTORY_KEY) || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+function addSearchHistory(term) {
+    if (!term || term.length < 2) return; // Don't save very short terms
+    let history = getSearchHistory();
+    history = history.filter(h => h.toLowerCase() !== term.toLowerCase()); // Remove duplicates
+    history.unshift(term);
+    history = history.slice(0, MAX_RECENT_SEARCHES);
+    sessionStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+}
+
+function clearSearchHistory() {
+    sessionStorage.removeItem(SEARCH_HISTORY_KEY);
+    renderSearchHistory();
+}
+
+function renderSearchHistory() {
+    const container = document.getElementById('search-history-container');
+    if (!container) return;
+    
+    const history = getSearchHistory();
+    if (history.length === 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;">
+            <span style="font-size:11px;color:var(--md-outline);">Recent:</span>
+            ${history.map(term => `
+                <button onclick="applySearchTerm('${escapeHtml(term)}')" 
+                    style="padding:4px 10px;background:var(--md-surface-container-highest);border:none;border-radius:12px;font-size:12px;color:var(--md-on-surface-variant);cursor:pointer;">
+                    ${escapeHtml(term)}
+                </button>
+            `).join('')}
+            <button onclick="clearSearchHistory()" style="padding:4px;background:none;border:none;color:var(--md-outline);cursor:pointer;font-size:11px;">
+                Clear
+            </button>
+        </div>
+    `;
+    container.style.display = 'block';
+}
+
+window.applySearchTerm = function(term) {
+    const searchInput = document.getElementById('search-history');
+    if (searchInput) {
+        searchInput.value = term;
+        searchInput.focus();
+        renderHistory();
+    }
+};
+
 function renderHistory() {
     let searchEl = document.getElementById("search-history"), filterEl = document.getElementById("ledger-filter-type"); if (!searchEl || !filterEl) return;
     let term = searchEl.value.toLowerCase(), filterType = filterEl.value;
     let dateFrom = document.getElementById('ledger-date-from')?.value;
     let dateTo = document.getElementById('ledger-date-to')?.value;
+    
+    // Save search term to history if user has typed something
+    if (term && term.length >= 2) {
+        addSearchHistory(searchEl.value.trim());
+    }
+    // Render recent searches
+    renderSearchHistory();
 
     let filtered = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter);
     if (filterType !== 'All') filtered = filtered.filter(i => i.type === filterType);
@@ -290,9 +415,15 @@ window.attachSwipeListeners = attachSwipeListeners;
 window.getEmptyStateHTML = getEmptyStateHTML;
 
 function attachSwipeListeners(cE) {
-    if (!cE) return; let sX = 0, sY = 0, cX = 0, aI = null, isSw = false;
-    cE.addEventListener('touchstart', e => { let w = e.target.closest('.swipe-wrapper'); if (!w) return; aI = w.querySelector('.front'); if (!aI || !aI.hasAttribute('onclick')) { aI = null; return; } sX = e.touches[0].clientX; sY = e.touches[0].clientY; isSw = false; aI.classList.add('swiping'); }, { passive: true });
-    cE.addEventListener('touchmove', e => { if (!aI) return; cX = e.touches[0].clientX; let cY = e.touches[0].clientY; let dX = cX - sX; let dY = Math.abs(cY - sY); if (!isSw && dY > 10) { aI.classList.remove('swiping'); aI = null; return; } if (Math.abs(dX) > 10) isSw = true; if (isSw) { if (dX > 80) dX = 80; if (dX < -80) dX = -80; aI.style.transform = `translateX(${dX}px)`; } }, { passive: true });
+    if (!cE) return; let sX = 0, sY = 0, cX = 0, aI = null, isSw = false, hapticTriggered = false;
+    cE.addEventListener('touchstart', e => { let w = e.target.closest('.swipe-wrapper'); if (!w) return; aI = w.querySelector('.front'); if (!aI || !aI.hasAttribute('onclick')) { aI = null; return; } sX = e.touches[0].clientX; sY = e.touches[0].clientY; isSw = false; hapticTriggered = false; aI.classList.add('swiping'); }, { passive: true });
+    cE.addEventListener('touchmove', e => { if (!aI) return; cX = e.touches[0].clientX; let cY = e.touches[0].clientY; let dX = cX - sX; let dY = Math.abs(cY - sY); if (!isSw && dY > 10) { aI.classList.remove('swiping'); aI = null; return; } if (Math.abs(dX) > 10) isSw = true; if (isSw) { if (dX > 80) dX = 80; if (dX < -80) dX = -80; aI.style.transform = `translateX(${dX}px)`; 
+            // Haptic feedback when crossing swipe thresholds
+            if (!hapticTriggered && Math.abs(dX) > 50) {
+                haptic(dX < 0 ? [30, 30] : 20); // Different feedback for delete vs edit
+                hapticTriggered = true;
+            }
+        } }, { passive: true });
     cE.addEventListener('touchend', e => { if (!aI) return; aI.classList.remove('swiping'); let dX = cX - sX; let w = aI.closest('.swipe-wrapper'); if (!w) { aI = null; return; } let id = parseFloat(w.getAttribute('data-id')); if (isSw && dX < -50) { haptic(50); aI.style.transform = `translateX(-100%)`; setTimeout(() => { editInvId = id; deleteInvestment(); }, 250); } else if (isSw && dX > 50) { haptic(30); aI.style.transform = `translateX(0px)`; openInvestSheet(id); } else { aI.style.transform = `translateX(0px)`; } aI = null; });
 }
 
