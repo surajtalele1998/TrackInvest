@@ -199,7 +199,16 @@ function renderAll() {
     let badgeEl = document.getElementById('ledger-entry-badge');
     if (badgeEl) { let cnt = db.investments.length; badgeEl.style.display = cnt > 0 ? 'block' : 'none'; badgeEl.textContent = cnt > 99 ? '99+' : cnt; }
 
-    let tplHtml = ""; db.templates.forEach((tpl, idx) => { let meta = db.categories[tpl.type] || { icon: 'bolt' }; tplHtml += `<div class="quick-template-card" onclick="executeQuickLog(${idx})"><span class="material-symbols-rounded qt-icon">${meta.icon}</span><div class="qt-text">${tpl.note} ${formatMoney(tpl.amount)}</div><span class="material-symbols-rounded" style="font-size:16px;opacity:0.5;margin-left:4px;" onclick="deleteQuickLog(event,${idx})">close</span></div>`; });
+    let tplHtml = ""; db.templates.forEach((tpl, idx) => { 
+        let meta = db.categories[tpl.type] || { icon: 'bolt' }; 
+        let safeNote = escapeHtml(tpl.note);
+        let safeIcon = escapeHtml(meta.icon);
+        tplHtml += `<div class="quick-template-card" onclick="executeQuickLog(${idx})">
+            <span class="material-symbols-rounded qt-icon">${safeIcon}</span>
+            <div class="qt-text">${safeNote} ${formatMoney(tpl.amount)}</div>
+            <span class="material-symbols-rounded" style="font-size:16px;opacity:0.5;margin-left:4px;" onclick="deleteQuickLog(event,${idx})">close</span>
+        </div>`; 
+    });
     let qtWrapper = document.getElementById('quick-templates-list'); if (qtWrapper) { qtWrapper.innerHTML = tplHtml; qtWrapper.style.display = tplHtml ? 'flex' : 'none'; }
 
     let fireFill = document.getElementById('fire-fill');
@@ -341,7 +350,7 @@ function renderAll() {
                 monthlyContrib = db.recurring.filter(r => r.type === g.linkedCategory).reduce((s, r) => s + r.amount, 0);
             }
             let perc = Math.min(100, (savedAmt / g.target) * 100);
-            let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${g.linkedCategory}</span>` : '';
+            let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${escapeHtml(g.linkedCategory)}</span>` : '';
             let forecastHtml = '';
             if (savedAmt < g.target && monthlyContrib > 0) {
                 let monthsLeft = Math.ceil((g.target - savedAmt) / monthlyContrib);
@@ -351,7 +360,7 @@ function renderAll() {
                     forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 Expected hit: ${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}</div>`;
                 }
             }
-            return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${g.name} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`;
+            return `<div class="goal-card" onclick="openGoalSheet(${g.id})"><div class="goal-header"><div class="goal-title">${escapeHtml(g.name)} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`;
         }).join('');
     }
 
@@ -687,7 +696,7 @@ function updateAdvisorWidget() {
         health.suggestions.slice(0, 2).forEach(s => {
             html += `<div style="font-size:13px; display:flex; gap:8px; line-height:1.4;">
                 <span class="material-symbols-rounded" style="font-size:16px; color:var(--md-primary);">check_circle</span>
-                <span>${s}</span>
+                <span>${escapeHtml(s)}</span>
             </div>`;
         });
         html += `</div>`;

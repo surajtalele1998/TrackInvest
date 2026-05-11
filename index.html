@@ -873,7 +873,7 @@
         <button class="btn-primary" style="margin-top:12px;" onclick="syncHistoricalSIP()">Generate History</button>
     </div>
 
-    <div class="sheet" id="ai-sheet" style="max-height:85vh; background: var(--md-surface-container);">
+    <div class="sheet sub-sheet" id="ai-sheet" style="max-height:85vh; background: var(--md-surface-container);">
         <div class="drag-handle"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
             <h3 class="sheet-title" style="margin:0;"><span class="material-symbols-rounded"
@@ -902,7 +902,7 @@
         </div>
     </div>
 
-    <div class="sheet" id="month-sheet" style="max-height:85vh;">
+    <div class="sheet sub-sheet" id="month-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span id="month-sheet-title">Summary</span>
@@ -912,7 +912,7 @@
         <div id="month-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
     </div>
 
-    <div class="sheet" id="projection-sheet">
+    <div class="sheet sub-sheet" id="projection-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title"><span class="material-symbols-rounded">edit_calendar</span> Next Month Target</h3>
         <div class="input-container"><label>Target Amount (₹)</label><input type="number" id="proj-amt"
@@ -920,7 +920,7 @@
         <button class="btn-primary" onclick="saveProjection()">Set Target</button>
     </div>
 
-    <div class="sheet" id="monthly-target-sheet">
+    <div class="sheet sub-sheet" id="monthly-target-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title">Monthly Investment Target</h3>
         <div class="input-container"><label>Target Amount (₹)</label><input type="number" id="monthly-target-amt"
@@ -928,7 +928,7 @@
         <button class="btn-primary" onclick="saveMonthlyTarget()">Set Target</button>
     </div>
 
-    <div class="sheet" id="maturity-calendar-sheet">
+    <div class="sheet sub-sheet" id="maturity-calendar-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span>Maturity Calendar</span>
@@ -1088,7 +1088,7 @@
         <div id="inf-result" style="margin-top:16px;font-weight:500;text-align:center;"></div>
     </div>
 
-    <div class="sheet" id="ai-chat-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
+    <div class="sheet sub-sheet" id="ai-chat-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
         <div class="drag-handle"></div>
         <div class="sheet-title"
             style="margin-bottom: 12px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">

@@ -93,10 +93,10 @@ function haptic(ms = 30) {
         if (typeof navigator !== 'undefined' && navigator.vibrate && ms > 0) {
             navigator.vibrate(ms);
         }
-    } catch (e) {}
+    } catch (e) { }
 }
-document.addEventListener('mousedown', () => window.userInteracted = true, {once: true});
-document.addEventListener('touchstart', () => window.userInteracted = true, {once: true});
+document.addEventListener('mousedown', () => window.userInteracted = true, { once: true });
+document.addEventListener('touchstart', () => window.userInteracted = true, { once: true });
 
 // ── UNIQUE ID GENERATOR ────────────────────────
 let _idCounter = 0;
@@ -114,8 +114,9 @@ function pushSheetState(sheetId) {
 
 function handlePopState(event) {
     const state = event.state;
+    // Specifically target sub-sheets vs main sheets
     const activeSub = document.querySelector('.sheet.sub-sheet.active');
-    const activeMain = document.querySelector('.sheet.active');
+    const activeMain = document.querySelector('.sheet.active:not(.sub-sheet)');
 
     if (activeSub) {
         closeSubSheet(true);
@@ -123,6 +124,9 @@ function handlePopState(event) {
         closeOverlays(true);
     } else if (state && state.tabId) {
         performTabSwitch(state.tabId, true);
+    } else if (!state) {
+        // If we hit a null state (e.g. back to start), ensure everything is closed
+        closeOverlays(true);
     }
 }
 
@@ -159,7 +163,7 @@ function closeOverlays(fromPopState = false) {
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
-const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet', 'wealth-blueprint-sheet', 'ai-sheet', 'maturity-calendar-sheet'];
+const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet', 'wealth-blueprint-sheet', 'ai-sheet', 'maturity-calendar-sheet', 'ai-chat-sheet', 'monthly-target-sheet', 'projection-sheet', 'month-sheet'];
 
 function openSubSheet(sheetId) {
     if (!SUB_SHEET_IDS.includes(sheetId)) {
@@ -173,15 +177,18 @@ function openSheet(sheetId, fromRestore = false) {
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
     if (isSubSheet) {
+        // Clear previous sub-sheets to prevent stacking
+        document.querySelectorAll('.sheet.sub-sheet').forEach(el => el.classList.remove('active'));
         document.getElementById('scrim-sub')?.classList.add('active');
         document.getElementById(sheetId)?.classList.add('active');
         activeSub = sheetId;
     } else {
-        // If not fromRestore, we want to clear previous main sheets
-        document.querySelectorAll('.scrim, .sheet:not(.sub-sheet)').forEach(el => el.classList.remove('active'));
+        // If opening a main sheet, close EVERYTHING first (including sub-sheets)
+        document.querySelectorAll('.scrim, .scrim-sub, .sheet').forEach(el => el.classList.remove('active'));
         document.getElementById('scrim')?.classList.add('active');
         document.getElementById(sheetId)?.classList.add('active');
         activeMain = sheetId;
+        activeSub = null;
     }
     sessionStorage.setItem('currentSheet', sheetId);
     if (sheetId === 'history-sync-sheet') populateSyncDropdown();
@@ -452,9 +459,8 @@ function checkMilestones(nw) {
 }
 
 window.openMonthlyTargetSheet = function () {
-    // Redundant monthlyTargetRef removed
-    document.getElementById('scrim').classList.add('active');
-    document.getElementById('monthly-target-sheet').classList.add('active');
+    haptic(30);
+    openSubSheet('monthly-target-sheet');
 };
 
 window.saveMonthlyTarget = function () {
@@ -465,8 +471,7 @@ window.saveMonthlyTarget = function () {
 window.openProjectionSheet = function () {
     haptic(30);
     document.getElementById('proj-amt').value = db.projectionNextMonth || 0;
-    document.getElementById('scrim').classList.add('active');
-    document.getElementById('projection-sheet').classList.add('active');
+    openSubSheet('projection-sheet');
 };
 
 window.saveProjection = function () {
@@ -476,28 +481,36 @@ window.saveProjection = function () {
 };
 
 function initUI() {
+    // Initialize base history state if missing
+    const savedTab = sessionStorage.getItem('activeTab') || 'dashboard';
+    if (!history.state) {
+        history.replaceState({ tabId: savedTab }, "");
+    }
     document.getElementById('privacy-icon').innerText = db.privacyMode ? 'visibility_off' : 'visibility';
     setTheme(db.theme || 'indigo');
 
     let sel = document.getElementById('account-filter'); sel.innerHTML = `<option value="All">All Accounts</option>`;
-    db.accounts.forEach(a => sel.innerHTML += `<option value="${a}">${a}</option>`);
+    db.accounts.forEach(a => sel.innerHTML += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`);
 
     let formSel = document.getElementById('inv-account'); formSel.innerHTML = "";
-    db.accounts.forEach(a => formSel.innerHTML += `<option value="${a}">${a}</option>`);
+    db.accounts.forEach(a => formSel.innerHTML += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`);
 
     let chips = document.getElementById('type-chips'); chips.innerHTML = "";
     let filterType = document.getElementById('ledger-filter-type'); if (filterType) filterType.innerHTML = `<option value="All">All Assets</option>`;
-    Object.keys(db.categories).forEach(c => { chips.innerHTML += `<div class="quick-chip" onclick="setInvestType('${c}')">${c}</div>`; if (filterType) filterType.innerHTML += `<option value="${c}">${c}</option>`; });
+    Object.keys(db.categories).forEach(c => {
+        let safeC = escapeHtml(c);
+        chips.innerHTML += `<div class="quick-chip" onclick="setInvestType('${safeC}')">${safeC}</div>`;
+        if (filterType) filterType.innerHTML += `<option value="${safeC}">${safeC}</option>`;
+    });
     currentInvType = Object.keys(db.categories)[0];
 
     let gl = document.getElementById('goal-link'); gl.innerHTML = `<option value="">None (Manual Tracking)</option>`;
-    Object.keys(db.categories).forEach(c => { gl.innerHTML += `<option value="${c}">Link to ${c}</option>`; });
-    document.getElementById('xirr-category').innerHTML = Object.keys(db.categories).map(c => `<option value="${c}">${c}</option>`).join('');
+    Object.keys(db.categories).forEach(c => { gl.innerHTML += `<option value="${escapeHtml(c)}">Link to ${escapeHtml(c)}</option>`; });
+    document.getElementById('xirr-category').innerHTML = Object.keys(db.categories).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
 
     initChartInteractivity();
 
     // Restore active tab and sheet
-    const savedTab = sessionStorage.getItem('activeTab');
     if (savedTab) performTabSwitch(savedTab, true);
 
     const savedSheet = sessionStorage.getItem('currentSheet');
@@ -523,7 +536,7 @@ document.addEventListener('touchmove', e => {
     const touchY = e.touches[0].clientY;
     const diff = touchY - touchStartY;
     const activeSheet = document.querySelector('.sheet.active');
-    
+
     if (activeSheet && diff > 100 && activeSheet.scrollTop <= 0) {
         // Drag down to close
         if (activeSheet.classList.contains('sub-sheet')) {
@@ -1128,7 +1141,7 @@ async function searchMFForLog() {
         if (data.length === 0) return showSnackbar("No funds found", "error");
 
         let sel = document.getElementById('inv-mf-select');
-        sel.innerHTML = `<option value="">Select a fund...</option>` + data.map(f => `<option value="${f.schemeCode}" data-name="${f.schemeName}">${f.schemeName}</option>`).join('');
+        sel.innerHTML = `<option value="">Select a fund...</option>` + data.map(f => `<option value="${escapeHtml(f.schemeCode)}" data-name="${escapeHtml(f.schemeName)}">${escapeHtml(f.schemeName)}</option>`).join('');
         sel.style.display = 'block';
         showSnackbar(`Found ${data.length} funds`, "check_circle");
     } catch (e) { showSnackbar("Search failed", "error"); }
@@ -1161,7 +1174,7 @@ async function fetchLiveNAV(code) {
 // --- UNIVERSAL HISTORICAL BACKFILL WIZARD ---
 function populateSyncDropdown() {
     let sel = document.getElementById('sync-asset-type');
-    sel.innerHTML = Object.keys(db.categories).map(c => `<option value="${c}">${c}</option>`).join('');
+    sel.innerHTML = Object.keys(db.categories).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     toggleSyncFields();
 }
 
@@ -1185,7 +1198,7 @@ async function searchMFForSync() {
         if (data.length === 0) return showSnackbar("No funds found", "error");
 
         let sel = document.getElementById('sync-mf-select');
-        sel.innerHTML = `<option value="">Select a fund...</option>` + data.map(f => `<option value="${f.schemeCode}">${f.schemeName}</option>`).join('');
+        sel.innerHTML = `<option value="">Select a fund...</option>` + data.map(f => `<option value="${escapeHtml(f.schemeCode)}">${escapeHtml(f.schemeName)}</option>`).join('');
         sel.style.display = 'block';
         showSnackbar(`Found ${data.length} funds`, "check_circle");
     } catch (e) { showSnackbar("Search failed", "error"); }
@@ -1316,9 +1329,6 @@ function openInvestSheet(id = null, presetAmt = null) {
         let recCheck = document.getElementById('inv-recurring'); if (recCheck) recCheck.checked = false;
         if (activeCategory) { setInvestType(activeCategory); } else { setInvestType(Object.keys(db.categories)[0]); }
     }
-    const scrim = document.getElementById('scrim');
-    const sheet = document.getElementById('invest-sheet');
-    if (scrim) scrim.classList.add('active');
-    if (sheet) sheet.classList.add('active');
+    openSheet('invest-sheet');
 }
 

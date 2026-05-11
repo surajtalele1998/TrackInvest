@@ -169,39 +169,45 @@ function attachSwipeListeners(cE) {
 // ==========================================
 // 7. MODULES (GOALS, FIRE, CATS, SETTINGS)
 // ==========================================
-function openGoalSheet(id = null) { haptic(30); editGoalId = id; if (id) { let g = db.goals.find(g => g.id === id); if (!g) return; document.getElementById('goal-name').value = g.name; document.getElementById('goal-target').value = g.target; document.getElementById('goal-saved').value = g.saved; document.getElementById('goal-link').value = g.linkedCategory || ''; } else { document.getElementById('goal-name').value = ''; document.getElementById('goal-target').value = ''; document.getElementById('goal-saved').value = ''; document.getElementById('goal-link').value = ''; } document.getElementById('scrim').classList.add('active'); document.getElementById('goal-sheet').classList.add('active'); }
+function openGoalSheet(id = null) {
+    haptic(30);
+    editGoalId = id;
+    if (id) {
+        let g = db.goals.find(g => g.id === id);
+        if (!g) return;
+        document.getElementById('goal-name').value = g.name;
+        document.getElementById('goal-target').value = g.target;
+        document.getElementById('goal-saved').value = g.saved;
+        document.getElementById('goal-link').value = g.linkedCategory || '';
+    } else {
+        document.getElementById('goal-name').value = '';
+        document.getElementById('goal-target').value = '';
+        document.getElementById('goal-saved').value = '';
+        document.getElementById('goal-link').value = '';
+    }
+    openSheet('goal-sheet');
+}
 function saveGoal() { haptic(40); let name = document.getElementById('goal-name').value; let target = parseFloat(document.getElementById('goal-target').value); let saved = parseFloat(document.getElementById('goal-saved').value) || 0; let link = document.getElementById('goal-link').value; if (!name || isNaN(target)) return showSnackbar("Name and Target required", "error"); let newGoal = { id: editGoalId || Date.now(), name, target, saved, linkedCategory: link }; if (editGoalId) { let idx = db.goals.findIndex(g => g.id === editGoalId); if (idx > -1) db.goals[idx] = newGoal; } else { db.goals.push(newGoal); } saveData(); closeOverlays(); renderAll(); showSnackbar("Goal Saved!", "flag"); }
-function openFIRESheet() { haptic(30); document.getElementById('fire-expenses').value = db.fireTargetMonthly || ''; document.getElementById('scrim').classList.add('active'); document.getElementById('fire-sheet').classList.add('active'); }
+function openFIRESheet() {
+    haptic(30);
+    document.getElementById('fire-expenses').value = db.fireTargetMonthly || '';
+    openSheet('fire-sheet');
+}
 function saveFIRE() { haptic(40); db.fireTargetMonthly = parseFloat(document.getElementById('fire-expenses').value) || 0; saveData(); closeOverlays(); renderAll(); showSnackbar("FIRE Target Updated"); }
 
 function openDividendSheet() {
     haptic(30);
-    // Comprehensive Data Audit for Passive Income
-    let auditCount = 0;
-    const passiveTerms = ['dividend', 'interest', 'payout', 'rent', 'income', 'cashback', 'yield', 'div', 'roi', 'passive'];
-
-    db.investments.forEach(inv => {
-        // Only check note and tags for passive terms, NOT the type field (to avoid false positives)
-        const noteAndTags = ((inv.note || "") + " " + (inv.tags || "")).toLowerCase();
-        const shouldBeDividend = passiveTerms.some(term => noteAndTags.includes(term)) || inv.isDividend;
-
-        if (shouldBeDividend && !inv.isDividend) {
-            inv.isDividend = true;
-            auditCount++;
-        }
-    });
-
-    if (auditCount > 0) {
-        saveData();
-    }
-
+    // Audit logic: Only suggest or mark if it's a high-confidence match and NOT already explicitly false
+    // But to respect user choice, we only do this once or if requested.
+    // For now, let's just use the existing isDividend flag and only highlight potential misses in UI if needed.
+    
     const dividends = db.investments.filter(i => i.isDividend).sort((a, b) => parseDate(b.date) - parseDate(a.date));
     const total = dividends.reduce((s, i) => s + i.amount, 0);
 
     const totalEl = document.getElementById('dividend-sheet-total');
     if (totalEl) totalEl.innerText = formatMoney(total);
 
-    let html = dividends.length === 0 ?
+    let html = dividends.length === 0 ? 
         `<div class="empty-state-premium" style="margin-top:40px;"><span class="material-symbols-rounded">payments</span><div class="es-title">No Passive Income Recorded</div><div class="es-subtitle">Add investments and mark them as 'Dividend' or use keywords like 'dividend', 'interest' in notes.</div></div>` :
         dividends.map(buildUnifiedItemHTML).join('');
 
@@ -216,7 +222,7 @@ function openDividendSheet() {
 
 function openCategoryDetails(type) {
     haptic(30); activeCategory = type; let meta = db.categories[type] || { icon: 'savings', color: '#8D6E63' };
-    document.getElementById('cat-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:${meta.color};">${meta.icon}</span> ${type} Portfolio`;
+    document.getElementById('cat-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:${escapeHtml(meta.color)};">${escapeHtml(meta.icon)}</span> ${escapeHtml(type)} Portfolio`;
     document.getElementById('cat-target-alloc').value = db.allocTargets[type] || ''; document.getElementById('cat-cmv-input').value = db.currentMarketValues[type] || ''; document.getElementById('cat-initial-bal').value = db.categoryDetails[type]?.initialBal || ''; document.getElementById('cat-interest-rate').value = db.categoryDetails[type]?.interestRate || '';
 
     let filtered = db.investments.filter(i => i.type === type && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
@@ -236,7 +242,7 @@ function openCategoryDetails(type) {
     let assetHtml = "";
     Object.keys(assets).sort((a, b) => assets[b] - assets[a]).forEach(k => {
         let perc = totalInvested > 0 ? ((assets[k] / totalInvested) * 100).toFixed(1) : 0;
-        assetHtml += `<div class="unified-item"><div class="unified-title" style="flex:1;"><span class="title-text">${k}</span> <span style="font-size:11px;color:var(--md-outline);margin-left:6px;flex-shrink:0;">${perc}%</span></div><div class="price">${formatMoney(assets[k])}</div></div>`;
+        assetHtml += `<div class="unified-item"><div class="unified-title" style="flex:1;"><span class="title-text">${escapeHtml(k)}</span> <span style="font-size:11px;color:var(--md-outline);margin-left:6px;flex-shrink:0;">${perc}%</span></div><div class="price">${formatMoney(assets[k])}</div></div>`;
     });
     document.getElementById('cat-asset-list').innerHTML = assetHtml || '<div style="color:var(--md-outline);font-size:14px;text-align:center;padding:16px;">No assets found.</div>';
     renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'cat-history-list');
@@ -249,7 +255,7 @@ function openCategoryDetails(type) {
         if (el) el.checked = !!fieldConfig[fid];
     });
     
-    document.getElementById('scrim').classList.add('active'); document.getElementById('category-sheet').classList.add('active');
+    openSheet('category-sheet');
 
     setTimeout(() => { renderCategoryChart(type); }, 300);
 }
@@ -303,7 +309,7 @@ function openMonthDetails(offset) {
         });
     }
     renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'month-history-list');
-    document.getElementById('scrim').classList.add('active'); document.getElementById('month-sheet').classList.add('active');
+    openSheet('month-sheet');
 }
 
 function openSettings() {
@@ -347,7 +353,7 @@ function openSettings() {
     document.getElementById('category-crud-list').innerHTML = catHtml;
 
     let badgeHtml = ""; milestoneThresholds.forEach(t => { let unlocked = db.milestones.includes(t.val); if (unlocked) badgeHtml += `<div class="badge-item"><span class="material-symbols-rounded">workspace_premium</span> ${t.label}</div>`; else badgeHtml += `<div class="badge-item locked"><span class="material-symbols-rounded">lock</span> ${t.label}</div>`; }); document.getElementById('badge-grid').innerHTML = badgeHtml;
-    document.getElementById('scrim').classList.add('active'); document.getElementById('settings-sheet').classList.add('active');
+    openSheet('settings-sheet');
 }
 window.openSettings = openSettings;
 
@@ -489,42 +495,82 @@ async function decryptData(encStr, pin) {
     return decodeURIComponent(atob(encStr));
 }
 
-function exportData() {
+async function exportData() {
     haptic(40);
     let encrypt = document.getElementById('encrypt-backup-toggle') ? document.getElementById('encrypt-backup-toggle').checked : false;
     if (encrypt && !db.appPin) { showSnackbar("Please set a PIN first to encrypt", "warning"); return; }
+    
     let dataStr = JSON.stringify(db, null, 2);
-    let finalData = encrypt ? encryptData(dataStr, db.appPin) : dataStr;
+    let finalData = encrypt ? await encryptData(dataStr, db.appPin) : dataStr;
     let ext = encrypt ? '.enc' : '.json';
+    
     const blob = new Blob([finalData], { type: encrypt ? 'text/plain' : 'application/json' });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `Invest_Backup${ext}`;
+    a.download = `Invest_Backup_${new Date().toISOString().split('T')[0]}${ext}`;
     a.click();
     closeOverlays();
     showSnackbar(encrypt ? "Encrypted Backup Downloaded" : "Backup Downloaded");
 }
 
 function restoreData(e) {
-    const file = e.target.files[0]; if (!file) return; const reader = new FileReader();
-    reader.onload = (event) => {
+    const file = e.target.files[0]; if (!file) return; 
+    const reader = new FileReader();
+    reader.onload = async (event) => {
         try {
             let content = event.target.result;
             let parsedStr = content;
-            if (content.startsWith('ENC:')) {
+            
+            if (content.startsWith('ENC:') || content.startsWith('ENC2:')) {
                 let pin = prompt("Enter PIN to decrypt backup:");
                 if (!pin) { showSnackbar("Decryption cancelled", "error"); e.target.value = ''; return; }
-                parsedStr = decryptData(content, pin);
+                try {
+                    parsedStr = await decryptData(content, pin);
+                } catch (decErr) {
+                    showSnackbar("Incorrect PIN or Corrupted Data", "error");
+                    e.target.value = '';
+                    return;
+                }
             }
+            
             let parsed = JSON.parse(parsedStr);
             if (!parsed.userProfile) parsed.userProfile = { salary: 0, regime: 'new' };
+            // Deep merge/update db
             db.userProfile = parsed.userProfile;
-            db.investments = parsed.investments || []; db.goals = parsed.goals || []; db.recurring = parsed.recurring || []; db.milestones = parsed.milestones || []; db.projectionNextMonth = parsed.projectionNextMonth || 0; db.categoryDetails = parsed.categoryDetails || parsed.categoryGoals || {}; db.currentMarketValues = parsed.currentMarketValues || {}; db.allocTargets = parsed.allocTargets || {}; db.accounts = parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : ['Main Portfolio']; db.fireTargetMonthly = parsed.fireTargetMonthly || 0; db.templates = parsed.templates || []; db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false; db.theme = parsed.theme || 'indigo'; db.geminiKey = parsed.geminiKey || ''; db.groqKey = parsed.groqKey || ''; db.appPin = parsed.appPin || ''; db.useBiometric = parsed.useBiometric || false; db.chatHistory = parsed.chatHistory || []; db.chatSessions = parsed.chatSessions || []; db.lastBackupPrompt = parsed.lastBackupPrompt || ''; db.navCache = parsed.navCache || {};
+            db.investments = parsed.investments || []; 
+            db.goals = parsed.goals || []; 
+            db.recurring = parsed.recurring || []; 
+            db.milestones = parsed.milestones || []; 
+            db.projectionNextMonth = parsed.projectionNextMonth || 0; 
+            db.categoryDetails = parsed.categoryDetails || parsed.categoryGoals || {}; 
+            db.currentMarketValues = parsed.currentMarketValues || {}; 
+            db.allocTargets = parsed.allocTargets || {}; 
+            db.accounts = parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : ['Main Portfolio']; 
+            db.fireTargetMonthly = parsed.fireTargetMonthly || 0; 
+            db.templates = parsed.templates || []; 
+            db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false; 
+            db.theme = parsed.theme || 'indigo'; 
+            db.geminiKey = parsed.geminiKey || ''; 
+            db.groqKey = parsed.groqKey || ''; 
+            db.appPin = parsed.appPin || ''; 
+            db.useBiometric = parsed.useBiometric || false; 
+            db.chatHistory = parsed.chatHistory || []; 
+            db.chatSessions = parsed.chatSessions || []; 
+            db.lastBackupPrompt = parsed.lastBackupPrompt || ''; 
+            db.navCache = parsed.navCache || {};
+            
             if (parsed.categories && Object.keys(parsed.categories).length > 0) { db.categories = parsed.categories; }
             if (!db.settingsTable) db.settingsTable = { lastResetMonth: '' };
-            saveData(); initUI(); renderAll(); closeOverlays(); showSnackbar("Data Restored Instantly", "check_circle"); e.target.value = '';
-        } catch (err) { showSnackbar("Invalid or Corrupted Backup", "error"); }
-    }; reader.readAsText(file);
+            
+            saveData(); initUI(); renderAll(); closeOverlays(); 
+            showSnackbar("Data Restored Successfully", "check_circle"); 
+            e.target.value = '';
+        } catch (err) { 
+            console.error(err);
+            showSnackbar("Invalid or Corrupted Backup", "error"); 
+        }
+    }; 
+    reader.readAsText(file);
 }
 
 // Legacy WebRTC functions removed — canonical implementation in app_part3.js
@@ -679,7 +725,19 @@ function calculateXIRR() {
     }
     document.getElementById('xirr-result').innerHTML = `XIRR: <strong style="color:var(--md-primary); font-size:24px;">${resultText}</strong>`;
 }
-function calculateMonthlySIP() { let target = parseFloat(document.getElementById('sip-target').value); let years = parseFloat(document.getElementById('sip-years').value); let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; let months = years * 12; let monthly = target * rate / (Math.pow(1 + rate, months) - 1); document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; }
+function calculateMonthlySIP() { 
+    let target = parseFloat(document.getElementById('sip-target').value); 
+    let years = parseFloat(document.getElementById('sip-years').value); 
+    let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; 
+    let months = years * 12; 
+    if (rate === 0) {
+        document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(target / months)}</strong>`;
+        return;
+    }
+    // SIP at start of period
+    let monthly = target * rate / ((Math.pow(1 + rate, months) - 1) * (1 + rate)); 
+    document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; 
+}
 function calculateEMI() { let P = parseFloat(document.getElementById('emi-principal').value); let years = parseFloat(document.getElementById('emi-tenure').value); let rate = parseFloat(document.getElementById('emi-rate').value) / 12 / 100; let n = years * 12; if (rate === 0) { document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(P / n)}</strong>`; return; } let emi = P * rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1); document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(emi)}</strong>`; }
 function calculateInflation() { let pv = parseFloat(document.getElementById('inf-present').value); let years = parseFloat(document.getElementById('inf-years').value); let rate = parseFloat(document.getElementById('inf-rate').value) / 100; let fv = pv * Math.pow(1 + rate, years); document.getElementById('inf-result').innerHTML = `Future Value: <strong>${formatMoney(fv)}</strong>`; }
 
@@ -689,7 +747,8 @@ function calculateMonthlySIPValue(target, years, rate) {
     if (!years || years <= 0) return null;
     let r = rate / 100 / 12; let n = years * 12;
     if (r === 0) return target / n;
-    return target * r / (Math.pow(1 + r, n) - 1);
+    // SIP at start of period: FV = P * [((1+r)^n - 1)/r] * (1+r)
+    return target * r / ((Math.pow(1 + r, n) - 1) * (1 + r));
 }
 function calculateEMIValue(principal, years, rate) {
     if (!principal || principal <= 0) return null;
@@ -855,7 +914,7 @@ function updateChatHistoryUI() {
         const date = new Date(sess.date).toLocaleDateString();
         html += `<div class="list-item" onclick="loadChatSession(${idx})">
             <div style="flex:1;">
-                <div style="font-weight:500;">${sess.title}</div>
+                <div style="font-weight:500;">${escapeHtml(sess.title)}</div>
                 <div style="font-size:11px;opacity:0.6;">${date} • ${sess.messages.length} messages</div>
             </div>
             <span class="material-symbols-rounded" style="opacity:0.3;">chevron_right</span>
@@ -884,18 +943,13 @@ async function fetchAIPrediction() {
     let prompt = `User past 4 months totals: ${mSums.join(', ')}. Net worth: ${currentTotalNW}. Auto-SIPs: ${autoSipTotal}. Output ONLY: forecasted amount in <strong> tags, then one short encouraging sentence (max 10 words). Raw HTML, no codeblocks.`;
     try {
         let htmlResp = await callAIApi(prompt, "You are a financial projection engine. Return raw HTML only.");
-        predictEl.innerHTML = htmlResp + ` <span style="font-size:11px;color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">Details →</span>`;
+        predictEl.innerHTML = formatAIResponse(htmlResp) + ` <span style="font-size:11px;color:var(--md-primary);cursor:pointer;" onclick="openAIPredictSheet()">Details →</span>`;
     } catch (e) {
         predictEl.innerHTML = `<span style="font-size:12px;">Add API key in Settings for AI forecasts.</span>`;
     }
 }
 
 function openAIPredictSheet() {
-    haptic(30);
-    const scrim = document.getElementById('scrim-sub');
-    const sheet = document.getElementById('ai-predict-sheet');
-    if (scrim) scrim.classList.add('active');
-    if (sheet) sheet.classList.add('active');
     generateAIForecast();
 }
 
@@ -904,8 +958,7 @@ function openAIPredictSheet() {
 async function generateAIForecast() {
     haptic(30);
     if (!db.geminiKey && !db.groqKey) { showSnackbar('Add API Key in Settings', 'key'); return; }
-    document.getElementById('scrim-sub').classList.add('active');
-    document.getElementById('ai-predict-sheet').classList.add('active');
+    openSubSheet('ai-predict-sheet');
     let content = document.getElementById('ai-predict-sheet-content');
     content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span><div style="margin-top:12px;font-size:14px;">Generating category-wise forecast...</div></div>`;
 
@@ -965,8 +1018,7 @@ async function generateAIForecast() {
 
 async function openWealthBlueprint() {
     haptic(40);
-    document.getElementById('scrim-sub').classList.add('active');
-    document.getElementById('wealth-blueprint-sheet').classList.add('active');
+    openSubSheet('wealth-blueprint-sheet');
     generateWealthBlueprint();
 }
 
@@ -1074,8 +1126,7 @@ async function askAIEngine(context) {
         </div>`;
 
     chartSection.style.display = 'none';
-    document.getElementById('scrim').classList.add('active');
-    document.getElementById('ai-sheet').classList.add('active');
+    openSubSheet('ai-sheet');
 
     // 1. DATA PREP (Shared Context)
     const now = new Date();
