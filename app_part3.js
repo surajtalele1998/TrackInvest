@@ -254,6 +254,7 @@ function renderAll() {
     renderHeatmap(); fetchAIPrediction();
     updateStatChips(totalInvestedAll, totalMarketValue, yearTotal, thisMonthTotal);
     renderRecurringSheet();
+    if (typeof renderSettingsSections === 'function') renderSettingsSections();
     // Entry count badge
     let badgeEl = document.getElementById('ledger-entry-badge');
     if (badgeEl) { let cnt = db.investments.length; badgeEl.style.display = cnt > 0 ? 'block' : 'none'; badgeEl.textContent = cnt > 99 ? '99+' : cnt; }

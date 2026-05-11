@@ -35,19 +35,19 @@ if (!db.userProfileExtended) db.userProfileExtended = {
     ageGroup: null, // '20s', '30s', '40s', '50s', '60+'
     employmentType: null, // 'salaried', 'business', 'freelance', 'retired'
     location: null, // 'india', 'nri', 'other'
-    
+
     // Layer 2: Financial Context (asked contextually)
     riskTolerance: null, // 'conservative', 'moderate', 'aggressive'
     investmentHorizon: null, // 'short', 'medium', 'long'
     emergencyFundMonths: null, // number of months expenses saved
-    
+
     // Layer 3: Advanced (optional health check)
     hasHealthInsurance: null,
     hasLifeInsurance: null,
     hasHomeLoan: null,
     hasCarLoan: null,
     creditScoreRange: null, // 'poor', 'fair', 'good', 'excellent'
-    
+
     // Smart tracking (auto-calculated from data)
     profileCompleteness: 0, // 0-100%
     lastProfilePrompt: null, // timestamp to avoid nagging
@@ -138,7 +138,7 @@ function debouncedChartRender(chartType, renderFn, delay = 100) {
 function setLoading(elementId, isLoading, message = '') {
     const el = document.getElementById(elementId);
     if (!el) return;
-    
+
     if (isLoading) {
         el.dataset.originalContent = el.innerHTML;
         el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;color:var(--md-outline);">
@@ -158,7 +158,7 @@ function setLoading(elementId, isLoading, message = '') {
 function setButtonLoading(buttonId, isLoading) {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
-    
+
     if (isLoading) {
         btn.dataset.originalText = btn.innerHTML;
         btn.innerHTML = `<span class="material-symbols-rounded" style="animation:spin 1s linear infinite;font-size:18px;">progress_activity</span>`;
@@ -216,7 +216,7 @@ document.head.appendChild(style);
 function showSkeleton(containerId, type = 'list') {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
+
     let skeletonHtml = '';
     if (type === 'list') {
         skeletonHtml = Array(4).fill(0).map(() => `
@@ -245,7 +245,7 @@ function showSkeleton(containerId, type = 'list') {
             </div>
         `;
     }
-    
+
     container.dataset.originalContent = container.innerHTML;
     container.innerHTML = skeletonHtml;
     container.classList.add('skeleton-active');
@@ -254,7 +254,7 @@ function showSkeleton(containerId, type = 'list') {
 function hideSkeleton(containerId) {
     const container = document.getElementById(containerId);
     if (!container || !container.classList.contains('skeleton-active')) return;
-    
+
     if (container.dataset.originalContent) {
         container.innerHTML = container.dataset.originalContent;
         delete container.dataset.originalContent;
@@ -265,13 +265,13 @@ function hideSkeleton(containerId) {
 // Generate cache key from relevant data
 function generateChartCacheKey(type) {
     if (type === 'donut') {
-        return `${activeAccountFilter}|${currentTotalNW}|${Object.entries(currentTypeTotals).sort().map(([k,v])=>k+':'+v.toFixed(0)).join(',')}|${db.privacyMode}`;
+        return `${activeAccountFilter}|${currentTotalNW}|${Object.entries(currentTypeTotals).sort().map(([k, v]) => k + ':' + v.toFixed(0)).join(',')}|${db.privacyMode}`;
     } else if (type === 'rolling') {
         let now = new Date();
         let currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
         return `${activeAccountFilter}|${currentMonthKey}|${db.privacyMode}|${db.investments.length}`;
     } else if (type === 'category') {
-        return `${activeCategory}|${db.investments.filter(i=>i.type===activeCategory).length}|${db.privacyMode}`;
+        return `${activeCategory}|${db.investments.filter(i => i.type === activeCategory).length}|${db.privacyMode}`;
     }
     return Date.now().toString();
 }
@@ -573,9 +573,9 @@ document.addEventListener('keydown', e => {
         showShortcutsHelp();
         return;
     }
-    
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    
+
     if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openInvestSheet(); }
     if (e.key === 'Escape') { e.preventDefault(); closeOverlays(); closeSubSheet(); }
     if (e.key === '1') { e.preventDefault(); switchTab('dashboard'); }
@@ -602,7 +602,7 @@ function showShortcutsHelp() {
         { key: 'Esc', action: 'Close/Go Back' },
         { key: '?', action: 'Show This Help' }
     ];
-    
+
     let html = `<div style="display:grid; grid-template-columns: auto 1fr; gap: 12px 24px; max-width: 300px;">`;
     shortcuts.forEach(s => {
         html += `<div style="font-family: monospace; background: var(--md-surface-container-highest); padding: 4px 12px; border-radius: 6px; text-align: center; font-weight: 600;">${s.key}</div>
@@ -612,7 +612,7 @@ function showShortcutsHelp() {
     <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--md-outline-variant); font-size: 12px; color: var(--md-outline); text-align: center;">
         Press any key to close
     </div>`;
-    
+
     Swal.fire({
         title: 'Keyboard Shortcuts',
         html: html,
@@ -621,7 +621,7 @@ function showShortcutsHelp() {
         width: 'auto',
         customClass: { popup: 'shortcuts-popup' }
     });
-    
+
     // Close on any key press
     const closeOnKey = () => {
         Swal.close();
@@ -634,7 +634,7 @@ window.showShortcutsHelp = showShortcutsHelp;
 // First-time user tips system
 function showFirstTimeTips() {
     if (db.firstTimeTipsShown) return;
-    
+
     const tips = [
         {
             title: 'Welcome to TrackInvest! 👋',
@@ -657,16 +657,16 @@ function showFirstTimeTips() {
             icon: 'keyboard'
         }
     ];
-    
+
     let currentTip = 0;
-    
+
     function showTip(index) {
         if (index >= tips.length) {
             db.firstTimeTipsShown = true;
             saveData();
             return;
         }
-        
+
         const tip = tips[index];
         Swal.fire({
             title: tip.title,
@@ -689,7 +689,7 @@ function showFirstTimeTips() {
             }
         });
     }
-    
+
     showTip(0);
 }
 window.showFirstTimeTips = showFirstTimeTips;
@@ -926,13 +926,13 @@ function initScrollToTop() {
         }
     };
     document.body.appendChild(scrollToTopBtn);
-    
+
     // Show/hide based on scroll
     let scrollTimeout;
     window.addEventListener('scroll', () => {
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
-            const showBtn = window.scrollY > 300 || 
+            const showBtn = window.scrollY > 300 ||
                 (document.querySelector('.sheet.active')?.scrollTop > 300);
             scrollToTopBtn.style.display = showBtn ? 'flex' : 'none';
             scrollToTopBtn.style.opacity = showBtn ? '1' : '0';
@@ -1191,9 +1191,9 @@ function renderDonutChart(typeTotals, totalMarketValue) {
 
     // Check if we can reuse the existing chart
     let cacheKey = generateChartCacheKey('donut');
-    let canUpdate = portfolioChartInstance && 
-                    chartDataCache.donut.key === cacheKey &&
-                    portfolioChartInstance.data.labels.length === labels.length;
+    let canUpdate = portfolioChartInstance &&
+        chartDataCache.donut.key === cacheKey &&
+        portfolioChartInstance.data.labels.length === labels.length;
 
     if (canUpdate) {
         // Smooth update existing chart data
@@ -1205,21 +1205,21 @@ function renderDonutChart(typeTotals, totalMarketValue) {
         portfolioChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: { labels: labels, datasets: [{ data: displayData, backgroundColor: bgColors, borderWidth: 0, hoverOffset: 6 }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                cutout: '75%', 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
                 animation: { duration: 800 },
-                plugins: { 
-                    legend: { display: false }, 
-                    tooltip: { callbacks: { label: function (c) { return db.privacyMode ? '••••••' : '₹' + Number(c.raw).toLocaleString('en-IN'); } } } 
-                } 
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (c) { return db.privacyMode ? '••••••' : '₹' + Number(c.raw).toLocaleString('en-IN'); } } }
+                }
             }
         });
         // Update cache
         chartDataCache.donut = { key: cacheKey, data: displayData, labels: labels, colors: bgColors };
     }
-    
+
     document.getElementById('donut-val').innerText = formatMoney(totalMarketValue);
 }
 
@@ -1236,7 +1236,7 @@ function renderRollingChart() {
     }
 
     const displayData = db.privacyMode ? chartData.map(() => 1) : chartData;
-    
+
     // Check cache
     let cacheKey = generateChartCacheKey('rolling');
     let canUpdate = rollingChartInstance && chartDataCache.rolling.key === cacheKey;
@@ -1252,15 +1252,15 @@ function renderRollingChart() {
         rollingChartInstance = new Chart(ctx, {
             type: 'bar',
             data: { labels: chartLabels, datasets: [{ label: 'Monthly Investment', data: displayData, backgroundColor: getThemeColor() + '80', borderRadius: 8 }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 animation: { duration: 600 },
-                plugins: { 
-                    legend: { display: false }, 
-                    tooltip: { callbacks: { label: function (c) { return db.privacyMode ? '••••••' : '₹' + Number(c.raw).toLocaleString('en-IN'); } } } 
-                }, 
-                scales: { x: { display: true, ticks: { font: { size: 10 }, maxRotation: 90 } }, y: { display: !db.privacyMode, ticks: { callback: (v) => formatMoney(v) } } } 
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function (c) { return db.privacyMode ? '••••••' : '₹' + Number(c.raw).toLocaleString('en-IN'); } } }
+                },
+                scales: { x: { display: true, ticks: { font: { size: 10 }, maxRotation: 90 } }, y: { display: !db.privacyMode, ticks: { callback: (v) => formatMoney(v) } } }
             }
         });
         chartDataCache.rolling = { key: cacheKey, data: displayData, labels: chartLabels };
@@ -1281,12 +1281,12 @@ function renderCategoryChart(category) {
 
     const displayData = db.privacyMode ? chartData.map(() => 1) : chartData;
     let color = db.categories[category]?.color || getThemeColor();
-    
+
     // Check cache
     let cacheKey = generateChartCacheKey('category');
-    let canUpdate = categoryChartInstance && 
-                    chartDataCache.category.key === cacheKey &&
-                    chartDataCache.category.category === category;
+    let canUpdate = categoryChartInstance &&
+        chartDataCache.category.key === cacheKey &&
+        chartDataCache.category.category === category;
 
     if (canUpdate) {
         // Smooth update
@@ -1298,12 +1298,12 @@ function renderCategoryChart(category) {
         categoryChartInstance = new Chart(ctx, {
             type: 'line',
             data: { labels: chartLabels, datasets: [{ label: category, data: displayData, borderColor: color, backgroundColor: color + '33', fill: true, tension: 0.4 }] },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 animation: { duration: 500 },
-                plugins: { legend: { display: false } }, 
-                scales: { x: { display: true, ticks: { font: { size: 10 } } }, y: { display: false } } 
+                plugins: { legend: { display: false } },
+                scales: { x: { display: true, ticks: { font: { size: 10 } } }, y: { display: false } }
             }
         });
         chartDataCache.category = { key: cacheKey, data: displayData, labels: chartLabels, category: category };
@@ -1491,14 +1491,14 @@ function setInvestType(type) {
     // Set Gov rates if not specified
     if (type === 'PPF' && intEl && !intEl.value) intEl.value = 7.1;
     if (type === 'PF' && intEl && !intEl.value) intEl.value = 8.15;
-    
+
     // Apply smart defaults for this category (only if not editing)
     if (!editInvId) {
         const sdAccount = document.getElementById('inv-account');
         const sdBroker = document.getElementById('inv-broker');
         const sdSubcat = document.getElementById('inv-subcat');
         const sdDate = document.getElementById('inv-date');
-        
+
         if (sdAccount && !sdAccount.value) sdAccount.value = getSmartDefault(`account_${type}`, getSmartDefault('account_last', sdAccount.options[0]?.value || ''));
         if (sdBroker && !sdBroker.value) sdBroker.value = getSmartDefault(`broker_${type}`, getSmartDefault('broker_last', ''));
         if (sdSubcat && !sdSubcat.value) sdSubcat.value = getSmartDefault(`subcat_${type}`, '');
@@ -1631,13 +1631,13 @@ async function searchMFForLog() {
         sel.innerHTML = '<option>Searching...</option>';
         sel.style.display = 'block';
     }
-    
+
     try {
         let res = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(q)}`);
         let data = await res.json();
-        
+
         if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
-        
+
         if (data.length === 0) {
             if (sel) sel.innerHTML = '<option>No funds found</option>';
             return showSnackbar("No funds found", "error");
@@ -1646,13 +1646,13 @@ async function searchMFForLog() {
         sel.innerHTML = `<option value="">Select a fund (${data.length} found)...</option>` + data.map(f => `<option value="${escapeHtml(f.schemeCode)}" data-name="${escapeHtml(f.schemeName)}">${escapeHtml(f.schemeName.substring(0, 60))}${f.schemeName.length > 60 ? '...' : ''}</option>`).join('');
         sel.style.display = 'block';
         showSnackbar(`${data.length} funds found`, "check_circle");
-        
+
         // Auto-focus the select for faster UX
         setTimeout(() => sel.focus(), 100);
-    } catch (e) { 
+    } catch (e) {
         if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
         if (sel) sel.innerHTML = '<option>Search failed</option>';
-        showSnackbar("Search failed - check connection", "error"); 
+        showSnackbar("Search failed - check connection", "error");
     }
 }
 
@@ -1666,13 +1666,13 @@ function handleMFSelectForLog(sel) {
 
 async function fetchLiveNAV(code) {
     if (!code) return;
-    
+
     // Show loading on price field
     let priceInput = document.getElementById('inv-price');
     let originalPrice = priceInput.value;
     priceInput.value = 'Loading...';
     priceInput.disabled = true;
-    
+
     try {
         let res = await fetch(`https://api.mfapi.in/mf/${code}`);
         let data = await res.json();
@@ -1684,7 +1684,7 @@ async function fetchLiveNAV(code) {
         db.navCache[code] = { nav: latestNav, date: data.data[0].date, lastFetched: new Date().toISOString() };
         reverseCalculateUnits();
         showSnackbar(`NAV: ₹${latestNav} (${data.data[0].date})`, "check_circle");
-        
+
         // Auto-calculate and move focus to amount for faster entry
         setTimeout(() => {
             let qtyInput = document.getElementById('inv-qty');
@@ -1698,10 +1698,10 @@ async function fetchLiveNAV(code) {
                 amtInput.focus();
             }
         }, 100);
-    } catch (e) { 
+    } catch (e) {
         priceInput.value = originalPrice;
         priceInput.disabled = false;
-        showSnackbar("Failed to fetch NAV", "error"); 
+        showSnackbar("Failed to fetch NAV", "error");
     }
 }
 
@@ -1831,7 +1831,7 @@ function saveFormDraft() {
 function loadFormDraft() {
     const draftJson = sessionStorage.getItem(FORM_DRAFT_KEY);
     if (!draftJson) return false;
-    
+
     try {
         const draft = JSON.parse(draftJson);
         const age = Date.now() - draft.timestamp;
@@ -1839,13 +1839,13 @@ function loadFormDraft() {
             sessionStorage.removeItem(FORM_DRAFT_KEY);
             return false;
         }
-        
+
         // Restore fields
         if (draft.type) setInvestType(draft.type);
         setTimeout(() => {
             const safeSet = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
             const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
-            
+
             safeSet('inv-date', draft.date);
             safeSet('inv-amt', draft.amount);
             safeSet('inv-note', draft.note);
@@ -1860,7 +1860,7 @@ function loadFormDraft() {
             safeSet('inv-qty', draft.qty);
             safeSet('inv-price', draft.price);
             safeCheck('inv-is-monthly', draft.isMonthly);
-            
+
             updateSmartPreview();
             showSnackbar('Draft restored', 'restore');
         }, 100);
@@ -1880,7 +1880,7 @@ function openInvestSheet(id = null, presetAmt = null) {
     const delBtn = document.getElementById('del-inv-btn');
     if (sheetTitle) sheetTitle.innerText = id ? `Edit Entry` : `Log Investment`;
     if (delBtn) delBtn.style.display = id ? 'block' : 'none';
-    
+
     // Auto-focus management for faster entry flow
     setTimeout(() => {
         if (id) {
@@ -1894,7 +1894,7 @@ function openInvestSheet(id = null, presetAmt = null) {
                 // New entry - smart focus based on category type
                 let type = currentInvType;
                 let focusField = 'inv-amt'; // default
-                
+
                 // For SIP/Stocks with MF search enabled, focus the search first
                 let config = db.categoryDetails[type]?.fields || {};
                 if ((type === 'SIP' || type === 'Stocks') && config.mf) {
@@ -1910,18 +1910,18 @@ function openInvestSheet(id = null, presetAmt = null) {
                         focusField = 'inv-interest';
                     }
                 }
-                
+
                 let field = document.getElementById(focusField);
                 if (field) field.focus();
             }
         }
     }, 150);
-    
+
     // Attach auto-save listeners
     setTimeout(() => {
-        const fields = ['inv-date', 'inv-amt', 'inv-note', 'inv-tags', 'inv-subcat', 'inv-broker', 
-                         'inv-interest', 'inv-maturity-simple', 'inv-account', 'inv-mf-query', 
-                         'inv-qty', 'inv-price', 'inv-is-monthly'];
+        const fields = ['inv-date', 'inv-amt', 'inv-note', 'inv-tags', 'inv-subcat', 'inv-broker',
+            'inv-interest', 'inv-maturity-simple', 'inv-account', 'inv-mf-query',
+            'inv-qty', 'inv-price', 'inv-is-monthly'];
         fields.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -1935,7 +1935,7 @@ function openInvestSheet(id = null, presetAmt = null) {
     const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
     if (id) {
-        let inv = db.investments.find(i => i.id === id); if (!inv) return;
+        let inv = db.investments.find(i => i.id == id); if (!inv) return;
         setInvestType(inv.type);
 
         safeSet('inv-date', inv.date);

@@ -592,9 +592,14 @@
         </div>
     </div>
 
-    <div class="sheet" id="category-sheet" style="max-height:85vh;">
-        <div class="drag-handle"></div>
-        <h3 class="sheet-title" id="cat-sheet-title">Category</h3>
+    <div class="sheet" id="category-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+        <div class="drag-handle" style="flex-shrink:0;"></div>
+        <div class="sheet-title" style="margin-bottom:12px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
+            <h3 id="cat-sheet-title" style="margin:0;">Category</h3>
+            <button class="icon-btn" onclick="closeOverlays()"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        
+        <div class="scroll-y" style="flex:1; padding-bottom:20px;">
         <div class="input-row" style="margin-bottom:16px;">
             <div class="input-container" style="flex:1;margin-bottom:0;"><label>Market Value Override (₹)</label><input
                     type="number" id="cat-cmv-input" class="md-input" placeholder="0"></div>
@@ -640,8 +645,12 @@
             </div>
         </div>
 
-        <div class="chart-container-js" style="height: 120px; margin-bottom: 24px;"><canvas
+        <div class="chart-container-js" style="height: 120px; margin-bottom: 16px;"><canvas
                 id="categoryHistoryChart"></canvas></div>
+
+        <button class="btn-secondary" style="width:100%; margin-bottom:24px;" onclick="viewCategoryLedger(activeCategory)">
+            <span class="material-symbols-rounded">history_edu</span> View Detailed Ledger
+        </button>
 
         <div style="margin-bottom:32px;">
             <div class="tax-split-bar">
@@ -652,10 +661,10 @@
                 style="display:flex; justify-content:space-between; font-size: 12px; font-weight:500;"><span
                     id="tax-lt-label" style="color:var(--md-success);">LTCG: 0</span><span id="tax-st-label"
                     style="color:#D96200;">STCG: 0</span></div>
-        </div>
         <div id="cat-asset-list" class="list" style="margin-bottom:24px;"></div>
         <div style="font-size:16px;font-weight:500;margin-bottom:12px;">Recent Entries</div>
-        <div id="cat-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
+        <div id="cat-history-list" class="list"></div>
+        </div>
     </div>
 
     <div class="sheet" id="goal-sheet">
@@ -686,145 +695,166 @@
             Target</button>
     </div>
 
-    <div class="sheet" id="settings-sheet" style="max-height:85vh;">
+    <div class="sheet" id="settings-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
-        <h3 class="sheet-title"><span class="material-symbols-rounded">settings</span> Settings & Income</h3>
-
-        <div style="font-size:14px;font-weight:500;color:var(--md-primary);margin-bottom:12px;">PROFILE & TAX</div>
-        <div class="input-row" style="margin-bottom:24px;">
-            <div class="input-container" style="flex:2;margin-bottom:0;"><label>Gross Annual Salary (₹)</label><input
-                    type="number" id="settings-salary" class="md-input" placeholder="e.g. 1500000"></div>
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Tax Regime</label><select
-                    id="settings-regime" class="md-input">
-                    <option value="new">New (12L Limit)</option>
-                    <option value="old">Old</option>
-                </select></div>
-        </div>
-        <div class="input-row" style="margin-bottom:24px;">
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Monthly Expenses (₹)</label><input
-                    type="number" id="settings-expenses" class="md-input" placeholder="e.g. 50000"></div>
-            <button class="btn-primary" style="width:auto;padding:0 20px;border-radius:12px;"
-                onclick="saveProfileSettings()"><span class="material-symbols-rounded">save</span> Save Profile</button>
+        <div class="sheet-title" style="margin-bottom:12px; flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">settings</span> Settings</div>
+            <button class="icon-btn" onclick="closeOverlays()"><span class="material-symbols-rounded">close</span></button>
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom: 24px;">
-            <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span
-                    class="material-symbols-rounded" style="font-size: 18px;">calculate</span> XIRR</button>
-            <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span
-                    class="material-symbols-rounded" style="font-size: 18px;">trending_up</span> SIP Calc</button>
-            <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span
-                    class="material-symbols-rounded" style="font-size: 18px;">real_estate_agent</span> EMI Calc</button>
-            <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span
-                    class="material-symbols-rounded" style="font-size: 18px;">price_change</span> Inflation</button>
+        <div class="settings-tabs" style="display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:20px; flex-shrink:0;">
+            <button class="s-tab active" onclick="switchSettingsTab('profile', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Profile</button>
+            <button class="s-tab" onclick="switchSettingsTab('security', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">App</button>
+            <button class="s-tab" onclick="switchSettingsTab('manage', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Manage</button>
+            <button class="s-tab" onclick="switchSettingsTab('data', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Data</button>
         </div>
 
-        <div class="input-container"><label>App Lock PIN (4 digits)</label><input type="password" id="settings-pin"
-                class="md-input" placeholder="Set PIN" maxlength="4"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-            <button class="btn-primary" style="flex:1;" onclick="savePin()">Set PIN</button>
-            <div style="display:flex;align-items:center;gap:8px;margin-left:16px;">
-                <label class="switch"><input type="checkbox" id="use-biometric-toggle"
-                        onchange="toggleBiometric()"><span class="slider"></span></label>
-                <span style="font-size:12px;">Biometric Unlock</span>
-            </div>
-        </div>
-
-
-        <div style="font-size:14px;font-weight:500;color:var(--md-primary);margin-bottom:12px;">AI STRATEGY KEYS</div>
-        <div class="input-container"><label>Groq API Key (Primary, Fast)</label><input type="password" id="groq-api-key"
-                class="md-input" placeholder="gsk_..."></div>
-        <div class="input-container"><label>Gemini API Key (Fallback)</label><input type="password" id="gemini-api-key"
-                class="md-input" placeholder="AIza..."></div>
-        <button class="btn-primary" style="margin-bottom:24px;" onclick="saveApiKeys()">Save API Keys</button>
-
-        <div style="font-size:14px;font-weight:500;color:var(--md-primary);margin-bottom:12px;">THEME</div>
-        <div class="theme-picker" id="theme-picker">
-            <div class="theme-swatch ts-indigo active" style="background: #415F91;" onclick="setTheme('indigo')"></div>
-            <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')"></div>
-            <div class="theme-swatch ts-sunset" style="background: #924C00;" onclick="setTheme('sunset')"></div>
-            <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')"></div>
-        </div>
-
-        <div style="font-size:14px;font-weight:500;color:var(--md-primary);margin-bottom:12px;">MILESTONE BADGES</div>
-        <div class="badge-grid" id="badge-grid"></div>
-
-        <div style="font-size:14px;font-weight:500;color:var(--md-primary);margin-bottom:12px;">MANAGE ACCOUNTS & CATS
-        </div>
-        <div id="account-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
-        <div class="input-row" style="margin-bottom:24px;">
-            <div class="input-container" style="flex:1;margin-bottom:0;"><input type="text" id="new-acc-name"
-                    class="md-input" placeholder="New Account"></div>
-            <button class="btn-primary" style="width:auto;padding:0 20px;" onclick="addAccount()"><span
-                    class="material-symbols-rounded">add</span></button>
-        </div>
-
-        <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
-        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-bottom:4px;">Add New Category</div>
-        <div class="input-row" style="margin-bottom:8px;">
-            <div class="input-container" style="flex:1;margin-bottom:0;"><input type="text" id="new-cat-name"
-                    class="md-input" placeholder="Category Name"></div>
-            <select id="new-cat-template" class="md-input" style="width:auto; max-width:120px;">
-                <option value="flat">Flat/Simple</option>
-                <option value="fd">FD (Interest)</option>
-                <option value="sip">SIP (Monthly)</option>
-                <option value="stock">Stock (Qty/Price)</option>
-                <option value="growth">Growth (%)</option>
-            </select>
-            <button class="btn-primary" style="width:auto;padding:0 20px;" onclick="addCustomCategory()"><span
-                    class="material-symbols-rounded">add</span></button>
-        </div>
-
-        <div
-            style="margin-top:32px;border-top:1px solid var(--md-outline-variant);padding-top:24px;display:flex;flex-direction:column;gap:12px;">
-
-            <button class="btn-primary"
-                style="background:var(--md-secondary-container);color:var(--md-on-secondary-container);"
-                onclick="openSheet('history-sync-sheet')">
-                <span class="material-symbols-rounded">history_edu</span> Universal History Generator
-            </button>
-
-            <button class="btn-primary"
-                style="background:var(--md-surface-container-highest);color:var(--md-on-surface);"
-                onclick="exportTaxPDF()">
-                <span class="material-symbols-rounded">picture_as_pdf</span> Export 80C Tax Report
-            </button>
-
-            <button class="btn-primary"
-                style="background:var(--md-primary-container);color:var(--md-on-primary-container);"
-                onclick="openSheet('webrtc-sync-sheet')">
-                <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
-            </button>
-
-            <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-                <input type="checkbox" id="encrypt-backup-toggle" checked>
-                <label for="encrypt-backup-toggle" style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt
-                    Backup with App PIN</label>
-            </div>
-            <div style="padding:16px;background:var(--md-surface-container-highest);border-radius:16px;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:16px;"
-                onclick="exportData()">
-                <span class="material-symbols-rounded" style="color:var(--md-primary);">cloud_download</span> Backup
-                Data
+        <div id="settings-content-scroll" class="scroll-y" style="flex:1; padding-bottom:20px;">
+            <!-- Tab 1: Profile -->
+            <div id="stab-profile" class="s-tab-content active">
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Financial Profile</div>
+                <div class="input-container"><label>Gross Annual Salary (₹)</label><input type="number" id="settings-salary" class="md-input" placeholder="e.g. 1500000"></div>
+                <div class="input-row">
+                    <div class="input-container" style="flex:1"><label>Tax Regime</label>
+                        <select id="settings-regime" class="md-input">
+                            <option value="new">New (12L Limit)</option>
+                            <option value="old">Old</option>
+                        </select>
+                    </div>
+                    <div class="input-container" style="flex:1"><label>Monthly Expenses (₹)</label><input type="number" id="settings-expenses" class="md-input" placeholder="e.g. 50000"></div>
+                </div>
+                <div class="input-row">
+                    <div class="input-container" style="flex:1"><label>FY Start Month</label>
+                        <select id="settings-fy-start" class="md-input">
+                            <option value="0">January</option>
+                            <option value="3">April (India)</option>
+                        </select>
+                    </div>
+                    <div class="input-container" style="flex:1"><label>Currency</label><input type="text" id="settings-currency" class="md-input" value="₹"></div>
+                </div>
+                <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span class="material-symbols-rounded">save</span> Save Profile</button>
+                
+                <div style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Quick Tools</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">calculate</span> XIRR</button>
+                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">trending_up</span> SIP Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">real_estate_agent</span> EMI Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">price_change</span> Inflation</button>
+                </div>
             </div>
 
-            <label
-                style="padding:16px;background:var(--md-surface-container-highest);border-radius:16px;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:16px;">
-                <span class="material-symbols-rounded" style="color:var(--md-error);">cloud_upload</span> Restore
-                Data<input type="file" style="display:none;" accept=".json,.enc" onchange="restoreData(event)">
-            </label>
+            <!-- Tab 2: Security & App -->
+            <div id="stab-security" class="s-tab-content" style="display:none;">
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">App Security</div>
+                <div class="input-container"><label>App Lock PIN (4 digits)</label><input type="password" id="settings-pin" class="md-input" placeholder="Set PIN" maxlength="4"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; gap:12px;">
+                    <button class="btn-primary" style="flex:1;" onclick="savePin()">Set PIN</button>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <label class="switch"><input type="checkbox" id="use-biometric-toggle" onchange="toggleBiometric()"><span class="slider"></span></label>
+                        <span style="font-size:12px;">Biometric</span>
+                    </div>
+                </div>
 
-            <label
-                style="padding:16px;background:var(--md-success-container);border-radius:16px;cursor:pointer;font-weight:500;display:flex;align-items:center;gap:16px;color:var(--md-success);">
-                <span class="material-symbols-rounded">csv</span> Import CSV<input type="file" style="display:none;"
-                    accept=".csv" onchange="importCSV(event)">
-            </label>
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">AI Strategy Keys</div>
+                <div class="input-container"><label>Groq API Key (Primary)</label><input type="password" id="groq-api-key" class="md-input" placeholder="gsk_..."></div>
+                <div class="input-container"><label>Gemini API Key (Fallback)</label><input type="password" id="gemini-api-key" class="md-input" placeholder="AIza..."></div>
+                <button class="btn-primary" onclick="saveApiKeys()"><span class="material-symbols-rounded">key</span> Save API Keys</button>
 
-            <button class="btn-secondary" onclick="dataCleanup()">🧹 Clean Old Entries</button>
+                <div style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Theme</div>
+                <div class="theme-picker" id="theme-picker" style="margin-bottom:24px;">
+                    <div class="theme-swatch ts-indigo active" style="background: #415F91;" onclick="setTheme('indigo')"></div>
+                    <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')"></div>
+                    <div class="theme-swatch ts-sunset" style="background: #924C00;" onclick="setTheme('sunset')"></div>
+                    <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')"></div>
+                </div>
+                
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Milestone Badges</div>
+                <div class="badge-grid" id="badge-grid"></div>
+            </div>
 
-            <button id="pwa-install-btn" class="btn-primary"
-                style="display:none; background:var(--md-primary); color:var(--md-on-primary); gap: 8px; justify-content: center;"
-                onclick="triggerPWAInstall()">
-                <span class="material-symbols-rounded">install_mobile</span> Install App
-            </button>
+            <!-- Tab 3: Manage Accounts & Categories -->
+            <div id="stab-manage" class="s-tab-content" style="display:none;">
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Manage Accounts</div>
+                <div id="account-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+                <div class="input-row" style="margin-bottom:24px;">
+                    <input type="text" id="new-acc-name" class="md-input" placeholder="New Account Name" style="flex:1;">
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addAccount()"><span class="material-symbols-rounded">add</span></button>
+                </div>
+
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Manage Categories</div>
+                <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+                <div style="font-size:12px; color:var(--md-on-surface-variant); margin-bottom:4px;">Add New Category</div>
+                <div class="input-row">
+                    <input type="text" id="new-cat-name" class="md-input" placeholder="Name" style="flex:1.5;">
+                    <select id="new-cat-template" class="md-input" style="flex:1;">
+                        <option value="flat">Flat/Simple</option>
+                        <option value="fd">FD (Interest)</option>
+                        <option value="sip">SIP (Monthly)</option>
+                        <option value="stock">Stock (Qty/Price)</option>
+                        <option value="growth">Growth (%)</option>
+                    </select>
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addCustomCategory()"><span class="material-symbols-rounded">add</span></button>
+                </div>
+            </div>
+
+            <!-- Tab 4: Data Management -->
+            <div id="stab-data" class="s-tab-content" style="display:none;">
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Data Operations</div>
+                
+                <div class="settings-action-card" onclick="exportData()">
+                    <span class="material-symbols-rounded" style="color:var(--md-primary);">cloud_download</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Backup Data</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Export as encrypted JSON file</div>
+                    </div>
+                </div>
+
+                <label class="settings-action-card">
+                    <span class="material-symbols-rounded" style="color:var(--md-secondary);">cloud_upload</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Restore Data</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Import from backup file</div>
+                    </div>
+                    <input type="file" style="display:none;" accept=".json,.enc" onchange="restoreData(event)">
+                </label>
+
+                <label class="settings-action-card">
+                    <span class="material-symbols-rounded" style="color:var(--md-success);">csv</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Import CSV</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Import data from spreadsheets</div>
+                    </div>
+                    <input type="file" style="display:none;" accept=".csv" onchange="importCSV(event)">
+                </label>
+
+                <div class="settings-action-card" onclick="dataCleanup()" style="color:var(--md-error);">
+                    <span class="material-symbols-rounded">mop</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Clean Old Entries</div>
+                        <div style="font-size:12px; opacity:0.7;">Remove historical clutter</div>
+                    </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:12px;margin:16px 0; padding:0 8px;">
+                    <input type="checkbox" id="encrypt-backup-toggle" checked style="width:18px;height:18px;">
+                    <label for="encrypt-backup-toggle" style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt Backup with App PIN</label>
+                </div>
+
+                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase; margin-top:24px;">Reports & Sync</div>
+                <button class="btn-primary" style="background:var(--md-secondary-container);color:var(--md-on-secondary-container); margin-bottom:8px;" onclick="openSheet('history-sync-sheet')">
+                    <span class="material-symbols-rounded">history_edu</span> Universal Generator
+                </button>
+                <button class="btn-primary" style="background:var(--md-surface-container-highest);color:var(--md-on-surface); margin-bottom:8px;" onclick="exportTaxPDF()">
+                    <span class="material-symbols-rounded">picture_as_pdf</span> 80C Tax Report
+                </button>
+                <button class="btn-primary" style="background:var(--md-primary-container);color:var(--md-on-primary-container); margin-bottom:8px;" onclick="openSheet('webrtc-sync-sheet')">
+                    <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
+                </button>
+                
+                <button id="pwa-install-btn" class="btn-primary" style="display:none; background:var(--md-primary); color:var(--md-on-primary); margin-top:16px;" onclick="triggerPWAInstall()">
+                    <span class="material-symbols-rounded">install_mobile</span> Install App
+                </button>
+            </div>
         </div>
     </div>
 

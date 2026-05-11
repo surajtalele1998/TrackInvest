@@ -61,7 +61,7 @@ function saveInvestment() {
         document.getElementById('inv-initial-payment')?.focus();
         return;
     }
-    
+
     // Date range validation - prevent future dates more than 1 day ahead
     let investmentDate = new Date(date);
     let today = new Date();
@@ -78,14 +78,14 @@ function saveInvestment() {
         document.getElementById('inv-date')?.focus();
         return;
     }
-    
+
     // Duplicate detection within 1 hour for same date/type/amount
     if (!editInvId) {
         let oneHourAgo = Date.now() - (60 * 60 * 1000);
-        let recentDuplicate = db.investments.find(i => 
-            i.date === date && 
-            i.type === currentInvType && 
-            i.amount === amt && 
+        let recentDuplicate = db.investments.find(i =>
+            i.date === date &&
+            i.type === currentInvType &&
+            i.amount === amt &&
             db.lastUpdated > oneHourAgo
         );
         if (recentDuplicate) {
@@ -135,7 +135,7 @@ function saveInvestment() {
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
         if (isRecurring) { let nextDate = new Date(date); nextDate.setMonth(nextDate.getMonth() + 1); db.recurring.push({ type: currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
-        
+
         // Save smart defaults for next time
         saveSmartDefault('account_last', acc);
         saveSmartDefault(`account_${currentInvType}`, acc);
@@ -146,7 +146,7 @@ function saveInvestment() {
     }
 
     saveData(); renderAll(); closeOverlays(); clearFormDraft();
-    
+
     // Show undo-capable toast for new entries
     if (!editInvId) {
         const lastEntryId = newEntry.id;
@@ -167,7 +167,7 @@ function saveInvestment() {
 function showUndoSnackbar(message, undoCallback) {
     const sb = document.getElementById("snackbar");
     const undoId = 'undo-' + Date.now();
-    
+
     sb.innerHTML = `
         <span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>
         <span style="flex:1;">${message}</span>
@@ -178,7 +178,7 @@ function showUndoSnackbar(message, undoCallback) {
     sb.classList.add("show");
     sb.style.display = 'flex';
     sb.style.alignItems = 'center';
-    
+
     // Attach undo handler
     setTimeout(() => {
         const undoBtn = document.getElementById(undoId);
@@ -189,7 +189,7 @@ function showUndoSnackbar(message, undoCallback) {
             });
         }
     }, 50);
-    
+
     // Auto-hide after 5 seconds (longer for undo)
     setTimeout(() => {
         sb.classList.remove("show");
@@ -281,7 +281,7 @@ function getEmptyStateHTML(context = 'default') {
             action: { text: 'Add Dividend', icon: 'payments', onclick: 'openInvestSheet(); setTimeout(()=>document.getElementById(\'inv-dividend\').checked=true, 100)' }
         }
     };
-    
+
     const state = emptyStates[context] || emptyStates.default;
     return `<div class="empty-state-premium" style="padding: 40px 24px; text-align: center;">
         <span class="material-symbols-rounded" style="font-size: 48px; color: var(--md-outline); margin-bottom: 16px;">${state.icon}</span>
@@ -294,13 +294,13 @@ function getEmptyStateHTML(context = 'default') {
     </div>`;
 }
 
-function renderListToContainer(arr, containerId, context = 'default') { 
-    let html = arr.length === 0 ? getEmptyStateHTML(context) : arr.map(buildUnifiedItemHTML).join(''); 
-    let container = document.getElementById(containerId); 
-    if (container) { 
-        container.innerHTML = html; 
-        attachSwipeListeners(container); 
-    } 
+function renderListToContainer(arr, containerId, context = 'default') {
+    let html = arr.length === 0 ? getEmptyStateHTML(context) : arr.map(buildUnifiedItemHTML).join('');
+    let container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = html;
+        attachSwipeListeners(container);
+    }
 }
 
 const SEARCH_HISTORY_KEY = 'ledgerSearchHistory';
@@ -331,14 +331,14 @@ function clearSearchHistory() {
 function renderSearchHistory() {
     const container = document.getElementById('search-history-container');
     if (!container) return;
-    
+
     const history = getSearchHistory();
     if (history.length === 0) {
         container.innerHTML = '';
         container.style.display = 'none';
         return;
     }
-    
+
     container.innerHTML = `
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;">
             <span style="font-size:11px;color:var(--md-outline);">Recent:</span>
@@ -356,7 +356,7 @@ function renderSearchHistory() {
     container.style.display = 'block';
 }
 
-window.applySearchTerm = function(term) {
+window.applySearchTerm = function (term) {
     const searchInput = document.getElementById('search-history');
     if (searchInput) {
         searchInput.value = term;
@@ -370,7 +370,7 @@ function renderHistory() {
     let term = searchEl.value.toLowerCase(), filterType = filterEl.value;
     let dateFrom = document.getElementById('ledger-date-from')?.value;
     let dateTo = document.getElementById('ledger-date-to')?.value;
-    
+
     // Save search term to history if user has typed something
     if (term && term.length >= 2) {
         addSearchHistory(searchEl.value.trim());
@@ -417,13 +417,16 @@ window.getEmptyStateHTML = getEmptyStateHTML;
 function attachSwipeListeners(cE) {
     if (!cE) return; let sX = 0, sY = 0, cX = 0, aI = null, isSw = false, hapticTriggered = false;
     cE.addEventListener('touchstart', e => { let w = e.target.closest('.swipe-wrapper'); if (!w) return; aI = w.querySelector('.front'); if (!aI || !aI.hasAttribute('onclick')) { aI = null; return; } sX = e.touches[0].clientX; sY = e.touches[0].clientY; isSw = false; hapticTriggered = false; aI.classList.add('swiping'); }, { passive: true });
-    cE.addEventListener('touchmove', e => { if (!aI) return; cX = e.touches[0].clientX; let cY = e.touches[0].clientY; let dX = cX - sX; let dY = Math.abs(cY - sY); if (!isSw && dY > 10) { aI.classList.remove('swiping'); aI = null; return; } if (Math.abs(dX) > 10) isSw = true; if (isSw) { if (dX > 80) dX = 80; if (dX < -80) dX = -80; aI.style.transform = `translateX(${dX}px)`; 
+    cE.addEventListener('touchmove', e => {
+        if (!aI) return; cX = e.touches[0].clientX; let cY = e.touches[0].clientY; let dX = cX - sX; let dY = Math.abs(cY - sY); if (!isSw && dY > 10) { aI.classList.remove('swiping'); aI = null; return; } if (Math.abs(dX) > 10) isSw = true; if (isSw) {
+            if (dX > 80) dX = 80; if (dX < -80) dX = -80; aI.style.transform = `translateX(${dX}px)`;
             // Haptic feedback when crossing swipe thresholds
             if (!hapticTriggered && Math.abs(dX) > 50) {
                 haptic(dX < 0 ? [30, 30] : 20); // Different feedback for delete vs edit
                 hapticTriggered = true;
             }
-        } }, { passive: true });
+        }
+    }, { passive: true });
     cE.addEventListener('touchend', e => { if (!aI) return; aI.classList.remove('swiping'); let dX = cX - sX; let w = aI.closest('.swipe-wrapper'); if (!w) { aI = null; return; } let id = parseFloat(w.getAttribute('data-id')); if (isSw && dX < -50) { haptic(50); aI.style.transform = `translateX(-100%)`; setTimeout(() => { editInvId = id; deleteInvestment(); }, 250); } else if (isSw && dX > 50) { haptic(30); aI.style.transform = `translateX(0px)`; openInvestSheet(id); } else { aI.style.transform = `translateX(0px)`; } aI = null; });
 }
 
@@ -461,14 +464,14 @@ function openDividendSheet() {
     // Audit logic: Only suggest or mark if it's a high-confidence match and NOT already explicitly false
     // But to respect user choice, we only do this once or if requested.
     // For now, let's just use the existing isDividend flag and only highlight potential misses in UI if needed.
-    
+
     const dividends = db.investments.filter(i => i.isDividend).sort((a, b) => parseDate(b.date) - parseDate(a.date));
     const total = dividends.reduce((s, i) => s + i.amount, 0);
 
     const totalEl = document.getElementById('dividend-sheet-total');
     if (totalEl) totalEl.innerText = formatMoney(total);
 
-    let html = dividends.length === 0 ? 
+    let html = dividends.length === 0 ?
         `<div class="empty-state-premium" style="margin-top:40px;"><span class="material-symbols-rounded">payments</span><div class="es-title">No Passive Income Recorded</div><div class="es-subtitle">Add investments and mark them as 'Dividend' or use keywords like 'dividend', 'interest' in notes.</div></div>` :
         dividends.map(buildUnifiedItemHTML).join('');
 
@@ -507,7 +510,7 @@ function openCategoryDetails(type) {
     });
     document.getElementById('cat-asset-list').innerHTML = assetHtml || '<div style="color:var(--md-outline);font-size:14px;text-align:center;padding:16px;">No assets found.</div>';
     renderListToContainer(filtered.sort((a, b) => parseDate(b.date) - parseDate(a.date)), 'cat-history-list');
-    
+
     // Load field configuration checkboxes
     const fieldConfig = db.categoryDetails[type]?.fields || {};
     const allFieldIds = ['interest', 'payout', 'maturity', 'sipday', 'mf', 'qty', 'broker', 'subcat', 'monthly', 'simple', 'growth'];
@@ -515,7 +518,7 @@ function openCategoryDetails(type) {
         const el = document.getElementById('cfg-' + fid);
         if (el) el.checked = !!fieldConfig[fid];
     });
-    
+
     openSheet('category-sheet');
 
     setTimeout(() => { renderCategoryChart(type); }, 300);
@@ -552,7 +555,9 @@ function saveProfileSettings() {
     db.userProfile.salary = parseFloat(document.getElementById('settings-salary').value) || 0;
     db.userProfile.regime = document.getElementById('settings-regime').value;
     db.userProfile.monthlyExpense = parseFloat(document.getElementById('settings-expenses').value) || 0;
-    saveData(); renderAll(); showSnackbar("Profile Updated", "check_circle");
+    db.fyStartMonth = parseInt(document.getElementById('settings-fy-start').value) || 3;
+    db.currency = document.getElementById('settings-currency').value || '₹';
+    saveData(); renderAll(); showSnackbar("Profile & Preferences Updated", "check_circle");
 }
 
 function openMonthDetails(offset) {
@@ -575,13 +580,15 @@ function openMonthDetails(offset) {
 
 function openSettings() {
     haptic(30);
-    
+
     // Group settings into organized sections
     const settingsData = {
         profile: {
             salary: db.userProfile.salary || '',
             regime: db.userProfile.regime || 'new',
-            expenses: db.userProfile.monthlyExpense || ''
+            expenses: db.userProfile.monthlyExpense || '',
+            fyStart: db.fyStartMonth || 3,
+            currency: db.currency || '₹'
         },
         security: {
             pin: db.appPin || '',
@@ -592,28 +599,51 @@ function openSettings() {
             groqKey: db.groqKey || ''
         }
     };
-    
+
     // Populate form fields
     const salaryEl = document.getElementById('settings-salary');
     const regimeEl = document.getElementById('settings-regime');
     const expensesEl = document.getElementById('settings-expenses');
+    const fyStartEl = document.getElementById('settings-fy-start');
+    const currencyEl = document.getElementById('settings-currency');
     const pinEl = document.getElementById('settings-pin');
     const geminiEl = document.getElementById('gemini-api-key');
     const groqEl = document.getElementById('groq-api-key');
     const biometricEl = document.getElementById('use-biometric-toggle');
-    
+
     if (salaryEl) salaryEl.value = settingsData.profile.salary;
     if (regimeEl) regimeEl.value = settingsData.profile.regime;
     if (expensesEl) expensesEl.value = settingsData.profile.expenses;
+    if (fyStartEl) fyStartEl.value = settingsData.profile.fyStart;
+    if (currencyEl) currencyEl.value = settingsData.profile.currency;
     if (pinEl) pinEl.value = settingsData.security.pin;
     if (geminiEl) geminiEl.value = settingsData.ai.geminiKey;
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
-    
+
+    // Refresh manage sections
+    renderSettingsSections();
+
     // Update settings UI with helpful tips
     updateSettingsHelpText();
-    
+
     openSheet('settings-sheet');
+}
+
+function switchSettingsTab(tabName, btn) {
+    haptic(20);
+    // Update tab buttons
+    const tabs = document.querySelectorAll('.s-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update tab contents
+    const contents = document.querySelectorAll('.s-tab-content');
+    contents.forEach(c => c.style.display = 'none');
+    document.getElementById('stab-' + tabName).style.display = 'block';
+
+    // Reset scroll
+    document.getElementById('settings-content-scroll').scrollTop = 0;
 }
 
 function updateSettingsHelpText() {
@@ -623,7 +653,7 @@ function updateSettingsHelpText() {
         { id: 'pin-help', text: '4-digit PIN for app lock. Leave empty to disable.', after: 'settings-pin' },
         { id: 'api-help', text: 'Get keys from: Groq (groq.com) or Gemini (makersuite.google.com)', after: 'gemini-api-key' }
     ];
-    
+
     helpTexts.forEach(help => {
         let el = document.getElementById(help.id);
         const target = document.getElementById(help.after);
@@ -649,15 +679,16 @@ function renderSettingsSections() {
 
     // Categories section
     let catHtml = "";
-    Object.keys(db.categories).forEach(c => {
-        let isDefault = defaultCategories.includes(c);
-        let cat = db.categories[c];
-        if (!cat.targetMultiplier) cat.targetMultiplier = 0;
-        if (typeof cat.excludeDividend === 'undefined') cat.excludeDividend = false;
+    if (db.categories && Object.keys(db.categories).length > 0) {
+        Object.keys(db.categories).forEach(c => {
+            let isDefault = (typeof defaultCategories !== 'undefined') ? defaultCategories.includes(c) : ['FD', 'PPF', 'PF', 'SIP', 'Liquid', 'Home', 'Cash', 'Stocks'].includes(c);
+            let cat = db.categories[c];
+            if (!cat.targetMultiplier) cat.targetMultiplier = 0;
+            if (typeof cat.excludeDividend === 'undefined') cat.excludeDividend = false;
 
-        let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCustomCategory('${c}')">delete</span>`;
+            let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCategory('${c}')">delete</span>`;
 
-        catHtml += `
+            catHtml += `
         <div style="padding:12px;background:var(--md-surface-container-highest);border-radius:12px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <span><span class="material-symbols-rounded" style="font-size:16px;color:${cat.color};vertical-align:text-bottom;margin-right:6px;">${cat.icon}</span>${c}</span>
@@ -674,7 +705,13 @@ function renderSettingsSections() {
                 </div>
             </div>
         </div>`;
-    });
+        });
+    } else {
+        catHtml = `<div style="text-align:center; padding:20px; color:var(--md-outline); font-size:13px;">
+            <span class="material-symbols-rounded" style="font-size:32px; display:block; margin-bottom:8px;">category</span>
+            No categories defined. Add one below.
+        </div>`;
+    }
     let catList = document.getElementById('category-crud-list');
     if (catList) catList.innerHTML = catHtml;
 
@@ -689,13 +726,22 @@ function renderSettingsSections() {
     if (badgeGrid) badgeGrid.innerHTML = badgeHtml;
 }
 
-// Call renderSettingsSections after opening settings
-const originalOpenSettings = openSettings;
-openSettings = function() {
-    originalOpenSettings();
-    renderSettingsSections();
-};
-window.openSettings = openSettings;
+function viewCategoryLedger(type) {
+    haptic(30);
+    closeOverlays();
+    setTimeout(() => {
+        const typeFilter = document.getElementById('ledger-type-filter');
+        if (typeFilter) {
+            typeFilter.value = type;
+            // Since filter changed, we need to update the ledger
+            if (typeof renderHistory === 'function') renderHistory();
+            openSheet('history-sheet');
+        } else {
+            showSnackbar("Ledger filter not found", "warning");
+        }
+    }, 100);
+}
+window.viewCategoryLedger = viewCategoryLedger;
 
 function updateCategorySetting(cat, key, val) {
     if (!db.categories[cat]) return;
@@ -744,7 +790,27 @@ function addCustomCategory() {
     openSettings();
     showSnackbar(`Added Category: ${name} with ${template} template`);
 }
-function deleteCustomCategory(name) { haptic(40); Swal.fire({ title: `Delete Category '${name}'?`, text: "Existing entries will default to Cash.", showCancelButton: true }).then(r => { if (r.isConfirmed) { db.investments.forEach(i => { if (i.type === name) i.type = 'Cash'; }); delete db.categories[name]; saveData(); initUI(); openSettings(); renderAll(); } }); }
+function deleteCategory(name) {
+    haptic(40);
+    Swal.fire({
+        title: `Delete '${name}'?`,
+        text: "This will permanently remove the category. All existing investments in this category will be moved to 'Cash'. This action cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--md-error)',
+        confirmButtonText: 'Yes, delete it'
+    }).then(r => {
+        if (r.isConfirmed) {
+            db.investments.forEach(i => { if (i.type === name) i.type = 'Cash'; });
+            delete db.categories[name];
+            saveData();
+            initUI();
+            renderSettingsSections();
+            renderAll();
+            showSnackbar(`Category '${name}' deleted`);
+        }
+    });
+}
 
 // savePin() defined in app_part1.js (removed weaker duplicate)
 function toggleBiometric() {
@@ -769,14 +835,14 @@ async function checkAppLock() {
         hideLockScreen();
         return true;
     }
-    
+
     // Check if already unlocked in this session
     if (sessionStorage.getItem('appUnlocked') === 'true') {
         hideLockScreen();
         startAutoLockTimer();
         return true;
     }
-    
+
     // Check lockout
     if (appLockState.lockoutEndTime && Date.now() < appLockState.lockoutEndTime) {
         const remaining = Math.ceil((appLockState.lockoutEndTime - Date.now()) / 1000);
@@ -784,9 +850,9 @@ async function checkAppLock() {
         showLockScreen();
         return false;
     }
-    
+
     showLockScreen();
-    
+
     // Try biometric first if enabled
     if (db.useBiometric && window.PublicKeyCredential) {
         try {
@@ -799,13 +865,13 @@ async function checkAppLock() {
             console.log("Biometric auth failed, falling back to PIN", e);
         }
     }
-    
+
     // Focus PIN input for manual entry
     setTimeout(() => {
         const pinInput = document.getElementById('pin-input-auth');
         if (pinInput) pinInput.focus();
     }, 300);
-    
+
     return false;
 }
 window.checkAppLock = checkAppLock;
@@ -813,7 +879,7 @@ window.checkAppLock = checkAppLock;
 async function attemptBiometricAuth() {
     try {
         const cred = await navigator.credentials.get({
-            publicKey: { 
+            publicKey: {
                 challenge: new Uint8Array(32),
                 timeout: 30000,
                 allowCredentials: [],
@@ -829,13 +895,13 @@ async function attemptBiometricAuth() {
 function showLockScreen() {
     const lockScreen = document.getElementById('app-lock-screen');
     if (!lockScreen) return;
-    
+
     // Update lock screen UI with biometric option if available
     const biometricBtn = document.getElementById('biometric-auth-btn') || createBiometricButton();
-    
+
     lockScreen.style.display = 'flex';
     lockScreen.classList.add('active');
-    
+
     // Update message based on state
     updateLockScreenMessage('Enter your 4-digit PIN');
 }
@@ -862,7 +928,7 @@ function createBiometricButton() {
             showSnackbar('Biometric authentication failed', 'error');
         }
     };
-    
+
     const lockScreen = document.getElementById('app-lock-screen');
     if (lockScreen) {
         const pinSection = lockScreen.querySelector('div') || lockScreen;
@@ -896,16 +962,16 @@ function unlockApp() {
         haptic([100, 100, 100]);
         return;
     }
-    
+
     let pin = document.getElementById('pin-input-auth').value;
-    
+
     // Validate PIN format
     if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
         updateLockScreenMessage('Enter a valid 4-digit PIN');
         haptic([50, 50]);
         return;
     }
-    
+
     if (pin === db.appPin) {
         unlockSuccess();
     } else {
@@ -919,18 +985,18 @@ function unlockSuccess() {
     appLockState.lockoutEndTime = null;
     sessionStorage.setItem('appUnlocked', 'true');
     hideLockScreen();
-    
+
     const pinInput = document.getElementById('pin-input-auth');
     if (pinInput) pinInput.value = '';
-    
+
     updateLockScreenMessage('Enter your 4-digit PIN');
-    
+
     // Restore last active sheet if any
     let lastSheet = sessionStorage.getItem('currentSheet');
     if (lastSheet) {
         setTimeout(() => openSheet(lastSheet), 100);
     }
-    
+
     startAutoLockTimer();
     showSnackbar('Welcome back!', 'check_circle');
 }
@@ -938,9 +1004,9 @@ function unlockSuccess() {
 function handleFailedAttempt() {
     appLockState.failedAttempts++;
     const remaining = MAX_ATTEMPTS - appLockState.failedAttempts;
-    
+
     haptic([100, 50, 100]);
-    
+
     if (remaining <= 0) {
         appLockState.lockoutEndTime = Date.now() + LOCKOUT_DURATION;
         updateLockScreenMessage(`Too many attempts. Locked for 5 minutes.`);
@@ -949,7 +1015,7 @@ function handleFailedAttempt() {
         updateLockScreenMessage(`Incorrect PIN. ${remaining} attempts remaining.`);
         showSnackbar(`Incorrect PIN. ${remaining} attempts remaining.`, 'warning');
     }
-    
+
     const pinInput = document.getElementById('pin-input-auth');
     if (pinInput) {
         pinInput.value = '';
@@ -962,9 +1028,9 @@ function startAutoLockTimer() {
     if (appLockState.autoLockTimer) {
         clearTimeout(appLockState.autoLockTimer);
     }
-    
+
     appLockState.lastActivity = Date.now();
-    
+
     appLockState.autoLockTimer = setInterval(() => {
         if (Date.now() - appLockState.lastActivity > AUTO_LOCK_DELAY) {
             lockApp();
@@ -1026,11 +1092,11 @@ async function exportData() {
     haptic(40);
     let encrypt = document.getElementById('encrypt-backup-toggle') ? document.getElementById('encrypt-backup-toggle').checked : false;
     if (encrypt && !db.appPin) { showSnackbar("Please set a PIN first to encrypt", "warning"); return; }
-    
+
     let dataStr = JSON.stringify(db, null, 2);
     let finalData = encrypt ? await encryptData(dataStr, db.appPin) : dataStr;
     let ext = encrypt ? '.enc' : '.json';
-    
+
     const blob = new Blob([finalData], { type: encrypt ? 'text/plain' : 'application/json' });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -1041,13 +1107,13 @@ async function exportData() {
 }
 
 function restoreData(e) {
-    const file = e.target.files[0]; if (!file) return; 
+    const file = e.target.files[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = async (event) => {
         try {
             let content = event.target.result;
             let parsedStr = content;
-            
+
             if (content.startsWith('ENC:') || content.startsWith('ENC2:')) {
                 let pin = prompt("Enter PIN to decrypt backup:");
                 if (!pin) { showSnackbar("Decryption cancelled", "error"); e.target.value = ''; return; }
@@ -1059,44 +1125,44 @@ function restoreData(e) {
                     return;
                 }
             }
-            
+
             let parsed = JSON.parse(parsedStr);
             if (!parsed.userProfile) parsed.userProfile = { salary: 0, regime: 'new' };
             // Deep merge/update db
             db.userProfile = parsed.userProfile;
-            db.investments = parsed.investments || []; 
-            db.goals = parsed.goals || []; 
-            db.recurring = parsed.recurring || []; 
-            db.milestones = parsed.milestones || []; 
-            db.projectionNextMonth = parsed.projectionNextMonth || 0; 
-            db.categoryDetails = parsed.categoryDetails || parsed.categoryGoals || {}; 
-            db.currentMarketValues = parsed.currentMarketValues || {}; 
-            db.allocTargets = parsed.allocTargets || {}; 
-            db.accounts = parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : ['Main Portfolio']; 
-            db.fireTargetMonthly = parsed.fireTargetMonthly || 0; 
-            db.templates = parsed.templates || []; 
-            db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false; 
-            db.theme = parsed.theme || 'indigo'; 
-            db.geminiKey = parsed.geminiKey || ''; 
-            db.groqKey = parsed.groqKey || ''; 
-            db.appPin = parsed.appPin || ''; 
-            db.useBiometric = parsed.useBiometric || false; 
-            db.chatHistory = parsed.chatHistory || []; 
-            db.chatSessions = parsed.chatSessions || []; 
-            db.lastBackupPrompt = parsed.lastBackupPrompt || ''; 
+            db.investments = parsed.investments || [];
+            db.goals = parsed.goals || [];
+            db.recurring = parsed.recurring || [];
+            db.milestones = parsed.milestones || [];
+            db.projectionNextMonth = parsed.projectionNextMonth || 0;
+            db.categoryDetails = parsed.categoryDetails || parsed.categoryGoals || {};
+            db.currentMarketValues = parsed.currentMarketValues || {};
+            db.allocTargets = parsed.allocTargets || {};
+            db.accounts = parsed.accounts && parsed.accounts.length > 0 ? parsed.accounts : ['Main Portfolio'];
+            db.fireTargetMonthly = parsed.fireTargetMonthly || 0;
+            db.templates = parsed.templates || [];
+            db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false;
+            db.theme = parsed.theme || 'indigo';
+            db.geminiKey = parsed.geminiKey || '';
+            db.groqKey = parsed.groqKey || '';
+            db.appPin = parsed.appPin || '';
+            db.useBiometric = parsed.useBiometric || false;
+            db.chatHistory = parsed.chatHistory || [];
+            db.chatSessions = parsed.chatSessions || [];
+            db.lastBackupPrompt = parsed.lastBackupPrompt || '';
             db.navCache = parsed.navCache || {};
-            
+
             if (parsed.categories && Object.keys(parsed.categories).length > 0) { db.categories = parsed.categories; }
             if (!db.settingsTable) db.settingsTable = { lastResetMonth: '' };
-            
-            saveData(); initUI(); renderAll(); closeOverlays(); 
-            showSnackbar("Data Restored Successfully", "check_circle"); 
+
+            saveData(); initUI(); renderAll(); closeOverlays();
+            showSnackbar("Data Restored Successfully", "check_circle");
             e.target.value = '';
-        } catch (err) { 
+        } catch (err) {
             console.error(err);
-            showSnackbar("Invalid or Corrupted Backup", "error"); 
+            showSnackbar("Invalid or Corrupted Backup", "error");
         }
-    }; 
+    };
     reader.readAsText(file);
 }
 
@@ -1157,7 +1223,7 @@ function calculateXIRR() {
     // Check for all-dividend case (no actual investments)
     let hasInvestments = filteredInvs.some(i => !i.isDividend);
     let allDividends = filteredInvs.every(i => i.isDividend);
-    
+
     if (allDividends) {
         let totalDividends = filteredInvs.reduce((s, i) => s + i.amount, 0);
         document.getElementById('xirr-result').innerHTML = `
@@ -1198,7 +1264,7 @@ function calculateXIRR() {
         let invested = Math.abs(nonDividendFlows[0].amount);
         let current = currentValue || invested;
         let simpleReturn = ((current - invested) / invested) * 100;
-        
+
         document.getElementById('xirr-result').innerHTML = `
             <div style="text-align:center; padding:16px;">
                 <div style="font-size:12px; color:var(--md-outline); margin-bottom:8px;">📊 Single Investment (XIRR not applicable)</div>
@@ -1283,7 +1349,7 @@ function calculateXIRR() {
     };
 
     let result = irr(cashFlows);
-    
+
     // Handle different return scenarios with better messaging
     let resultText, colorClass, message;
     if (result <= -0.99) {
@@ -1315,11 +1381,11 @@ function calculateXIRR() {
         colorClass = 'var(--md-success)';
         message = 'Exceptional returns!';
     }
-    
+
     // Calculate annualized for multi-year
     let years = holdingDays / 365.25;
     let annualizedNote = years >= 1 ? `<div style="font-size:11px; color:var(--md-outline); margin-top:4px;">Annualized over ${years.toFixed(1)} years</div>` : '';
-    
+
     document.getElementById('xirr-result').innerHTML = `
         <div style="text-align:center; padding:16px;">
             <div style="font-size:14px; color:var(--md-outline); margin-bottom:8px;">XIRR</div>
@@ -1329,18 +1395,18 @@ function calculateXIRR() {
             ${shortPeriodWarning}
         </div>`;
 }
-function calculateMonthlySIP() { 
-    let target = parseFloat(document.getElementById('sip-target').value); 
-    let years = parseFloat(document.getElementById('sip-years').value); 
-    let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12; 
-    let months = years * 12; 
+function calculateMonthlySIP() {
+    let target = parseFloat(document.getElementById('sip-target').value);
+    let years = parseFloat(document.getElementById('sip-years').value);
+    let rate = parseFloat(document.getElementById('sip-return').value) / 100 / 12;
+    let months = years * 12;
     if (rate === 0) {
         document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(target / months)}</strong>`;
         return;
     }
     // SIP at start of period
-    let monthly = target * rate / ((Math.pow(1 + rate, months) - 1) * (1 + rate)); 
-    document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`; 
+    let monthly = target * rate / ((Math.pow(1 + rate, months) - 1) * (1 + rate));
+    document.getElementById('sip-result').innerHTML = `Monthly SIP needed: <strong>${formatMoney(monthly)}</strong>`;
 }
 function calculateEMI() { let P = parseFloat(document.getElementById('emi-principal').value); let years = parseFloat(document.getElementById('emi-tenure').value); let rate = parseFloat(document.getElementById('emi-rate').value) / 12 / 100; let n = years * 12; if (rate === 0) { document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(P / n)}</strong>`; return; } let emi = P * rate * Math.pow(1 + rate, n) / (Math.pow(1 + rate, n) - 1); document.getElementById('emi-result').innerHTML = `Monthly EMI: <strong>${formatMoney(emi)}</strong>`; }
 function calculateInflation() { let pv = parseFloat(document.getElementById('inf-present').value); let years = parseFloat(document.getElementById('inf-years').value); let rate = parseFloat(document.getElementById('inf-rate').value) / 100; let fv = pv * Math.pow(1 + rate, years); document.getElementById('inf-result').innerHTML = `Future Value: <strong>${formatMoney(fv)}</strong>`; }
@@ -1405,14 +1471,14 @@ async function callAIApi(promptText, systemPrompt = "Act as an elite financial w
 function openAIChat() {
     const log = document.getElementById('ai-chat-log');
     if (!log) return;
-    
+
     log.innerHTML = db.chatHistory.map(m => {
         const content = m.role === 'ai' ? formatAIResponse(m.content) : m.content;
         return `<div class="chat-bubble ${m.role}">${content}</div>`;
     }).join('');
-    
+
     openSheet('ai-chat-sheet');
-    
+
     setTimeout(() => {
         log.scrollTop = log.scrollHeight;
     }, 100);
@@ -1464,20 +1530,20 @@ function formatAIResponse(text) {
     // 1. Initial Clean: Remove AI code fences if present
     let formatted = text.replace(/```(html|markdown)?|```/gi, '').trim();
 
-    // 2. Process TABLES - Markdown table format | Col1 | Col2 |
-    formatted = processAITables(formatted);
-    
-    // 3. Process CHARTS - Special [CHART: type data] format
-    formatted = processAICharts(formatted);
-    
-    // 4. Process PROGRESS BARS - [PROGRESS: value% label]
-    formatted = processAIProgress(formatted);
-    
-    // 5. Process CALLOUTS - [!INFO], [!WARNING], [!TIP]
-    formatted = processAICallouts(formatted);
-
-    // 6. ESCAPE raw HTML to prevent XSS
+    // 2. ESCAPE raw HTML early to prevent XSS while allowing our custom tags
     formatted = escapeHtml(formatted);
+
+    // 3. Process TABLES - Markdown table format | Col1 | Col2 |
+    formatted = processAITables(formatted);
+
+    // 4. Process CHARTS - Special [CHART: type data] format
+    formatted = processAICharts(formatted);
+
+    // 5. Process PROGRESS BARS - [PROGRESS: value% label]
+    formatted = processAIProgress(formatted);
+
+    // 6. Process CALLOUTS - [!INFO], [!WARNING], [!TIP]
+    formatted = processAICallouts(formatted);
 
     // 7. Strip dangerous patterns
     formatted = formatted.replace(/\bon\w+\s*=/gi, '').replace(/javascript\s*:/gi, '');
@@ -1513,16 +1579,16 @@ function processAITables(text) {
     return text.replace(tableRegex, (match, headers, rows) => {
         const headerCells = headers.split('|').map(h => h.trim()).filter(h => h);
         const rowLines = rows.trim().split('\n');
-        
+
         let tableHtml = '<div style="overflow-x:auto;margin:16px 0;border-radius:12px;border:1px solid var(--md-outline-variant);"><table style="width:100%;border-collapse:collapse;font-size:13px;">';
-        
+
         // Headers
         tableHtml += '<thead><tr style="background:var(--md-primary-container);">';
         headerCells.forEach(h => {
             tableHtml += `<th style="padding:12px;text-align:left;color:var(--md-on-primary-container);font-weight:600;border-bottom:2px solid var(--md-outline-variant);">${h}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
-        
+
         // Rows
         rowLines.forEach((line, idx) => {
             const cells = line.split('|').map(c => c.trim()).filter(c => c);
@@ -1533,7 +1599,7 @@ function processAITables(text) {
             });
             tableHtml += '</tr>';
         });
-        
+
         tableHtml += '</tbody></table></div>';
         return tableHtml;
     });
@@ -1543,15 +1609,15 @@ function processAITables(text) {
 function processAICharts(text) {
     // Match [CHART: bar data="10,20,30" labels="A,B,C" colors="#ff0000,#00ff00,#0000ff"]
     const chartRegex = /\[CHART:\s*(\w+)\s+data="([^"]+)"(?:\s+labels="([^"]*)")?(?:\s+colors="([^"]*)")?\]/g;
-    
+
     return text.replace(chartRegex, (match, type, dataStr, labelsStr, colorsStr) => {
         const data = dataStr.split(',').map(v => parseFloat(v.trim()) || 0);
         const labels = labelsStr ? labelsStr.split(',').map(l => l.trim()) : data.map((_, i) => i + 1);
         const colors = colorsStr ? colorsStr.split(',').map(c => c.trim()) : generateChartColors(data.length);
-        
+
         const max = Math.max(...data, 1);
         const total = data.reduce((a, b) => a + b, 0);
-        
+
         if (type === 'bar' || type === 'column') {
             return renderAIBarChart(data, labels, colors, max);
         } else if (type === 'pie' || type === 'donut') {
@@ -1583,13 +1649,13 @@ function renderAIBarChart(data, labels, colors, max) {
 function renderAIPieChart(data, labels, colors, total) {
     let slices = [];
     let currentAngle = 0;
-    
+
     data.forEach((val, i) => {
         const pct = (val / total) * 100;
         const angle = (val / total) * 360;
         slices.push({ val, pct, angle, color: colors[i % colors.length], label: labels[i] });
     });
-    
+
     // Create simple legend-based visualization
     let legend = '<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;margin-top:12px;">';
     slices.forEach(s => {
@@ -1603,7 +1669,7 @@ function renderAIPieChart(data, labels, colors, total) {
             </div>`;
     });
     legend += '</div>';
-    
+
     return `<div style="margin:16px 0;padding:16px;background:var(--md-surface-container-low);border-radius:12px;">
         <div style="font-size:14px;font-weight:600;color:var(--md-on-surface);margin-bottom:12px;text-align:center;">Total: ${total}</div>
         ${legend}
@@ -1645,7 +1711,7 @@ function processAICallouts(text) {
         'TIP': { icon: 'lightbulb', color: 'var(--md-success)', bg: 'var(--md-success-container)' },
         'ERROR': { icon: 'error', color: 'var(--md-error)', bg: 'var(--md-error-container)' }
     };
-    
+
     let result = text;
     Object.entries(callouts).forEach(([type, config]) => {
         const regex = new RegExp(`\\[!${type}\\]([^\\n]*(?:\\n(?!!|\\[|$)[^\\n]*)*)`, 'g');
@@ -1690,7 +1756,7 @@ let aiBubbleExpanded = false;
 
 function initAIFloatingBubble() {
     if (aiBubbleInitialized) return;
-    
+
     // Create floating bubble container
     const bubble = document.createElement('div');
     bubble.id = 'ai-floating-bubble';
@@ -1726,7 +1792,7 @@ function initAIFloatingBubble() {
             </div>
         </div>
     `;
-    
+
     // Add styles
     const style = document.createElement('style');
     style.textContent = `
@@ -1928,16 +1994,16 @@ function initAIFloatingBubble() {
     `;
     document.head.appendChild(style);
     document.body.appendChild(bubble);
-    
+
     aiBubbleInitialized = true;
 }
 
 function toggleAIBubble() {
     if (!aiBubbleInitialized) initAIFloatingBubble();
-    
+
     const chat = document.getElementById('ai-bubble-chat');
     const button = document.getElementById('ai-bubble-button');
-    
+
     if (aiBubbleExpanded) {
         chat.style.display = 'none';
         button.style.display = 'flex';
@@ -1957,7 +2023,7 @@ function toggleAIBubble() {
 function renderAIBubbleMessages() {
     const container = document.getElementById('ai-bubble-messages');
     if (!container) return;
-    
+
     if (db.chatHistory.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:40px 20px;color:var(--md-outline);">
@@ -1967,13 +2033,13 @@ function renderAIBubbleMessages() {
             </div>`;
         return;
     }
-    
+
     container.innerHTML = db.chatHistory.map(m => {
         const content = m.role === 'ai' ? formatAIResponse(m.content) : escapeHtml(m.content);
         const className = m.role === 'ai' ? 'ai-msg' : 'user-msg';
         return `<div class="${className}">${content}</div>`;
     }).join('');
-    
+
     container.scrollTop = container.scrollHeight;
 }
 
@@ -1981,17 +2047,17 @@ async function sendAIBubbleMessage() {
     const input = document.getElementById('ai-bubble-input');
     const msg = input.value.trim();
     if (!msg) return;
-    
+
     if (!db.geminiKey && !db.groqKey) {
         showSnackbar("Add API key in Settings → AI", "key");
         return;
     }
-    
+
     // Add user message
     db.chatHistory.push({ role: 'user', content: msg });
     input.value = '';
     renderAIBubbleMessages();
-    
+
     // Show typing
     const container = document.getElementById('ai-bubble-messages');
     const typingId = 'typing-' + Date.now();
@@ -1999,13 +2065,13 @@ async function sendAIBubbleMessage() {
         <div id="ai-bubble-typing"><span></span><span></span><span></span></div>
     </div>`;
     container.scrollTop = container.scrollHeight;
-    
+
     // Build context-rich prompt
     const historyStr = db.chatHistory.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
     const portfolioData = JSON.stringify(currentTypeTotals);
     const goalsData = JSON.stringify(db.goals.map(g => ({ name: g.name, target: g.target, saved: g.saved })));
     const sipData = JSON.stringify(db.recurring.map(r => ({ type: r.type, amount: r.amount })));
-    
+
     const prompt = `You are a personal financial advisor analyzing this user's portfolio.
 
 USER FINANCIAL DATA:
@@ -2194,7 +2260,7 @@ async function generateWealthBlueprint() {
         monthlyIncome: db.userProfile.salary / 12,
         monthlyExpenses: db.userProfile.monthlyExpense || 0,
         recurringSips: db.recurring,
-        taxSavings80C: db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).reduce((s, i) => s + i.amount, 0),
+        taxSaved: db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).reduce((s, i) => s + i.amount, 0),
         goals: db.goals
     };
 
@@ -2203,7 +2269,7 @@ async function generateWealthBlueprint() {
     Current State: Analyze net worth vs monthly expenses (${portfolioData.monthlyExpenses}).
     Future Planning: Suggest actions for next 12 months.
     Safety Net: Evaluate if Emergency Fund covers 6-12 months of expenses.
-    80C Status: User has saved ₹${portfolioData.taxSavings80C} out of ₹1.5L limit.
+    80C Status: User has saved ₹${portfolioData.taxSaved} out of ₹1.5L limit.
     Requirements:
     1. Provide a "Portfolio Health Score" (0-100).
     2. Identify top 3 strengths and top 3 weaknesses.
@@ -2279,7 +2345,7 @@ async function askAIEngine(context) {
             <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
         </div>`;
 
-    chartSection.style.display = 'none';
+    if (chartSection) chartSection.style.display = 'none';
     openSubSheet('ai-sheet');
 
     // 1. DATA PREP (Shared Context)
@@ -2343,7 +2409,7 @@ async function askAIEngine(context) {
         | :--- | :--- | :--- |
         | Net Worth | ₹${formatInr(payload.netWorth)} | [Analysis] |
         | Savings Rate | [Calculated %] | [Efficient/Inefficient] |
-        | Tax Efficiency | ₹${payload.taxSavings80C}/1.5L | [Warning/Good] |
+        | Tax Efficiency | ₹${payload.taxSaved}/1.5L | [Warning/Good] |
 
         ## 2. The Mirror: What You're Doing Right & Wrong
         ### 🟢 Winning Habits (The Green List)
@@ -2395,14 +2461,13 @@ async function askAIEngine(context) {
         const response = await callAIApi(promptBase, "You are a top-tier Financial AI. Your responses are deep, informative, and strategically superior.");
         aiContainer.innerHTML = formatAIResponse(response);
 
-        // Show charts only for relevant contexts
-        if (context === 'full_report' || context === 'allocation') {
+        if ((context === 'full_report' || context === 'allocation') && chartSection) {
             chartSection.style.display = 'flex';
-            renderAIReportCharts(currentTypeTotals);
+            renderAIReportCharts(payload.allocation);
         }
         haptic([30, 50]);
     } catch (e) {
+        console.error("AI Engine Error:", e);
         aiContainer.innerHTML = `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`;
     }
 }
-
