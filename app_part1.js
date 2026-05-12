@@ -1,7 +1,41 @@
 // ==========================================
 // 1. DATA INITIALIZATION & CONSTANT STORE
 // ==========================================
-let db = JSON.parse(localStorage.getItem('appHubInvestDb')) || {};
+// Cross-browser compatible localStorage access
+function getLocalStorage() {
+    try {
+        return window.localStorage;
+    } catch (e) {
+        console.warn('localStorage not available:', e);
+        return null;
+    }
+}
+
+function safeLocalStorageGet(key, defaultValue = null) {
+    try {
+        const storage = getLocalStorage();
+        if (!storage) return defaultValue;
+        const item = storage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+    } catch (e) {
+        console.warn(`Failed to parse localStorage item ${key}:`, e);
+        return defaultValue;
+    }
+}
+
+function safeLocalStorageSet(key, value) {
+    try {
+        const storage = getLocalStorage();
+        if (!storage) return false;
+        storage.setItem(key, JSON.stringify(value));
+        return true;
+    } catch (e) {
+        console.warn(`Failed to set localStorage item ${key}:`, e);
+        return false;
+    }
+}
+
+let db = safeLocalStorageGet('appHubInvestDb', {});
 
 if (!db.userProfile) db.userProfile = { salary: 0, regime: 'new', monthlyExpense: 0 };
 if (!db.userProfile.monthlyExpense) db.userProfile.monthlyExpense = 0;
@@ -122,6 +156,22 @@ let chartDataPoints = [];
 let portfolioChartInstance = null, rollingChartInstance = null, categoryChartInstance = null;
 let aiReportCharts = { pie: null, bar: null };
 
+// Chart cleanup function to prevent memory leaks
+function cleanupCharts() {
+    const charts = [portfolioChartInstance, rollingChartInstance, categoryChartInstance, aiReportCharts.pie, aiReportCharts.bar];
+    charts.forEach(chart => {
+        if (chart && typeof chart.destroy === 'function') {
+            chart.destroy();
+        }
+    });
+    
+    portfolioChartInstance = null;
+    rollingChartInstance = null;
+    categoryChartInstance = null;
+    aiReportCharts.pie = null;
+    aiReportCharts.bar = null;
+}
+
 // Chart data cache to prevent unnecessary re-renders
 let chartDataCache = {
     donut: { key: null, data: null, labels: null, colors: null },
@@ -180,22 +230,50 @@ function setButtonLoading(buttonId, isLoading) {
 const style = document.createElement('style');
 style.textContent = `
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    
     .loading-overlay {
         position: absolute; top: 0; left: 0; right: 0; bottom: 0;
         background: rgba(var(--md-surface-rgb, 255,255,255), 0.8);
         display: flex; align-items: center; justify-content: center;
         z-index: 100; border-radius: inherit;
+        backdrop-filter: blur(2px);
     }
+    
     @keyframes skeleton-pulse {
         0% { opacity: 1; }
         50% { opacity: 0.4; }
         100% { opacity: 1; }
     }
+    
     .skeleton {
         background: var(--md-surface-container-highest);
         border-radius: 8px;
         animation: skeleton-pulse 1.5s ease-in-out infinite;
+        position: relative;
+        overflow: hidden;
     }
+    
+    .skeleton::after {
+        content: '';
+        position: absolute;
+        top: 0; right: 0; bottom: 0; left: 0;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent
+        );
+        animation: skeleton-shimmer 2s infinite;
+    }
+    
+    @keyframes skeleton-shimmer {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+    
     .skeleton-text { height: 16px; margin: 8px 0; }
     .skeleton-title { height: 24px; width: 60%; margin: 12px 0; }
     .skeleton-circle { border-radius: 50%; }
@@ -204,46 +282,384 @@ style.textContent = `
         border-radius: 16px;
         padding: 16px;
         margin: 12px 0;
+        animation: fadeIn 0.3s ease-out;
     }
+    
     .chart-skeleton {
         height: 200px;
         border-radius: 16px;
         background: var(--md-surface-container-highest);
         animation: skeleton-pulse 1.5s ease-in-out infinite;
     }
+    
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    .slide-up {
+        animation: slideUp 0.4s ease-out;
+    }
+    
+    .scale-in {
+        animation: scaleIn 0.2s ease-out;
+    }
+    
+    .hover-lift {
+        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    }
+    
+    .btn-ripple {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .btn-ripple::after {
+        content: '';
+        position: absolute;
+        top: 50%; left: 50%;
+        width: 0; height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.5);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .btn-ripple:active::after {
+        width: 300px; height: 300px;
+    }
+    
+    .quick-actions-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 1000;
+        animation: slideUp 0.3s ease-out;
+    }
+    
+    /* Mobile-specific optimizations */
+    @media (max-width: 768px) {
+        .quick-actions-container {
+            bottom: 16px;
+            right: 16px;
+            gap: 6px;
+        }
+        
+        .quick-action-btn {
+            padding: 10px 12px;
+            border-radius: 20px;
+            min-width: 120px;
+            font-size: 13px;
+        }
+        
+        .quick-action-label {
+            font-size: 12px;
+        }
+        
+        .sheet {
+            max-width: 95vw;
+            margin: 0 auto;
+        }
+        
+        .sheet-content {
+            padding: 16px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .mobile-context-menu {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--md-surface-container);
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 2000;
+            max-width: 100%;
+        }
+        
+        .mobile-context-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--md-outline-variant);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            min-height: 56px;
+        }
+        
+        .mobile-context-item:last-child {
+            border-bottom: none;
+        }
+        
+        .mobile-context-cancel {
+            background: var(--md-surface-container-highest);
+            font-weight: 500;
+            border-top: 1px solid var(--md-outline-variant);
+        }
+    }
+    
+    /* Touch-friendly targets */
+    @media (hover: none) and (pointer: coarse) {
+        .swipe-wrapper .front {
+            min-height: 60px;
+            padding: 16px;
+        }
+        
+        button, .btn-primary, .btn-secondary {
+            min-height: 48px;
+            min-width: 48px;
+            padding: 12px 20px;
+        }
+        
+        .chip, .sort-chip {
+            min-height: 40px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+    }
+    
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border: none;
+        border-radius: 24px;
+        color: white;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: transform 0.2s ease-out;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        min-width: 140px;
+        justify-content: flex-start;
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    
+    .quick-action-label {
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .input-error {
+        border-color: var(--md-error) !important;
+        box-shadow: 0 0 0 2px rgba(186, 26, 26, 0.2) !important;
+        animation: shake 0.3s ease-in-out;
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    .input-focused {
+        border-color: var(--md-primary) !important;
+        box-shadow: 0 0 0 2px rgba(65, 95, 145, 0.2) !important;
+        transition: all 0.2s ease-out;
+    }
+    
+    .error-message {
+        animation: fadeIn 0.2s ease-out;
+    }
+    
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    
+    .fade-out {
+        animation: fadeOut 0.2s ease-out forwards;
+    }
+    
+    @keyframes fadeOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
 `;
 document.head.appendChild(style);
 
-// Skeleton screen utilities
-function showSkeleton(containerId, type = 'list') {
+// Mobile performance optimizations
+function optimizeForMobile() {
+    // Enable passive event listeners for better scroll performance
+    document.addEventListener('touchstart', () => {}, { passive: true });
+    
+    // Optimize scrolling performance
+    if ('scrollBehavior' in document.documentElement.style) {
+        document.documentElement.style.scrollBehavior = 'smooth';
+    }
+    
+    // Reduce motion for users who prefer it
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.style.setProperty('--animation-duration', '0.01ms');
+    }
+    
+    // Preload critical resources
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            // Preload commonly used components
+            const preloadSheets = ['invest-sheet', 'settings-sheet'];
+            preloadSheets.forEach(sheetId => {
+                const sheet = document.getElementById(sheetId);
+                if (sheet) {
+                    sheet.style.display = 'none';
+                    sheet.style.display = '';
+                }
+            });
+        });
+    }
+    
+    // Optimize images for mobile
+    const images = document.querySelectorAll('img');
+    images.forEach(img => {
+        if (img.loading === 'lazy') return;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+    });
+}
+
+// PWA features
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('Service Worker registered with scope:', registration.scope);
+        }).catch(error => {
+            console.log('Service Worker registration failed:', error);
+        });
+    }
+}
+
+function installPWA() {
+    // Check if running as PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+        document.body.classList.add('pwa-standalone');
+    }
+    
+    // Add install prompt
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        
+        // Show install banner
+        const installBanner = document.createElement('div');
+        installBanner.className = 'pwa-install-banner slide-up';
+        installBanner.innerHTML = `
+            <div class="pwa-install-content">
+                <span class="material-symbols-rounded">download</span>
+                <span>Install TrackInvest</span>
+                <button onclick="installPWAApp()">
+                    <span class="material-symbols-rounded">add</span>
+                    Install
+                </button>
+                <button onclick="dismissPWAInstall()">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+        `;
+        document.body.appendChild(installBanner);
+    });
+    
+    window.installPWAApp = () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(choiceResult => {
+                if (choiceResult.outcome === 'accepted') {
+                    showSnackbar('App installed successfully!', 'check_circle');
+                }
+                dismissPWAInstall();
+            });
+        }
+    };
+    
+    window.dismissPWAInstall = () => {
+        const banner = document.querySelector('.pwa-install-banner');
+        if (banner) {
+            banner.classList.add('fade-out');
+            setTimeout(() => banner.remove(), 300);
+        }
+    };
+}
+
+// Initialize mobile optimizations and PWA features
+document.addEventListener('DOMContentLoaded', () => {
+    optimizeForMobile();
+    setTimeout(addQuickActions, 1000);
+    registerServiceWorker();
+    installPWA();
+});
+
+// Enhanced skeleton screen utilities
+function showSkeleton(containerId, type = 'list', count = 4) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     let skeletonHtml = '';
     if (type === 'list') {
-        skeletonHtml = Array(4).fill(0).map(() => `
-            <div class="skeleton-card">
+        skeletonHtml = Array(count).fill(0).map((_, i) => `
+            <div class="skeleton-card fade-in" style="animation-delay: ${i * 0.1}s">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div class="skeleton skeleton-circle" style="width:40px;height:40px;"></div>
                     <div style="flex:1;">
                         <div class="skeleton skeleton-title"></div>
-                        <div class="skeleton skeleton-text" style="width:40%;"></div>
+                        <div class="skeleton skeleton-text" style="width:${40 + Math.random() * 20}%;"></div>
                     </div>
                     <div class="skeleton" style="width:60px;height:24px;"></div>
                 </div>
             </div>
         `).join('');
     } else if (type === 'chart') {
-        skeletonHtml = '<div class="chart-skeleton"></div>';
+        skeletonHtml = `
+            <div class="chart-skeleton scale-in">
+                <div style="display:flex;align-items:center;justify-content:center;height:100%;">
+                    <span class="material-symbols-rounded" style="font-size:32px;color:var(--md-outline);animation:spin 2s linear infinite;">analytics</span>
+                </div>
+            </div>
+        `;
     } else if (type === 'stats') {
         skeletonHtml = `
-            <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;">
-                ${Array(3).fill(0).map(() => `
-                    <div class="skeleton-card" style="text-align:center;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                ${Array(3).fill(0).map((_, i) => `
+                    <div class="skeleton-card fade-in" style="text-align:center;animation-delay: ${i * 0.1}s">
                         <div class="skeleton skeleton-text" style="width:80%;margin:0 auto;"></div>
                         <div class="skeleton" style="width:60%;height:32px;margin:8px auto 0;"></div>
                     </div>
                 `).join('')}
+            </div>
+        `;
+    } else if (type === 'investment-form') {
+        skeletonHtml = `
+            <div class="skeleton-card scale-in">
+                <div class="skeleton skeleton-title" style="width:40%;margin-bottom:20px;"></div>
+                <div style="display:grid;gap:16px;">
+                    ${Array(5).fill(0).map(() => `
+                        <div>
+                            <div class="skeleton skeleton-text" style="width:30%;margin-bottom:8px;"></div>
+                            <div class="skeleton" style="height:48px;"></div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="skeleton" style="height:56px;margin-top:24px;border-radius:28px;"></div>
             </div>
         `;
     }
@@ -257,11 +673,42 @@ function hideSkeleton(containerId) {
     const container = document.getElementById(containerId);
     if (!container || !container.classList.contains('skeleton-active')) return;
 
-    if (container.dataset.originalContent) {
-        container.innerHTML = container.dataset.originalContent;
-        delete container.dataset.originalContent;
+    container.classList.add('fade-out');
+    setTimeout(() => {
+        if (container.dataset.originalContent) {
+            container.innerHTML = container.dataset.originalContent;
+            delete container.dataset.originalContent;
+        }
+        container.classList.remove('skeleton-active', 'fade-out');
+    }, 200);
+}
+
+// Loading overlay utilities
+function showLoadingOverlay(containerId, message = 'Loading...') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay scale-in';
+    overlay.innerHTML = `
+        <div style="text-align:center;">
+            <span class="material-symbols-rounded" style="font-size:48px;color:var(--md-primary);animation:spin 1s linear infinite;block;">progress_activity</span>
+            <div style="margin-top:16px;color:var(--md-on-surface-variant);font-size:14px;">${escapeHtml(message)}</div>
+        </div>
+    `;
+    
+    container.appendChild(overlay);
+}
+
+function hideLoadingOverlay(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const overlay = container.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.remove(), 200);
     }
-    container.classList.remove('skeleton-active');
 }
 
 // Generate cache key from relevant data
@@ -359,23 +806,111 @@ function parseDate(dateStr) {
     return isNaN(d.getTime()) ? new Date() : d;
 }
 
+/**
+ * Formats a number as Indian Rupees
+ * @param {number} num - The number to format
+ * @returns {string} Formatted currency string
+ */
 function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
-function formatMoney(num) { return db.privacyMode ? '••••••' : '₹' + formatInr(num); }
 
-function showSnackbar(msg, icon = "info") {
-    const sb = document.getElementById("snackbar");
-    sb.innerHTML = `<span class="material-symbols-rounded" style="font-size:20px;">${icon}</span> ${msg}`;
-    sb.classList.add("show");
-    setTimeout(() => sb.classList.remove("show"), 3000);
+/**
+ * Formats a number as Indian Rupees with privacy mode support
+ * @param {number} num - The number to format
+ * @returns {string} Formatted currency string
+ */
+function formatMoney(num) { 
+    return db.privacyMode ? '•••••' : '₹' + formatInr(num); 
 }
 
-function closeOverlays(fromPopState = false) {
-    document.querySelectorAll('.scrim, .scrim-sub, .sheet').forEach(el => el.classList.remove('active'));
-    editInvId = null; editGoalId = null;
-    sessionStorage.removeItem('currentSheet');
-    if (!fromPopState && history.state && history.state.sheetId) {
-        history.back();
+/**
+ * Shows a snackbar notification with optional icon and accessibility support
+ * @param {string} msg - Message to display
+ * @param {string} icon - Material icon name (default: "info")
+ * @param {string} type - Notification type for accessibility (default: "info")
+ */
+function showSnackbar(msg, icon = "info", type = "info") {
+    const sb = document.getElementById("snackbar");
+    if (!sb) {
+        console.warn('Snackbar element not found');
+        return;
     }
+    
+    const iconText = icon === "check_circle" ? "Success" : 
+                     icon === "error" ? "Error" : 
+                     icon === "warning" ? "Warning" : "Information";
+    
+    sb.innerHTML = `
+        <span class="material-symbols-rounded" style="font-size:20px;" aria-hidden="true">${escapeHtml(icon)}</span>
+        <span class="snackbar-message" role="status" aria-live="polite" aria-atomic="true">
+            ${escapeHtml(msg)}
+        </span>
+    `;
+    sb.setAttribute("role", "alert");
+    sb.setAttribute("aria-label", `${iconText}: ${msg}`);
+    sb.classList.add("show");
+    
+    // Auto-focus for screen readers
+    sb.setAttribute("tabindex", "0");
+    sb.focus();
+    
+    setTimeout(() => {
+        sb.classList.remove("show");
+        sb.removeAttribute("tabindex");
+    }, 3000);
+}
+
+/**
+ * Closes all overlays and resets edit states
+ * @param {boolean} fromPopState - Whether called from popstate event
+ */
+function closeOverlays(fromPopState = false) {
+    // Close all sheets and scrims with proper cleanup and null checks
+    const sheets = document.querySelectorAll('.sheet.active');
+    if (sheets) {
+        sheets.forEach(sheet => {
+            if (sheet) {
+                sheet.classList.remove('active');
+                // Reset any inline styles that might interfere
+                sheet.style.display = '';
+                sheet.style.visibility = '';
+                sheet.style.transform = '';
+                sheet.style.opacity = '';
+            }
+        });
+    }
+    
+    const scrims = document.querySelectorAll('.scrim.active, .scrim-sub.active');
+    if (scrims) {
+        scrims.forEach(scrim => {
+            if (scrim) {
+                scrim.classList.remove('active');
+            }
+        });
+    }
+    
+    // Reset edit states
+    editInvId = null; 
+    editGoalId = null;
+    
+    // Clear session storage
+    try {
+        sessionStorage.removeItem('currentSheet');
+    } catch (e) {
+        console.warn('Failed to clear sessionStorage:', e);
+    }
+    
+    // Handle history navigation
+    if (!fromPopState && history && history.state && history.state.sheetId) {
+        try {
+            history.back();
+        } catch (e) {
+            console.warn('History navigation failed:', e);
+        }
+    }
+    
+    // Reset any active sub-sheet tracking
+    activeSub = null;
+    activeMain = null;
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
@@ -392,22 +927,59 @@ window.openSubSheet = openSubSheet;
 function openSheet(sheetId, fromRestore = false) {
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
+    const targetSheet = document.getElementById(sheetId);
+    
+    if (!targetSheet) {
+        console.warn(`Sheet with ID "${sheetId}" not found`);
+        return;
+    }
+    
     if (isSubSheet) {
         // Clear previous sub-sheets to prevent stacking
-        document.querySelectorAll('.sheet.sub-sheet').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.sheet.sub-sheet.active').forEach(el => {
+            el.classList.remove('active');
+            el.classList.add('fade-out');
+            // Reset inline styles
+            el.style.display = '';
+            el.style.visibility = '';
+        });
+        
+        // Ensure main scrim stays active and add sub-scrim
+        document.getElementById('scrim')?.classList.add('active');
         document.getElementById('scrim-sub')?.classList.add('active');
-        document.getElementById(sheetId)?.classList.add('active');
+        
+        // Animate in new sub-sheet
+        setTimeout(() => {
+            targetSheet.classList.remove('fade-out');
+            targetSheet.classList.add('active', 'slide-up');
+        }, 50);
+        
         activeSub = sheetId;
     } else {
         // If opening a main sheet, close EVERYTHING first (including sub-sheets)
-        document.querySelectorAll('.scrim, .scrim-sub, .sheet').forEach(el => el.classList.remove('active'));
+        closeOverlays(true); // Close without triggering history back
+        
+        // Then open new main sheet with animation
         document.getElementById('scrim')?.classList.add('active');
-        document.getElementById(sheetId)?.classList.add('active');
+        
+        targetSheet.classList.add('scale-in');
+        setTimeout(() => {
+            targetSheet.classList.add('active');
+        }, 50);
+        
         activeMain = sheetId;
         activeSub = null;
     }
+    
+    // Ensure proper display and visibility
+    targetSheet.style.display = '';
+    targetSheet.style.visibility = 'visible';
+    
     sessionStorage.setItem('currentSheet', sheetId);
+    
+    // Initialize sheet-specific content
     if (sheetId === 'history-sync-sheet') populateSyncDropdown();
+    
     if (!fromRestore) pushSheetState(sheetId);
 }
 
@@ -567,7 +1139,7 @@ function updateStatChips(totalInvested, totalMarketValue, yearTotal, thisMonthTo
     }
 }
 
-// ── KEYBOARD SHORTCUTS ──────────────────────────
+// ── ACCESSIBLE KEYBOARD SHORTCUTS ──────────────────────
 document.addEventListener('keydown', e => {
     // Allow ? to show shortcuts help from anywhere
     if (e.key === '?' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
@@ -576,33 +1148,188 @@ document.addEventListener('keydown', e => {
         return;
     }
 
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    // Skip shortcuts when user is typing in forms
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT' || e.target.isContentEditable) return;
 
-    if (e.key === 'n' || e.key === 'N') { e.preventDefault(); openInvestSheet(); }
-    if (e.key === 'Escape') { e.preventDefault(); closeOverlays(); closeSubSheet(); }
-    if (e.key === '1') { e.preventDefault(); switchTab('dashboard'); }
-    if (e.key === '2') { e.preventDefault(); switchTab('portfolio'); }
-    if (e.key === '3') { e.preventDefault(); switchTab('ledger'); }
-    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); togglePrivacy(); }
-    if (e.key === 's' || e.key === 'S') { e.preventDefault(); openSettings(); }
-    if (e.key === 'g' || e.key === 'G') { e.preventDefault(); if (db.goals.length > 0) openGoalSheet(db.goals[0].id); }
-    if (e.key === 'r' || e.key === 'R') { e.preventDefault(); renderAll(); showSnackbar('Refreshed', 'refresh'); }
-    if (e.key === 'a' || e.key === 'A') { e.preventDefault(); toggleAIBubble(); }
+    let actionTaken = false;
+    let actionDescription = '';
+
+    // Map shortcuts to actions with descriptions
+    const shortcuts = {
+        'n|N': { action: () => openInvestSheet(), desc: 'New Investment' },
+        'Escape': { action: () => { closeOverlays(); closeSubSheet(); }, desc: 'Close/Go Back' },
+        '1': { action: () => switchTab('dashboard'), desc: 'Dashboard Tab' },
+        '2': { action: () => switchTab('portfolio'), desc: 'Portfolio Tab' },
+        '3': { action: () => switchTab('ledger'), desc: 'Ledger Tab' },
+        'p|P': { action: () => togglePrivacy(), desc: 'Toggle Privacy' },
+        's|S': { action: () => openSettings(), desc: 'Settings' },
+        'g|G': { action: () => { if (db.goals.length > 0) openGoalSheet(db.goals[0].id); }, desc: 'Edit First Goal' },
+        'r|R': { action: () => { renderAll(); showSnackbar('Refreshed', 'refresh'); }, desc: 'Refresh Data' },
+        'a|A': { action: () => toggleAIBubble(), desc: 'AI Chat' }
+    };
+
+    // Check which shortcut matches
+    Object.keys(shortcuts).forEach(key => {
+        const keys = key.split('|');
+        const matches = keys.some(k => e.key === k);
+        const modifierMatch = key.includes('|') ? 
+            (e.key === key.split('|')[0] && !e.shiftKey && !e.ctrlKey && !e.altKey) ||
+            (e.key === key.split('|')[1] && e.shiftKey && !e.ctrlKey && !e.altKey) :
+            e.key === key && !e.shiftKey && !e.ctrlKey && !e.altKey;
+
+        if (matches && modifierMatch) {
+            e.preventDefault();
+            shortcuts[key].action();
+            actionTaken = true;
+            actionDescription = shortcuts[key].desc;
+        }
+    });
+
+    // Announce action to screen readers
+    if (actionTaken) {
+        announceToScreenReader(`Action performed: ${actionDescription}`);
+    }
 });
+
+// Screen reader announcement utility
+function announceToScreenReader(message) {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('role', 'status');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'sr-only';
+    announcement.textContent = message;
+    announcement.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
+    
+    document.body.appendChild(announcement);
+    setTimeout(() => document.body.removeChild(announcement), 1000);
+}
+
+// Smart default values based on user behavior
+function getSmartDefaults() {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentHour = now.getHours();
+    
+    // Time-based investment type suggestions
+    let suggestedType = currentInvType;
+    if (currentHour >= 9 && currentHour <= 11) {
+        suggestedType = 'SIP'; // Morning - SIP time
+    } else if (currentHour >= 18 && currentHour <= 20) {
+        suggestedType = 'Stocks'; // Evening - Market review time
+    }
+    
+    // Amount suggestions based on history
+    const recentInvestments = db.investments
+        .filter(i => !i.isDividend)
+        .slice(-10);
+    const avgAmount = recentInvestments.length > 0 
+        ? recentInvestments.reduce((sum, i) => sum + i.amount, 0) / recentInvestments.length
+        : 5000;
+    
+    // Smart SIP day based on salary date patterns
+    let suggestedSipDay = 1; // Default to 1st
+    if (db.userProfile.salary) {
+        // Assume salary is credited around 1st-5th of month
+        suggestedSipDay = 3; // 3rd of month
+    }
+    
+    return {
+        date: today,
+        type: suggestedType,
+        amount: Math.round(avgAmount),
+        sipDay: suggestedSipDay,
+        account: db.accounts?.[0] || 'Main Portfolio'
+    };
+}
+
+// Quick action buttons for common tasks
+function addQuickActions() {
+    const quickActions = [
+        {
+            icon: 'add_circle',
+            label: 'Quick Investment',
+            action: () => {
+                const defaults = getSmartDefaults();
+                openInvestSheet();
+                setTimeout(() => {
+                    const dateField = document.getElementById('inv-date');
+                    const amtField = document.getElementById('inv-amt');
+                    const typeField = document.getElementById('inv-type');
+                    
+                    if (dateField) dateField.value = defaults.date;
+                    if (amtField) amtField.value = defaults.amount;
+                    if (typeField) typeField.value = defaults.type;
+                }, 200);
+            },
+            color: 'var(--md-primary)'
+        },
+        {
+            icon: 'trending_up',
+            label: 'Add SIP',
+            action: () => {
+                openInvestSheet();
+                setTimeout(() => {
+                    document.getElementById('inv-is-monthly').checked = true;
+                    const defaults = getSmartDefaults();
+                    document.getElementById('inv-sip-day').value = defaults.sipDay;
+                }, 200);
+            },
+            color: 'var(--md-success)'
+        },
+        {
+            icon: 'analytics',
+            label: 'View Report',
+            action: () => {
+                if (typeof generateAIReport === 'function') {
+                    generateAIReport();
+                }
+            },
+            color: 'var(--md-tertiary)'
+        },
+        {
+            icon: 'settings',
+            label: 'Quick Settings',
+            action: () => openSettings(),
+            color: 'var(--md-secondary-container)'
+        }
+    ];
+    
+    // Create floating action buttons
+    const actionContainer = document.createElement('div');
+    actionContainer.id = 'quick-actions';
+    actionContainer.className = 'quick-actions-container';
+    actionContainer.innerHTML = quickActions.map(action => `
+        <button class="quick-action-btn btn-ripple hover-lift" 
+                style="background: ${action.color};"
+                onclick="(${action.action})()"
+                aria-label="${action.label}">
+            <span class="material-symbols-rounded">${action.icon}</span>
+            <span class="quick-action-label">${action.label}</span>
+        </button>
+    `).join('');
+    
+    // Add to page if not exists
+    if (!document.getElementById('quick-actions')) {
+        document.body.appendChild(actionContainer);
+    }
+}
 
 function showShortcutsHelp() {
     const shortcuts = [
-        { key: 'N', action: 'New Investment' },
-        { key: 'A', action: 'AI Chat' },
-        { key: '1', action: 'Dashboard Tab' },
-        { key: '2', action: 'Portfolio Tab' },
-        { key: '3', action: 'Ledger Tab' },
-        { key: 'P', action: 'Toggle Privacy' },
-        { key: 'S', action: 'Settings' },
-        { key: 'G', action: 'Edit First Goal' },
-        { key: 'R', action: 'Refresh Data' },
-        { key: 'Esc', action: 'Close/Go Back' },
-        { key: '?', action: 'Show This Help' }
+        { key: 'N', action: 'New Investment', desc: 'Open investment form' },
+        { key: 'A', action: 'AI Chat', desc: 'Toggle AI assistant' },
+        { key: '1', action: 'Dashboard Tab', desc: 'Switch to dashboard' },
+        { key: '2', action: 'Portfolio Tab', desc: 'Switch to portfolio' },
+        { key: '3', action: 'Ledger Tab', desc: 'Switch to ledger' },
+        { key: 'P', action: 'Toggle Privacy', desc: 'Hide/show amounts' },
+        { key: 'S', action: 'Settings', desc: 'Open settings' },
+        { key: 'G', action: 'Edit First Goal', desc: 'Edit first goal' },
+        { key: 'R', action: 'Refresh Data', desc: 'Refresh all data' },
+        { key: 'Esc', action: 'Close/Go Back', desc: 'Close current dialog' },
+        { key: '?', action: 'Show This Help', desc: 'Show keyboard shortcuts' },
+        { key: 'Ctrl+Enter', action: 'Save Form', desc: 'Save in any form' },
+        { key: 'Tab/Shift+Tab', action: 'Navigate Fields', desc: 'Navigate between form fields' }
     ];
 
     let html = `<div style="display:grid; grid-template-columns: auto 1fr; gap: 12px 24px; max-width: 300px;">`;
@@ -698,8 +1425,496 @@ window.showFirstTimeTips = showFirstTimeTips;
 
 function saveData() {
     db.lastUpdated = Date.now();
-    try { localStorage.setItem('appHubInvestDb', JSON.stringify(db)); }
-    catch (e) { showSnackbar("Storage Full! Please backup and clean data.", "warning"); }
+    
+    // Validate and sanitize critical data before saving
+    const sanitizedDb = sanitizeDatabaseObject(db);
+    
+    // Save data first using cross-browser compatible function
+    if (!safeLocalStorageSet('appHubInvestDb', sanitizedDb)) {
+        handleStorageError(new Error('localStorage access denied'));
+        return;
+    }
+    
+    // Check storage quota asynchronously (non-blocking)
+    checkStorageQuota(sanitizedDb);
+}
+
+function handleStorageError(error) {
+    let errorMessage = "Storage error occurred.";
+    if (error.name === 'QuotaExceededError') {
+        errorMessage = "Storage quota exceeded. Please backup and clean data.";
+    } else if (error.name === 'NS_ERROR_DOM' || error.name === 'SecurityError') {
+        errorMessage = "Storage access denied. Check browser settings.";
+    } else if (error.name === 'TypeError') {
+        errorMessage = "Data format error. Some data may be corrupted.";
+    }
+    
+    showSnackbar(errorMessage, "error");
+    
+    // Attempt recovery actions
+    attemptStorageRecovery().catch(error => {
+        console.error('Recovery system failed:', error);
+        showSnackbar('Recovery system failed', 'error');
+    });
+}
+
+// COMPREHENSIVE ERROR HANDLING AND RECOVERY SYSTEM
+async function attemptStorageRecovery() {
+    const recoveryStrategies = [
+        { name: 'Clear Chat History', action: clearChatHistory, priority: 1 },
+        { name: 'Clear Navigation Cache', action: clearNavigationCache, priority: 2 },
+        { name: 'Clear Image Cache', action: clearImageCache, priority: 3 },
+        { name: 'Reset Settings', action: resetCorruptedSettings, priority: 4 },
+        { name: 'Export Emergency Backup', action: createEmergencyBackup, priority: 0 }
+    ];
+    
+    let recoverySuccessful = false;
+    
+    for (const strategy of recoveryStrategies) {
+        try {
+            console.log(`Attempting recovery: ${strategy.name}`);
+            const result = await strategy.action();
+            
+            if (result.success) {
+                showSnackbar(`Recovery successful: ${strategy.name}`, 'check_circle');
+                recoverySuccessful = true;
+                break;
+            } else {
+                console.warn(`Recovery failed: ${strategy.name}`, result.error);
+            }
+        } catch (error) {
+            console.error(`Recovery error: ${strategy.name}`, error);
+        }
+    }
+    
+    if (!recoverySuccessful) {
+        showSnackbar("All recovery attempts failed. Please contact support.", "error");
+        // Show manual recovery options
+        showManualRecoveryDialog();
+    }
+}
+
+async function clearChatHistory() {
+    try {
+        if (db.chatHistory && db.chatHistory.length > 50) {
+            const originalLength = db.chatHistory.length;
+            db.chatHistory = db.chatHistory.slice(-50);
+            localStorage.setItem('appHubInvestDb', JSON.stringify(db));
+            
+            return { 
+                success: true, 
+                message: `Cleared ${originalLength - 50} old chat messages`,
+                spaceFreed: estimateSpaceSaved(originalLength - 50)
+            };
+        }
+        return { success: false, message: 'Chat history already within limits' };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function clearNavigationCache() {
+    try {
+        const cacheSize = db.navCache ? Object.keys(db.navCache).length : 0;
+        
+        if (cacheSize > 100) {
+            db.navCache = {};
+            localStorage.setItem('appHubInvestDb', JSON.stringify(db));
+            
+            return { 
+                success: true, 
+                message: `Cleared ${cacheSize} cache entries`,
+                spaceFreed: estimateSpaceSaved(cacheSize * 100) // Rough estimate
+            };
+        }
+        return { success: false, message: 'Navigation cache already within limits' };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function clearImageCache() {
+    try {
+        // Clear any cached images or blobs
+        const images = document.querySelectorAll('img[data-cache]');
+        let clearedCount = 0;
+        
+        images.forEach(img => {
+            if (img.dataset.cache) {
+                URL.revokeObjectURL(img.src);
+                img.remove();
+                clearedCount++;
+            }
+        });
+        
+        return { 
+            success: true, 
+            message: `Cleared ${clearedCount} cached images`,
+            spaceFreed: estimateSpaceSaved(clearedCount * 50000) // Rough estimate
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function resetCorruptedSettings() {
+    try {
+        const corruptedKeys = Object.keys(db).filter(key => {
+            const value = db[key];
+            return typeof value === 'undefined' || value === null || (Array.isArray(value) && value.length === 0);
+        });
+        
+        if (corruptedKeys.length > 0) {
+            // Reset to default values
+            const defaults = {
+                userProfile: { salary: 0, regime: 'new', monthlyExpense: 0 },
+                settingsTable: { lastResetMonth: '' },
+                categories: {},
+                allocTargets: {},
+                navCache: {}
+            };
+            
+            Object.keys(defaults).forEach(key => {
+                if (corruptedKeys.includes(key)) {
+                    db[key] = defaults[key];
+                }
+            });
+            
+            localStorage.setItem('appHubInvestDb', JSON.stringify(db));
+            
+            return { 
+                success: true, 
+                message: `Reset ${corruptedKeys.length} corrupted settings`,
+                keys: corruptedKeys
+            };
+        }
+        return { success: false, message: 'No corrupted settings found' };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function createEmergencyBackup() {
+    try {
+        const emergencyData = {
+            version: '1.0-emergency',
+            timestamp: new Date().toISOString(),
+            data: db,
+            checksum: await generateDataChecksum(db),
+            metadata: {
+                userAgent: navigator.userAgent,
+                url: window.location.href,
+                reason: 'storage_recovery'
+            }
+        };
+        
+        // Create multiple backup formats
+        const jsonBlob = new Blob([JSON.stringify(emergencyData, null, 2)], { type: 'application/json' });
+        const csvBlob = new Blob([convertToCSV(db.investments)], { type: 'text/csv' });
+        
+        // Download both formats
+        downloadFile(jsonBlob, `TrackInvest_Emergency_Backup_${new Date().toISOString().split('T')[0]}.json`);
+        setTimeout(() => {
+            downloadFile(csvBlob, `TrackInvest_Emergency_Backup_${new Date().toISOString().split('T')[0]}.csv`);
+        }, 500);
+        
+        return { 
+            success: true, 
+            message: 'Emergency backup created (JSON + CSV)',
+            formats: ['json', 'csv']
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+function estimateSpaceSaved(items) {
+    // Rough estimate: 1 item ≈ 100 bytes
+    return `${(items / 1024).toFixed(1)} KB`;
+}
+
+function downloadFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function convertToCSV(investments) {
+    const headers = ['Date', 'Type', 'Amount', 'Account', 'Note', 'Tags'];
+    const rows = investments.map(inv => [
+        inv.date || '',
+        inv.type || '',
+        inv.amount || 0,
+        inv.account || '',
+        inv.note || '',
+        inv.tags || ''
+    ]);
+    
+    return [headers, ...rows].map(row => 
+        row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+}
+
+function showManualRecoveryDialog() {
+    const modal = document.createElement('div');
+    modal.className = 'recovery-modal';
+    modal.innerHTML = `
+        <div class="recovery-content">
+            <h3>⚠️ Automatic Recovery Failed</h3>
+            <p>Please try these manual steps:</p>
+            <div class="recovery-steps">
+                <div class="recovery-step">
+                    <span class="step-number">1</span>
+                    <span>Export your data manually</span>
+                </div>
+                <div class="recovery-step">
+                    <span class="step-number">2</span>
+                    <span>Clear browser storage</span>
+                </div>
+                <div class="recovery-step">
+                    <span class="step-number">3</span>
+                    <span>Import your backup</span>
+                </div>
+            </div>
+            <div class="recovery-actions">
+                <button onclick="exportManualBackup()">Export Now</button>
+                <button onclick="showStorageInstructions()">Storage Help</button>
+                <button onclick="closeRecoveryDialog()">Close</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+window.exportManualBackup = function() {
+    createEmergencyBackup();
+    closeRecoveryDialog();
+};
+
+window.showStorageInstructions = function() {
+    showSnackbar('Check browser settings > Storage > Clear data', 'info');
+    closeRecoveryDialog();
+};
+
+window.closeRecoveryDialog = function() {
+    const modal = document.querySelector('.recovery-modal');
+    if (modal) modal.remove();
+};
+
+// ENHANCED DATA SYNCHRONIZATION AND BACKUP SYSTEM
+async function checkStorageQuota(sanitizedDb) {
+    // Check storage quota asynchronously (non-blocking)
+    if ('storage' in navigator && 'estimate' in navigator.storage) {
+        try {
+            const storageData = JSON.stringify(sanitizedDb);
+            const estimatedSize = new Blob([storageData]).size;
+            const quota = await navigator.storage.estimate();
+            
+            if (quota.usage && quota.quota) {
+                const usagePercentage = (estimatedSize / quota.quota) * 100;
+                if (usagePercentage > 90) {
+                    console.warn(`Storage usage critical: ${usagePercentage.toFixed(1)}%`);
+                    showSnackbar("Storage almost full. Auto-backup triggered.", "warning");
+                    // Trigger automatic backup
+                    await autoBackupData();
+                }
+            }
+        } catch (quotaError) {
+            console.warn('Storage quota check failed:', quotaError);
+        }
+    }
+}
+
+// Automatic backup system
+async function autoBackupData() {
+    try {
+        const backupData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            data: db,
+            checksum: await generateDataChecksum(db)
+        };
+        
+        // Create backup file
+        const backupBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const backupUrl = URL.createObjectURL(backupBlob);
+        
+        // Save to Downloads
+        const a = document.createElement('a');
+        a.href = backupUrl;
+        a.download = `TrackInvest_AutoBackup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        
+        URL.revokeObjectURL(backupUrl);
+        showSnackbar('Auto backup created', 'backup');
+        
+    } catch (error) {
+        console.error('Auto backup failed:', error);
+        showSnackbar('Auto backup failed', 'error');
+    }
+}
+
+// Data integrity verification
+async function generateDataChecksum(data) {
+    const dataString = JSON.stringify(data);
+    const encoder = new TextEncoder();
+    const dataBuffer = encoder.encode(dataString);
+    
+    if ('crypto' in window && 'subtle' in window.crypto) {
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    } else {
+        // Fallback for environments without Web Crypto
+        let hash = 0;
+        for (let i = 0; i < dataString.length; i++) {
+            const char = dataString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16);
+    }
+}
+
+// Data synchronization between devices
+async function syncDataWithCloud() {
+    if (!db.cloudSyncEnabled) return;
+    
+    try {
+        showSnackbar('Syncing data...', 'cloud_sync');
+        
+        const localData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            data: db,
+            checksum: await generateDataChecksum(db)
+        };
+        
+        // Get last sync info
+        const lastSync = localStorage.getItem('lastCloudSync');
+        const lastSyncData = lastSync ? JSON.parse(lastSync) : null;
+        
+        // Check if sync is needed
+        if (!lastSyncData || lastSyncData.checksum !== localData.checksum) {
+            // Upload to cloud (simulated - would integrate with actual cloud service)
+            const syncResult = await uploadToCloud(localData);
+            
+            if (syncResult.success) {
+                localStorage.setItem('lastCloudSync', JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    checksum: localData.checksum
+                }));
+                showSnackbar('Data synced successfully', 'cloud_done');
+            } else {
+                showSnackbar('Sync failed', 'error');
+            }
+        } else {
+            showSnackbar('Data already in sync', 'check_circle');
+        }
+        
+    } catch (error) {
+        console.error('Cloud sync failed:', error);
+        showSnackbar('Cloud sync failed', 'error');
+    }
+}
+
+// Simulated cloud upload (would integrate with actual service)
+async function uploadToCloud(data) {
+    // This would integrate with Google Drive, Dropbox, etc.
+    console.log('Cloud upload attempted:', data);
+    return { success: true, timestamp: new Date().toISOString() };
+}
+
+// Data recovery from backup
+async function recoverFromBackup(backupFile) {
+    try {
+        const backupText = await backupFile.text();
+        const backupData = JSON.parse(backupText);
+        
+        // Validate backup structure
+        if (!backupData.version || !backupData.data || !backupData.checksum) {
+            throw new Error('Invalid backup format');
+        }
+        
+        // Verify backup integrity
+        const currentChecksum = await generateDataChecksum(backupData.data);
+        if (currentChecksum !== backupData.checksum) {
+            throw new Error('Backup integrity check failed');
+        }
+        
+        // Create backup of current data before restore
+        await autoBackupData();
+        
+        // Restore backup data
+        db = backupData.data;
+        saveData();
+        renderAll();
+        
+        showSnackbar('Data restored from backup', 'restore');
+        
+    } catch (error) {
+        console.error('Backup recovery failed:', error);
+        showSnackbar('Backup recovery failed', 'error');
+    }
+}
+
+function sanitizeDatabaseObject(dbObj) {
+    const sanitized = JSON.parse(JSON.stringify(dbObj));
+    
+    // Remove potentially dangerous content
+    if (sanitized.chatHistory) {
+        sanitized.chatHistory = sanitized.chatHistory.map(msg => ({
+            ...msg,
+            content: sanitizeText(msg.content || ''),
+            role: ['user', 'assistant'].includes(msg.role) ? msg.role : 'user'
+        }));
+    }
+    
+    if (sanitized.chatSessions) {
+        sanitized.chatSessions = sanitized.chatSessions.map(session => ({
+            ...session,
+            title: sanitizeText(session.title || ''),
+            messages: (session.messages || []).map(msg => ({
+                ...msg,
+                content: sanitizeText(msg.content || ''),
+                role: ['user', 'assistant'].includes(msg.role) ? msg.role : 'user'
+            }))
+        }));
+    }
+    
+    // Sanitize user inputs
+    if (sanitized.investments) {
+        sanitized.investments = sanitized.investments.map(inv => ({
+            ...inv,
+            note: sanitizeText(inv.note || ''),
+            tags: sanitizeText(inv.tags || '')
+        }));
+    }
+    
+    if (sanitized.goals) {
+        sanitized.goals = sanitized.goals.map(goal => ({
+            ...goal,
+            name: sanitizeText(goal.name || '')
+        }));
+    }
+    
+    return sanitized;
+}
+
+function sanitizeText(text) {
+    if (typeof text !== 'string') return '';
+    return text
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/<iframe\b[^>]*>/gi, '')
+        .replace(/<object\b[^>]*>/gi, '')
+        .replace(/<embed\b[^>]*>/gi, '')
+        .trim();
 }
 
 function isCurrentFY(dateStr) {
@@ -805,7 +2020,12 @@ function escapeHtml(str) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+        .replace(/'/g, '&#39;')
+        .replace(/\//g, '&#x2F;')
+        .replace(/=/g, '&#x3D;')
+        .replace(/`/g, '&#x60;')
+        .replace(/!/g, '&#x21;')
+        .replace(/@/g, '&#x40;');
 }
 
 function checkMilestones(nw) {
@@ -896,11 +2116,17 @@ document.addEventListener('touchstart', e => {
         return;
     }
     
+    // Prevent conflicts with AI bubble touch events
+    if (e.target.closest('#ai-floating-bubble') || e.target.closest('.ai-bubble-popup')) {
+        canSwipeClose = false;
+        return;
+    }
+    
     touchStartY = e.touches[0].clientY;
     touchStartX = e.touches[0].clientX;
     
-    // Only allow swipe-to-close if we are at the very top of the sheet content
-    // and the touch started on the drag-handle or very top area (30px)
+    // Only allow swipe-to-close if we are at very top of sheet content
+    // and touch started on drag-handle or very top area (30px)
     const isAtTop = activeSheet.scrollTop <= 0;
     const rect = activeSheet.getBoundingClientRect();
     const isTopArea = (touchStartY - rect.top) < 30;

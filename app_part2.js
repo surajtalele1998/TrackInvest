@@ -3,83 +3,172 @@ window.activeChatSession = null;
 
 function saveInvestment() {
     haptic(40);
-    let date = document.getElementById('inv-date').value;
-    let amt = parseFloat(document.getElementById('inv-amt').value);
-    let note = document.getElementById('inv-note').value;
-    let tags = document.getElementById('inv-tags').value.replace(/#/g, '');
-    let subCat = document.getElementById('inv-subcat').value;
-    let broker = document.getElementById('inv-broker').value;
-    let growth = parseFloat(document.getElementById('inv-growth').value) || null;
-    let isDiv = document.getElementById('inv-dividend').checked;
-    let acc = document.getElementById('inv-account').value;
-    let matDate = document.getElementById('inv-maturity-simple').value;
-    let intRate = parseFloat(document.getElementById('inv-interest').value) || null;
-    let initialPayment = parseFloat(document.getElementById('inv-initial-payment').value) || null;
-    let isTemplate = document.getElementById('inv-template') ? document.getElementById('inv-template').checked : false;
-    let isRecurring = document.getElementById('inv-recurring') ? document.getElementById('inv-recurring').checked : false;
-    let units = parseFloat(document.getElementById('inv-units-hidden').value) || null;
-    let mfCode = document.getElementById('inv-mf-code-hidden').value || null;
-    let isMonthlyContrib = document.getElementById('inv-is-monthly').checked;
-    let payoutType = document.getElementById('inv-payout').value;
-    let investMode = document.getElementById('inv-mode').value;
-    let sipDay = parseInt(document.getElementById('inv-sip-day').value) || null;
+    
+    // Show loading state
+    const saveBtn = document.getElementById('inv-save-btn');
+    if (saveBtn) {
+        setButtonLoading('inv-save-btn', true);
+    }
+    
+    // Get and validate all form inputs
+    const formInputs = {
+        date: document.getElementById('inv-date')?.value || '',
+        amt: parseFloat(document.getElementById('inv-amt')?.value) || 0,
+        note: document.getElementById('inv-note')?.value || '',
+        tags: (document.getElementById('inv-tags')?.value || '').replace(/#/g, ''),
+        subCat: document.getElementById('inv-subcat')?.value || '',
+        broker: document.getElementById('inv-broker')?.value || '',
+        growth: parseFloat(document.getElementById('inv-growth')?.value) || null,
+        isDiv: document.getElementById('inv-dividend')?.checked || false,
+        acc: document.getElementById('inv-account')?.value || '',
+        matDate: document.getElementById('inv-maturity-simple')?.value || '',
+        intRate: parseFloat(document.getElementById('inv-interest')?.value) || null,
+        initialPayment: parseFloat(document.getElementById('inv-initial-payment')?.value) || null,
+        isTemplate: document.getElementById('inv-template')?.checked || false,
+        isRecurring: document.getElementById('inv-recurring')?.checked || false,
+        units: parseFloat(document.getElementById('inv-units-hidden')?.value) || null,
+        mfCode: document.getElementById('inv-mf-code-hidden')?.value || null,
+        isMonthlyContrib: document.getElementById('inv-is-monthly')?.checked || false,
+        payoutType: document.getElementById('inv-payout')?.value || '',
+        investMode: document.getElementById('inv-mode')?.value || '',
+        sipDay: parseInt(document.getElementById('inv-sip-day')?.value) || null
+    };
+    
+    // Add input field animations
+    Object.keys(formInputs).forEach(key => {
+        const element = document.getElementById(`inv-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
+        if (element && formInputs[key]) {
+            element.classList.add('input-focused');
+            setTimeout(() => element.classList.remove('input-focused'), 300);
+        }
+    });
+    
+    // Sanitize text inputs
+    const sanitizedInputs = {
+        ...formInputs,
+        note: sanitizeText(formInputs.note),
+        tags: sanitizeText(formInputs.tags),
+        subCat: sanitizeText(formInputs.subCat),
+        broker: sanitizeText(formInputs.broker),
+        acc: sanitizeText(formInputs.acc)
+    };
+    
+    let { date, amt, note, tags, subCat, broker, growth, isDiv, acc, matDate, intRate, initialPayment, isTemplate, isRecurring, units, mfCode, isMonthlyContrib, payoutType, investMode, sipDay } = sanitizedInputs;
 
-    // Validation with field-specific error messages
+    // Enhanced validation with field-specific error messages and visual feedback
+    const validationErrors = [];
+    const errorFields = [];
+    
     if (!date || isNaN(amt)) {
-        showSnackbar("Date and Amount required", "error");
-        document.getElementById('inv-date')?.focus();
-        return;
-    }
-    if (amt <= 0) {
-        showSnackbar("Amount must be greater than zero", "error");
-        document.getElementById('inv-amt')?.focus();
-        return;
-    }
-    if (units !== null && units <= 0) {
-        showSnackbar("Units must be greater than zero", "error");
-        document.getElementById('inv-qty')?.focus();
-        return;
-    }
-    if (intRate !== null && (intRate < 0 || intRate > 25)) {
-        showSnackbar("Interest rate must be between 0% and 25%", "error");
-        document.getElementById('inv-interest')?.focus();
-        return;
-    }
-    if (matDate && date) {
-        let matD = new Date(matDate);
-        let invD = new Date(date);
-        if (matD <= invD) {
-            showSnackbar("Maturity date must be after investment date", "error");
-            document.getElementById('inv-maturity-simple')?.focus();
-            return;
+        validationErrors.push("Date and Amount required");
+        errorFields.push('inv-date', 'inv-amt');
+    } else {
+        if (amt <= 0) {
+            validationErrors.push("Amount must be greater than zero");
+            errorFields.push('inv-amt');
         }
-        // Check if maturity is unreasonably far (>50 years)
-        let yearsDiff = (matD - invD) / (1000 * 60 * 60 * 24 * 365.25);
-        if (yearsDiff > 50) {
-            showSnackbar("Maturity cannot exceed 50 years from investment", "warning");
+        
+        if (units !== null && units <= 0) {
+            validationErrors.push("Units must be greater than zero");
+            errorFields.push('inv-qty');
         }
-    }
-    if (initialPayment !== null && initialPayment <= 0) {
-        showSnackbar("Initial payment must be greater than zero", "error");
-        document.getElementById('inv-initial-payment')?.focus();
-        return;
-    }
+        
+        if (intRate !== null && (intRate < 0 || intRate > 25)) {
+            validationErrors.push("Interest rate must be between 0% and 25%");
+            errorFields.push('inv-interest');
+        }
+        
+        if (matDate && date) {
+            let matD = new Date(matDate);
+            let invD = new Date(date);
+            if (matD <= invD) {
+                validationErrors.push("Maturity date must be after investment date");
+                errorFields.push('inv-maturity-simple');
+            } else {
+                // Check if maturity is unreasonably far (>50 years)
+                let yearsDiff = (matD - invD) / (1000 * 60 * 60 * 24 * 365.25);
+                if (yearsDiff > 50) {
+                    validationErrors.push("Maturity cannot exceed 50 years from investment");
+                    errorFields.push('inv-maturity-simple');
+                }
+            }
+        }
+        
+        if (initialPayment !== null && initialPayment <= 0) {
+            validationErrors.push("Initial payment must be greater than zero");
+            errorFields.push('inv-initial-payment');
+        }
 
-    // Date range validation - prevent future dates more than 1 day ahead
-    let investmentDate = new Date(date);
-    let today = new Date();
-    today.setHours(23, 59, 59, 999);
-    if (investmentDate > today) {
-        showSnackbar("Investment date cannot be in the future", "error");
-        document.getElementById('inv-date')?.focus();
-        return;
+        // Date range validation - prevent future dates more than 1 day ahead
+        let investmentDate = new Date(date);
+        let today = new Date();
+        today.setHours(23, 59, 59, 999);
+        if (investmentDate > today) {
+            validationErrors.push("Investment date cannot be in the future");
+            errorFields.push('inv-date');
+        } else {
+            // Prevent very old dates (before 2000)
+            let year2000 = new Date('2000-01-01');
+            if (investmentDate < year2000) {
+                validationErrors.push("Investment date cannot be before year 2000");
+                errorFields.push('inv-date');
+            }
+        }
     }
-    // Prevent very old dates (before 2000)
-    let year2000 = new Date('2000-01-01');
-    if (investmentDate < year2000) {
-        showSnackbar("Investment date cannot be before year 2000", "error");
-        document.getElementById('inv-date')?.focus();
-        return;
+    
+    // Enhanced validation with security checks
+    if (validationErrors.length > 0) {
+        // Clear previous error states
+        document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+        document.querySelectorAll('.error-message').forEach(el => el.remove());
+        
+        // Show errors with visual feedback
+        validationErrors.forEach((error, index) => {
+            showSnackbar(error, "error");
+            
+            // Highlight error fields with security checks
+            if (errorFields[index]) {
+                const field = document.getElementById(errorFields[index]);
+                if (field) {
+                    // Prevent XSS through field attributes
+                    field.classList.add('input-error');
+                    field.focus();
+                    
+                    // Add inline error message with sanitization
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'error-message';
+                    errorMsg.textContent = error;
+                    errorMsg.style.cssText = 'color: var(--md-error); font-size: 12px; margin-top: 4px;';
+                    
+                    // Securely append error message
+                    if (field.parentNode && field.parentNode.appendChild) {
+                        field.parentNode.appendChild(errorMsg);
+                    }
+                    
+                    // Remove error state on input with validation
+                    field.addEventListener('input', function removeError() {
+                        field.classList.remove('input-error');
+                        const msg = field.parentNode ? field.parentNode.querySelector('.error-message') : null;
+                        if (msg && msg.parentNode) {
+                            msg.parentNode.removeChild(msg);
+                        }
+                        field.removeEventListener('input', removeError);
+                    }, { once: true });
+                    
+                    // Prevent form submission if validation fails
+                    field.addEventListener('keydown', function preventSubmit(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Reset button state
+        if (saveBtn) setButtonLoading('inv-save-btn', false);
+        return false; // Explicitly return false to prevent save
     }
 
     // Duplicate detection within 1 hour for same date/type/amount
@@ -418,19 +507,429 @@ window.attachSwipeListeners = attachSwipeListeners;
 window.getEmptyStateHTML = getEmptyStateHTML;
 
 function attachSwipeListeners(cE) {
-    if (!cE) return; let sX = 0, sY = 0, cX = 0, aI = null, isSw = false, hapticTriggered = false;
-    cE.addEventListener('touchstart', e => { let w = e.target.closest('.swipe-wrapper'); if (!w) return; aI = w.querySelector('.front'); if (!aI || !aI.hasAttribute('onclick')) { aI = null; return; } sX = e.touches[0].clientX; sY = e.touches[0].clientY; isSw = false; hapticTriggered = false; aI.classList.add('swiping'); }, { passive: true });
-    cE.addEventListener('touchmove', e => {
-        if (!aI) return; cX = e.touches[0].clientX; let cY = e.touches[0].clientY; let dX = cX - sX; let dY = Math.abs(cY - sY); if (!isSw && dY > 10) { aI.classList.remove('swiping'); aI = null; return; } if (Math.abs(dX) > 10) isSw = true; if (isSw) {
-            if (dX > 80) dX = 80; if (dX < -80) dX = -80; aI.style.transform = `translateX(${dX}px)`;
-            // Haptic feedback when crossing swipe thresholds
-            if (!hapticTriggered && Math.abs(dX) > 50) {
-                haptic(dX < 0 ? [30, 30] : 20); // Different feedback for delete vs edit
-                hapticTriggered = true;
+    if (!cE) return; 
+    
+    // Mobile-optimized gesture state management
+    let gestureState = {
+        startX: 0, 
+        startY: 0, 
+        currentX: 0, 
+        activeItem: null, 
+        isSwiping: false, 
+        hapticTriggered: false, 
+        touchStartTime: 0,
+        touchId: null,
+        velocityX: 0,
+        lastX: 0,
+        lastTime: 0,
+        longPressTimer: null,
+        isLongPress: false
+    };
+    
+    // Mobile-optimized touch handling
+    const handleTouchStart = (e) => {
+        // Prevent conflicts with AI bubble and interactive elements
+        if (e.target.closest('#ai-floating-bubble') || 
+            e.target.closest('.ai-bubble-popup') ||
+            e.target.closest('button') ||
+            e.target.closest('.quick-action-btn') ||
+            e.target.closest('input') ||
+            e.target.closest('select') ||
+            e.target.closest('textarea')) {
+            return;
+        }
+        
+        const wrapper = e.target.closest('.swipe-wrapper'); 
+        if (!wrapper) return; 
+        
+        const frontElement = wrapper.querySelector('.front'); 
+        if (!frontElement || !frontElement.hasAttribute('onclick')) return; 
+        
+        const touch = e.touches[0];
+        gestureState = {
+            ...gestureState,
+            startX: touch.clientX, 
+            startY: touch.clientY,
+            currentX: touch.clientX,
+            activeItem: frontElement,
+            touchId: touch.identifier,
+            touchStartTime: Date.now(),
+            lastX: touch.clientX,
+            lastTime: Date.now(),
+            isLongPress: false,
+            longPressTimer: setTimeout(() => {
+                gestureState.isLongPress = true;
+                frontElement.style.transform = 'scale(0.95)';
+                haptic([50, 30]);
+            }, 500) // Long press after 500ms
+        };
+        
+        // Enhanced mobile visual feedback
+        frontElement.classList.add('swiping'); 
+        frontElement.style.transition = 'none';
+        frontElement.style.userSelect = 'none';
+        frontElement.style.webkitUserSelect = 'none';
+        frontElement.style.webkitTapHighlightColor = 'transparent';
+        
+        // Mobile-specific feedback
+        if ('vibrate' in navigator) {
+            navigator.vibrate(10); // Light feedback on touch start
+        }
+    };
+    
+    const handleTouchMove = (e) => {
+        if (!gestureState.activeItem || gestureState.touchId === null) return;
+        
+        // Find the touch matching our start touch
+        const touch = Array.from(e.touches).find(t => t.identifier === gestureState.touchId);
+        if (!touch) return;
+        
+        const deltaX = touch.clientX - gestureState.startX;
+        const deltaY = Math.abs(touch.clientY - gestureState.startY);
+        const currentTime = Date.now();
+        
+        // Calculate velocity for better gesture recognition
+        const timeDelta = currentTime - gestureState.lastTime;
+        if (timeDelta > 0) {
+            gestureState.velocityX = (touch.clientX - gestureState.lastX) / timeDelta;
+            gestureState.lastX = touch.clientX;
+            gestureState.lastTime = currentTime;
+        }
+        
+        // More strict vertical swipe detection
+        if (!gestureState.isSwiping && deltaY > 20) { 
+            resetSwipeState();
+            return; 
+        } 
+        
+        if (Math.abs(deltaX) > 15) {
+            gestureState.isSwiping = true;
+            e.preventDefault(); // Prevent page scroll
+        }
+        
+        if (gestureState.isSwiping) {
+            // Clamp movement to reasonable bounds
+            const clampedDeltaX = Math.max(-100, Math.min(100, deltaX));
+            gestureState.currentX = gestureState.startX + clampedDeltaX;
+            
+            gestureState.activeItem.style.transform = `translateX(${clampedDeltaX}px)`;
+            
+            // Enhanced haptic feedback based on velocity and position
+            if (!gestureState.hapticTriggered && Math.abs(clampedDeltaX) > 50) {
+                const intensity = Math.abs(gestureState.velocityX) > 0.5 ? [40, 40] : [25, 25];
+                haptic(clampedDeltaX < 0 ? intensity : [20]);
+                gestureState.hapticTriggered = true;
             }
         }
-    }, { passive: true });
-    cE.addEventListener('touchend', e => { if (!aI) return; aI.classList.remove('swiping'); let dX = cX - sX; let w = aI.closest('.swipe-wrapper'); if (!w) { aI = null; return; } let id = parseFloat(w.getAttribute('data-id')); if (isSw && dX < -50) { haptic(50); aI.style.transform = `translateX(-100%)`; setTimeout(() => { editInvId = id; deleteInvestment(); }, 250); } else if (isSw && dX > 50) { haptic(30); aI.style.transform = `translateX(0px)`; openInvestSheet(id); } else { aI.style.transform = `translateX(0px)`; } aI = null; });
+    };
+    
+    const handleTouchEnd = (e) => {
+        if (!gestureState.activeItem) return;
+        
+        // Clear long press timer
+        if (gestureState.longPressTimer) {
+            clearTimeout(gestureState.longPressTimer);
+            gestureState.longPressTimer = null;
+        }
+        
+        // Find the touch matching our start touch
+        const touch = Array.from(e.changedTouches).find(t => t.identifier === gestureState.touchId);
+        if (!touch) return;
+        
+        const finalDeltaX = gestureState.currentX - gestureState.startX;
+        const touchDuration = Date.now() - gestureState.touchStartTime;
+        const finalVelocity = Math.abs(gestureState.velocityX);
+        
+        // Mobile-specific gesture handling
+        if (gestureState.isLongPress) {
+            // Long press action - show context menu or quick actions
+            haptic([80, 40, 80]);
+            const wrapper = gestureState.activeItem.closest('.swipe-wrapper');
+            if (wrapper) {
+                const id = parseFloat(wrapper.getAttribute('data-id'));
+                showMobileContextMenu(id, touch.clientX, touch.clientY);
+            }
+            resetSwipeState();
+            return;
+        }
+        
+        resetSwipeState();
+        
+        const wrapper = gestureState.activeItem.closest('.swipe-wrapper'); 
+        if (!wrapper) return; 
+        
+        const id = parseFloat(wrapper.getAttribute('data-id'));
+        
+        // Mobile-optimized gesture recognition
+        const isValidSwipe = gestureState.isSwiping && 
+                              touchDuration < 600 && 
+                              Math.abs(finalDeltaX) > 40 &&
+                              finalVelocity > 0.1;
+        
+        if (isValidSwipe) {
+            if (finalDeltaX < -50) { 
+                haptic(50); 
+                gestureState.activeItem.style.transform = `translateX(-100%)`; 
+                setTimeout(() => { 
+                    editInvId = id; 
+                    deleteInvestment(); 
+                }, 200); 
+            } else if (finalDeltaX > 50) { 
+                haptic(30); 
+                gestureState.activeItem.style.transform = `translateX(0px)`; 
+                setTimeout(() => {
+                    openInvestSheet(id); 
+                }, 100);
+            } else { 
+                gestureState.activeItem.style.transform = `translateX(0px)`; 
+            }
+        } else {
+            // Animate back to center for invalid gestures
+            gestureState.activeItem.style.transition = 'transform 0.2s ease-out';
+            gestureState.activeItem.style.transform = `translateX(0px)`; 
+        }
+    };
+
+// Mobile context menu for long press
+function showMobileContextMenu(itemId, x, y) {
+    // Remove existing context menu
+    const existing = document.getElementById('mobile-context-menu');
+    if (existing) existing.remove();
+    
+    const menu = document.createElement('div');
+    menu.id = 'mobile-context-menu';
+    menu.className = 'mobile-context-menu slide-up';
+    menu.innerHTML = `
+        <div class="mobile-context-item" onclick="editInvestmentFromContext(${itemId})">
+            <span class="material-symbols-rounded">edit</span>
+            <span>Edit</span>
+        </div>
+        <div class="mobile-context-item" onclick="duplicateInvestmentFromContext(${itemId})">
+            <span class="material-symbols-rounded">content_copy</span>
+            <span>Duplicate</span>
+        </div>
+        <div class="mobile-context-item" onclick="deleteInvestmentFromContext(${itemId})">
+            <span class="material-symbols-rounded" style="color: var(--md-error);">delete</span>
+            <span>Delete</span>
+        </div>
+        <div class="mobile-context-cancel" onclick="closeMobileContextMenu()">
+            <span>Cancel</span>
+        </div>
+    `;
+    
+    // Position menu
+    menu.style.left = Math.min(x, window.innerWidth - 250) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+    
+    document.body.appendChild(menu);
+    
+    // Close on outside tap
+    setTimeout(() => {
+        document.addEventListener('click', closeMobileContextMenu, { once: true });
+        document.addEventListener('touchstart', closeMobileContextMenu, { once: true });
+    }, 100);
+}
+
+function closeMobileContextMenu() {
+    const menu = document.getElementById('mobile-context-menu');
+    if (menu) {
+        menu.classList.add('fade-out');
+        setTimeout(() => menu.remove(), 200);
+    }
+}
+
+function editInvestmentFromContext(id) {
+    closeMobileContextMenu();
+    openInvestSheet(id);
+}
+
+function duplicateInvestmentFromContext(id) {
+    closeMobileContextMenu();
+    const investment = db.investments.find(i => i.id === id);
+    if (investment) {
+        // Create duplicate with new ID and today's date
+        const duplicate = {
+            ...investment,
+            id: generateUniqueId(),
+            date: new Date().toISOString().split('T')[0],
+            isDividend: false
+        };
+        db.investments.push(duplicate);
+        saveData();
+        renderAll();
+        showSnackbar('Investment duplicated', 'content_copy');
+    }
+}
+
+function deleteInvestmentFromContext(id) {
+    closeMobileContextMenu();
+    editInvId = id;
+    deleteInvestment();
+}
+    
+    const resetSwipeState = () => {
+        if (gestureState.activeItem) {
+            gestureState.activeItem.classList.remove('swiping'); 
+            gestureState.activeItem.style.transition = 'transform 0.3s ease';
+            gestureState.activeItem.style.userSelect = '';
+            gestureState.activeItem.style.webkitUserSelect = '';
+        }
+        
+        // Reset only the gesture-related properties
+        gestureState.activeItem = null;
+        gestureState.isSwiping = false;
+        gestureState.hapticTriggered = false;
+        gestureState.touchId = null;
+        gestureState.velocityX = 0;
+    };
+    
+    // Add mobile-specific gesture support
+function addMobileGestures(container) {
+    let pullToRefreshState = {
+        startY: 0,
+        isPulling: false,
+        pullDistance: 0,
+        threshold: 80,
+        maxPull: 120
+    };
+    
+    const handlePullStart = (e) => {
+        if (e.target.closest('.sheet') || e.target.closest('.quick-actions-container')) return;
+        
+        pullToRefreshState.startY = e.touches[0].clientY;
+        pullToRefreshState.isPulling = true;
+    };
+    
+    const handlePullMove = (e) => {
+        if (!pullToRefreshState.isPulling) return;
+        
+        const currentY = e.touches[0].clientY;
+        pullToRefreshState.pullDistance = currentY - pullToRefreshState.startY;
+        
+        if (pullToRefreshState.pullDistance > 0 && pullToRefreshState.pullDistance < pullToRefreshState.maxPull) {
+            e.preventDefault();
+            
+            // Show pull indicator
+            const indicator = document.getElementById('pull-refresh-indicator');
+            if (indicator) {
+                indicator.style.transform = `translateY(${Math.min(pullToRefreshState.pullDistance, pullToRefreshState.threshold)}px)`;
+                indicator.style.opacity = Math.min(pullToRefreshState.pullDistance / pullToRefreshState.threshold, 1);
+            }
+        }
+    };
+    
+    const handlePullEnd = (e) => {
+        if (!pullToRefreshState.isPulling) return;
+        
+        if (pullToRefreshState.pullDistance >= pullToRefreshState.threshold) {
+            // Trigger refresh
+            performPullToRefresh();
+        }
+        
+        // Reset state
+        pullToRefreshState.isPulling = false;
+        pullToRefreshState.pullDistance = 0;
+        
+        // Hide indicator
+        const indicator = document.getElementById('pull-refresh-indicator');
+        if (indicator) {
+            indicator.style.transform = 'translateY(0)';
+            indicator.style.opacity = '0';
+        }
+    };
+    
+    container.addEventListener('touchstart', handlePullStart, { passive: true });
+    container.addEventListener('touchmove', handlePullMove, { passive: false });
+    container.addEventListener('touchend', handlePullEnd, { passive: true });
+}
+
+function performPullToRefresh() {
+    haptic([30, 30, 50]);
+    showSnackbar('Refreshing...', 'refresh');
+    
+    // Add visual feedback
+    const indicator = document.getElementById('pull-refresh-indicator');
+    if (indicator) {
+        indicator.innerHTML = `
+            <span class="material-symbols-rounded" style="animation:spin 1s linear infinite;">refresh</span>
+            <div style="margin-top: 8px;">Refreshing...</div>
+        `;
+    }
+    
+    // Refresh data
+    setTimeout(() => {
+        renderAll();
+        hidePullRefreshIndicator();
+        showSnackbar('Data refreshed', 'check_circle');
+    }, 1000);
+}
+
+function hidePullRefreshIndicator() {
+    const indicator = document.getElementById('pull-refresh-indicator');
+    if (indicator) {
+        indicator.style.opacity = '0';
+        setTimeout(() => {
+            if (indicator.parentNode) {
+                indicator.parentNode.removeChild(indicator);
+            }
+        }, 300);
+    }
+}
+
+// Add pull-to-refresh indicator
+function showPullRefreshIndicator() {
+    if (document.getElementById('pull-refresh-indicator')) return;
+    
+    const indicator = document.createElement('div');
+    indicator.id = 'pull-refresh-indicator';
+    indicator.className = 'pull-refresh-indicator';
+    indicator.innerHTML = `
+        <span class="material-symbols-rounded">arrow_downward</span>
+        <div>Pull to refresh</div>
+    `;
+    indicator.style.cssText = `
+        position: fixed;
+        top: -60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--md-primary-container);
+        color: var(--md-on-primary-container);
+        padding: 12px 20px;
+        border-radius: 0 0 16px 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transition: all 0.3s ease-out;
+        z-index: 3000;
+        opacity: 0;
+    `;
+    
+    document.body.appendChild(indicator);
+}
+
+// Add event listeners with proper options
+    cE.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+    cE.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+    cE.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+    cE.addEventListener('touchcancel', resetSwipeState, { passive: true, capture: true });
+    
+    // Add mobile gestures to main content
+    if (cE.id === 'ledger-history-list') {
+        addMobileGestures(cE);
+        showPullRefreshIndicator();
+    }
+    
+    // Cleanup function for memory management
+    return () => {
+        cE.removeEventListener('touchstart', handleTouchStart);
+        cE.removeEventListener('touchmove', handleTouchMove);
+        cE.removeEventListener('touchend', handleTouchEnd);
+        cE.removeEventListener('touchcancel', resetSwipeState);
+        resetSwipeState();
+    };
 }
 
 // ==========================================
@@ -1544,28 +2043,205 @@ function updateRebalanceBadge() { let badge = document.getElementById('rebalance
 // ==========================================
 // 8. AI INTEGRATION (GROQ + GEMINI ROUTER)
 // ==========================================
-async function callAIApi(promptText, systemPrompt = "Act as an elite financial wealth manager.") {
-    let hasGroq = !!db.groqKey; let hasGemini = !!db.geminiKey;
-    if (!hasGroq && !hasGemini) {
-        showSnackbar("Configure API Keys in Settings", "key");
-        throw new Error("No API keys found.");
+// API Key validation functions
+function isValidGeminiKey(key) {
+    return /^[A-Za-z0-9_-]{35,}$/.test(key);
+}
+
+function isValidGroqKey(key) {
+    return /^gsk_[A-Za-z0-9_-]{48,}$/.test(key);
+}
+
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return '';
+    return input
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/<iframe\b[^>]*>/gi, '')
+        .replace(/<object\b[^>]*>/gi, '')
+        .replace(/<embed\b[^>]*>/gi, '')
+        .trim();
+}
+
+// Enhanced API call with retry logic and better error handling
+async function callAIApi(promptText, systemPrompt = "You are a helpful financial assistant.") {
+    let hasGemini = db.geminiKey && db.geminiKey.trim().length > 0;
+    let hasGroq = db.groqKey && db.groqKey.trim().length > 0;
+    if (!hasGemini && !hasGroq) throw new Error("No API key configured");
+
+    // Validate API keys format
+    if (hasGemini && !isValidGeminiKey(db.geminiKey)) {
+        console.warn("Invalid Gemini API key format");
+        hasGemini = false;
     }
+    if (hasGroq && !isValidGroqKey(db.groqKey)) {
+        console.warn("Invalid Groq API key format");
+        hasGroq = false;
+    }
+
+    const sanitizedPrompt = sanitizeInput(promptText);
+    const maxRetries = 2;
+    const timeoutMs = 30000; // 30 seconds timeout
+
     let responseText = null;
-    if (hasGroq) {
-        try {
-            const res = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Authorization': `Bearer ${db.groqKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: promptText }] }) });
-            if (res.ok) { const data = await res.json(); responseText = data.choices[0].message.content; }
-        } catch (e) { console.warn("Groq request failed, preparing fallback...", e); }
+    let lastError = null;
+
+    // Try Gemini first
+    if (hasGemini) {
+        for (let attempt = 0; attempt <= maxRetries && !responseText; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'x-goog-api-key': db.geminiKey,
+                        'User-Agent': 'TrackInvest/1.0'
+                    },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `${systemPrompt}\n\n${sanitizedPrompt}` }] }],
+                        generationConfig: { 
+                            temperature: 0.7, 
+                            maxOutputTokens: 1000,
+                            topK: 40,
+                            topP: 0.95
+                        }
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Handle Gemini API specific errors
+                    if (data.error) {
+                        throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
+                    }
+                    
+                    responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not process that request.';
+                    break;
+                } else {
+                    const errorText = await getErrorMessage(res);
+                    lastError = new Error(`Gemini HTTP ${res.status}: ${errorText}`);
+                    
+                    if (attempt === maxRetries) {
+                        console.warn("Gemini failed after retries:", lastError);
+                    }
+                }
+            } catch (e) {
+                clearTimeout(timeoutId);
+                lastError = e;
+                
+                if (e.name === 'AbortError') {
+                    console.warn("Gemini request timed out");
+                } else {
+                    console.warn(`Gemini attempt ${attempt + 1} failed:`, e);
+                }
+                
+                if (attempt === maxRetries) {
+                    console.warn("Gemini failed after retries:", lastError);
+                }
+                
+                // Exponential backoff
+                if (attempt < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+            }
+        }
     }
-    if (!responseText && hasGemini) {
-        try {
-            let combinedPrompt = `${systemPrompt}\n\n${promptText}`;
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${db.geminiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: combinedPrompt }] }] }) });
-            if (res.ok) { const data = await res.json(); responseText = data.candidates[0].content.parts[0].text; }
-        } catch (e) { console.warn("Gemini fallback failed", e); }
+
+    // Try Groq as fallback
+    if (!responseText && hasGroq) {
+        for (let attempt = 0; attempt <= maxRetries && !responseText; attempt++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+                const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${db.groqKey}`, 
+                        'Content-Type': 'application/json',
+                        'User-Agent': 'TrackInvest/1.0'
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: sanitizedPrompt }],
+                        max_tokens: 1000,
+                        temperature: 0.7
+                    }),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    // Handle Groq API specific errors
+                    if (data.error) {
+                        throw new Error(`Groq API Error: ${data.error.message || 'Unknown error'}`);
+                    }
+                    
+                    responseText = data.choices?.[0]?.message?.content || 'Sorry, I could not process that request.';
+                    break;
+                } else {
+                    const errorText = await getErrorMessage(res);
+                    lastError = new Error(`Groq HTTP ${res.status}: ${errorText}`);
+                    
+                    if (attempt === maxRetries) {
+                        console.warn("Groq failed after retries:", lastError);
+                    }
+                }
+            } catch (e) {
+                clearTimeout(timeoutId);
+                lastError = e;
+                
+                if (e.name === 'AbortError') {
+                    console.warn("Groq request timed out");
+                } else {
+                    console.warn(`Groq attempt ${attempt + 1} failed:`, e);
+                }
+                
+                if (attempt === maxRetries) {
+                    console.warn("Groq failed after retries:", lastError);
+                }
+                
+                // Exponential backoff
+                if (attempt < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                }
+            }
+        }
     }
-    if (!responseText) throw new Error("Both AI engines failed to respond.");
-    return responseText.replace(/```html/g, '').replace(/```/g, '').trim();
+
+    if (!responseText) {
+        const finalError = lastError || new Error("Both AI engines failed to respond.");
+        console.error("AI API call failed:", finalError);
+        throw finalError;
+    }
+
+    // Clean up response
+    return responseText
+        .replace(/```html/g, '')
+        .replace(/```/g, '')
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .trim();
+}
+
+// Helper function to extract error messages from responses
+async function getErrorMessage(response) {
+    try {
+        const text = await response.text();
+        return text || response.statusText || 'Unknown error';
+    } catch (e) {
+        return response.statusText || 'Unknown error';
+    }
 }
 
 function openAIChat() {
@@ -2088,9 +2764,13 @@ function initAIFloatingBubble() {
 
         if (e.type === 'touchstart') {
             e.stopPropagation();
+            e.preventDefault(); // Prevent page scroll during drag
         } else {
             e.preventDefault();
         }
+
+        // Only allow drag from the bubble button, not popup content
+        if (!e.target.closest('#ai-bubble-button')) return;
 
         isDragging = true;
         dragStartTime = Date.now();
@@ -2099,8 +2779,16 @@ function initAIFloatingBubble() {
         initialBottom = db.aiBubblePosition.bottom;
         initialRight = db.aiBubblePosition.right;
         bubble.style.transition = 'none';
+        bubble.style.userSelect = 'none'; // Prevent text selection during drag
 
-        // Close popup if dragging starts beyond a small threshold
+        // Close popup if dragging starts
+        if (popupEl.style.display === 'flex') {
+            popupEl.style.display = 'none';
+        }
+
+        // Add visual feedback
+        bubble.style.transform = 'scale(1.1)';
+        bubble.style.opacity = '0.8';
     };
 
     const doDrag = (e) => {
@@ -2110,19 +2798,25 @@ function initAIFloatingBubble() {
         const deltaX = touch.clientX - startX;
         const deltaY = touch.clientY - startY;
 
-        // If we've moved more than 5px, it's a real drag, close popup
-        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-            const popup = document.getElementById('ai-chat-popup');
-            if (popup && popup.classList.contains('visible')) {
-                toggleAIPopup(false);
-            }
+        // Only allow significant drags (prevent accidental drags)
+        if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3) return;
+
+        if (e.type === 'touchmove') {
+            e.preventDefault();
+            e.stopPropagation();
         }
 
-        e.stopPropagation();
-        if (e.cancelable) e.preventDefault();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const bubbleSize = 60; // Approximate bubble size
 
-        const newBottom = Math.max(16, Math.min(window.innerHeight - 80, initialBottom - deltaY));
-        const newRight = Math.max(16, Math.min(window.innerWidth - 80, initialRight - deltaX));
+        // Calculate new position with boundaries
+        let newBottom = initialBottom - deltaY;
+        let newRight = initialRight - deltaX;
+
+        // Apply boundaries (keep bubble within viewport)
+        newBottom = Math.max(10, Math.min(viewportHeight - bubbleSize - 10, newBottom));
+        newRight = Math.max(10, Math.min(viewportWidth - bubbleSize - 10, newRight));
 
         bubble.style.bottom = `${newBottom}px`;
         bubble.style.right = `${newRight}px`;
@@ -2133,24 +2827,62 @@ function initAIFloatingBubble() {
     const endDrag = (e) => {
         if (!isDragging) return;
         isDragging = false;
-        e.stopPropagation();
+        bubble.style.transition = 'all 0.2s ease';
+        bubble.style.userSelect = '';
 
-        bubble.style.transition = 'bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), right 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        // Remove visual feedback
+        bubble.style.transform = 'scale(1)';
+        bubble.style.opacity = '1';
+
+        // Smart snapping to edges for better UX
+        const currentBottom = parseInt(bubble.style.bottom);
+        const currentRight = parseInt(bubble.style.right);
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const snapThreshold = 40;
+
+        // Snap to nearest edges
+        let finalBottom = currentBottom;
+        let finalRight = currentRight;
+
+        if (currentBottom < snapThreshold) {
+            finalBottom = 10;
+        } else if (currentBottom > viewportHeight - snapThreshold - 60) {
+            finalBottom = viewportHeight - 70;
+        }
+
+        if (currentRight < snapThreshold) {
+            finalRight = 10;
+        } else if (currentRight > viewportWidth - snapThreshold - 60) {
+            finalRight = viewportWidth - 70;
+        }
+
+        // Apply smooth snap animation
+        bubble.style.bottom = `${finalBottom}px`;
+        bubble.style.right = `${finalRight}px`;
+
+        db.aiBubblePosition = { bottom: finalBottom, right: finalRight };
         saveData();
 
-        const dragDuration = Date.now() - dragStartTime;
-        if (dragDuration < 200) {
-            toggleAIPopup();
-        }
+        // Reset transition after animation
+        setTimeout(() => {
+            bubble.style.transition = '';
+        }, 200);
     };
 
-    bubble.querySelector('#ai-bubble-button').addEventListener('mousedown', startDrag);
+    // Better event handling with proper cleanup
+    const bubbleButton = bubble.querySelector('#ai-bubble-button');
+    if (bubbleButton) {
+        bubbleButton.addEventListener('mousedown', startDrag);
+        bubbleButton.addEventListener('touchstart', startDrag, { passive: false });
+    }
+    
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', endDrag);
-
-    bubble.querySelector('#ai-bubble-button').addEventListener('touchstart', startDrag, { passive: false });
-    document.addEventListener('touchmove', doDrag, { passive: false });
-    document.addEventListener('touchend', endDrag);
+    
+    // Use capture phase for touch events to ensure they're handled before other elements
+    document.addEventListener('touchmove', doDrag, { passive: false, capture: true });
+    document.addEventListener('touchend', endDrag, { capture: true });
 
     // Stop propagation on popup to prevent global swipe-to-close or other gestures
     popupEl.addEventListener('touchstart', (e) => {

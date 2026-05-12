@@ -1,7 +1,16 @@
 function renderAIReportCharts(typeTotals) {
+    // Validate input parameter
+    if (!typeTotals || typeof typeTotals !== 'object') {
+        console.error('Invalid typeTotals parameter:', typeTotals);
+        return;
+    }
+    
     const pieCtx = document.getElementById('aiChartPie');
     const barCtx = document.getElementById('aiChartBar');
-    if (!pieCtx || !barCtx) return;
+    if (!pieCtx || !barCtx) {
+        console.warn('Chart elements not found:', { pieCtx: !!pieCtx, barCtx: !!barCtx });
+        return;
+    }
 
     const labels = [], data = [], bgColors = [];
     Object.keys(typeTotals).forEach(t => {
@@ -12,31 +21,84 @@ function renderAIReportCharts(typeTotals) {
         }
     });
 
+    // Validate chart data before rendering
+    if (labels.length === 0 || data.length === 0) {
+        console.warn('No valid data for chart rendering');
+        return;
+    }
+
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        layout: { padding: 4 }
+        layout: { padding: 4 },
+        animation: { duration: 750, easing: 'easeOutQuart' }
     };
 
+    // Enhanced cleanup to prevent memory leaks
     if (window.aiCharts) {
-        window.aiCharts.pie?.destroy();
-        window.aiCharts.bar?.destroy();
+        // Properly destroy existing charts and clear references
+        if (window.aiCharts.pie) {
+            try {
+                window.aiCharts.pie.destroy();
+            } catch (e) {
+                console.warn('Failed to destroy pie chart:', e);
+            }
+            window.aiCharts.pie = null;
+        }
+        if (window.aiCharts.bar) {
+            try {
+                window.aiCharts.bar.destroy();
+            } catch (e) {
+                console.warn('Failed to destroy bar chart:', e);
+            }
+            window.aiCharts.bar = null;
+        }
     } else {
         window.aiCharts = {};
     }
 
-    window.aiCharts.pie = new Chart(pieCtx, {
-        type: 'doughnut',
-        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 0, cutout: '70%' }] },
-        options: chartOptions
-    });
+    // Clear canvas contexts to free memory
+    if (pieCtx) {
+        const pieContext = pieCtx.getContext('2d');
+        if (pieContext) {
+            pieContext.clearRect(0, 0, pieCtx.width, pieCtx.height);
+        }
+    }
+    if (barCtx) {
+        const barContext = barCtx.getContext('2d');
+        if (barContext) {
+            barContext.clearRect(0, 0, barCtx.width, barCtx.height);
+        }
+    }
 
-    window.aiCharts.bar = new Chart(barCtx, {
-        type: 'bar',
-        data: { labels, datasets: [{ data, backgroundColor: bgColors, borderRadius: 4 }] },
-        options: { ...chartOptions, scales: { x: { display: false }, y: { display: false } } }
-    });
+    try {
+        // Create charts with proper error handling
+        window.aiCharts.pie = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data, backgroundColor: bgColors, borderWidth: 0, cutout: '70%' }] },
+            options: chartOptions
+        });
+
+        window.aiCharts.bar = new Chart(barCtx, {
+            type: 'bar',
+            data: { labels, datasets: [{ data, backgroundColor: bgColors, borderRadius: 4 }] },
+            options: { ...chartOptions, scales: { x: { display: false }, y: { display: false } } }
+        });
+    } catch (error) {
+        console.error('Failed to render AI charts:', error);
+        showSnackbar('Chart rendering failed', 'error');
+        
+        // Cleanup on error
+        if (window.aiCharts.pie) {
+            try { window.aiCharts.pie.destroy(); } catch (e) { console.warn('Cleanup failed:', e); }
+            window.aiCharts.pie = null;
+        }
+        if (window.aiCharts.bar) {
+            try { window.aiCharts.bar.destroy(); } catch (e) { console.warn('Cleanup failed:', e); }
+            window.aiCharts.bar = null;
+        }
+    }
 }
 
 async function downloadAIReport() {
@@ -49,30 +111,37 @@ async function downloadAIReport() {
         return;
     }
 
-    // 2. Temporarily make element visible for capture if hidden
-    const wasHidden = element.style.display === 'none';
+    // 2. Check if AI sheet is active and has content
+    if (!element.classList.contains('active')) {
+        showSnackbar("Please open AI report first", "error");
+        return;
+    }
+
+    // 3. Temporarily make element visible for capture
     const originalStyles = {
         display: element.style.display,
         position: element.style.position,
         visibility: element.style.visibility,
-        zIndex: element.style.zIndex
+        zIndex: element.style.zIndex,
+        transform: element.style.transform,
+        opacity: element.style.opacity
     };
     
-    if (wasHidden) {
-        element.style.display = 'block';
-        element.style.position = 'fixed';
-        element.style.visibility = 'hidden';
-        element.style.zIndex = '-9999';
-        element.style.left = '0';
-        element.style.top = '0';
-        // Force layout calculation
-        element.offsetHeight;
-    }
+    // Make sure element is properly visible for capture
+    element.style.display = 'block';
+    element.style.position = 'relative';
+    element.style.visibility = 'visible';
+    element.style.zIndex = '1000';
+    element.style.transform = 'none';
+    element.style.opacity = '1';
+    
+    // Force layout calculation
+    element.offsetHeight;
 
-    // 3. Wait for charts to render
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // 4. Wait for charts to render properly
+    await new Promise(resolve => setTimeout(resolve, 800));
 
-    // Check dimensions
+    // Check dimensions and content
     if (element.clientHeight === 0 || element.clientWidth === 0) {
         console.error("Target element has 0 dimensions.", {
             height: element.clientHeight,
@@ -86,9 +155,9 @@ async function downloadAIReport() {
     }
 
     const opt = {
-        margin: [0.3, 0.3, 0.3, 0.3],
+        margin: [0.5, 0.5, 0.5, 0.5],
         filename: `Wealth_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.95, compression: 'FAST' },
+        image: { type: 'jpeg', quality: 0.98, compression: 'FAST' },
         html2canvas: {
             scale: 2,
             useCORS: true,
@@ -96,7 +165,22 @@ async function downloadAIReport() {
             letterRendering: true,
             logging: false,
             windowWidth: 800,
-            windowHeight: element.scrollHeight + 100
+            windowHeight: Math.max(element.scrollHeight, element.clientHeight) + 200,
+            onclone: function(clonedDoc) {
+                // Ensure all elements are visible in the cloned document
+                const clonedElement = clonedDoc.getElementById('ai-sheet');
+                if (clonedElement) {
+                    clonedElement.style.display = 'block';
+                    clonedElement.style.visibility = 'visible';
+                    clonedElement.style.opacity = '1';
+                    // Force chart rendering in clone
+                    const charts = clonedElement.querySelectorAll('canvas');
+                    charts.forEach(chart => {
+                        chart.style.display = 'block';
+                        chart.style.visibility = 'visible';
+                    });
+                }
+            }
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
     };
@@ -104,7 +188,7 @@ async function downloadAIReport() {
     try {
         showSnackbar("Generating PDF...", "hourglass_empty");
         
-        // Make visible for capture
+        // Ensure element is fully visible for capture
         element.style.visibility = 'visible';
         
         // Generate PDF
@@ -126,10 +210,9 @@ async function downloadAIReport() {
         showSnackbar("Export failed. Try again.", "error");
     } finally {
         // Restore original styles strictly
-        element.style.visibility = originalStyles.visibility || '';
-        element.style.position = originalStyles.position || '';
-        element.style.zIndex = originalStyles.zIndex || '';
-        element.style.display = originalStyles.display || '';
+        Object.keys(originalStyles).forEach(key => {
+            element.style[key] = originalStyles[key];
+        });
         
         // If the sheet was closed while generating, ensure it stays closed
         if (!element.classList.contains('active')) {
@@ -173,18 +256,104 @@ function processRecurring() {
     }
 }
 
+// ==========================================
+// 9. OPTIMIZED MASTER RENDER ENGINE
+// ==========================================
+let renderInProgress = false;
+let renderQueue = [];
+let lastRenderTime = 0;
 
-// ==========================================
-// 9. MASTER RENDER ENGINE
-// ==========================================
-function renderAll() {
+// Debounce utility function
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Debounced render to prevent excessive calls
+const debouncedRenderAll = debounce(() => {
+    if (renderInProgress) {
+        renderQueue.push('full');
+        return;
+    }
+    
+    renderInProgress = true;
+    const startTime = performance.now();
+    
+    try {
+        performOptimizedRender();
+    } catch (error) {
+        console.error('Render error:', error);
+        showSnackbar('Render failed', 'error');
+    } finally {
+        renderInProgress = false;
+        lastRenderTime = startTime;
+        
+        // Process queued renders
+        if (renderQueue.length > 0) {
+            const nextRender = renderQueue.shift();
+            setTimeout(() => debouncedRenderAll(), 16); // Next frame
+        }
+    }
+}, 100); // 100ms debounce
+
+function performOptimizedRender() {
+    // Only update changed sections
+    const changes = detectRenderChanges();
+    if (changes.dividend) updateDividendTotals();
+    if (changes.accountFilter) updateAccountFilter();
+    if (changes.portfolio) updatePortfolioCalculations();
+    if (changes.dashboard) updateDashboardElements();
+    if (changes.goals) updateGoalsSection();
+    if (changes.history) updateHistorySection();
+}
+
+function detectRenderChanges() {
+    const now = Date.now();
+    const changes = {
+        dividend: false,
+        accountFilter: false,
+        portfolio: false,
+        dashboard: false,
+        goals: false,
+        history: false
+    };
+    
+    // Check if enough time has passed for full render
+    if (now - lastRenderTime < 1000) {
+        return changes; // Skip if rendered recently
+    }
+    
+    // Always update critical data on full render
+    changes.dividend = true;
+    changes.portfolio = true;
+    changes.dashboard = true;
+    changes.goals = true;
+    changes.history = true;
+    
+    return changes;
+}
+
+function updateDividendTotals() {
     let dividendTotal = db.investments.filter(i => i.isDividend && !(db.categories[i.type]?.excludeDividend)).reduce((s, i) => s + i.amount, 0);
-    let dtEl = document.getElementById('dashboard-dividend-total'); if (dtEl) dtEl.innerText = formatMoney(dividendTotal);
-    let dsEl = document.getElementById('dividend-sheet-total'); if (dsEl) dsEl.innerText = formatMoney(dividendTotal);
+    let dtEl = document.getElementById('dashboard-dividend-total'); 
+    if (dtEl) dtEl.innerText = formatMoney(dividendTotal);
+    let dsEl = document.getElementById('dividend-sheet-total'); 
+    if (dsEl) dsEl.innerText = formatMoney(dividendTotal);
+}
 
+function updateAccountFilter() {
     activeAccountFilter = document.getElementById('account-filter').value;
     document.getElementById('active-acc-label').innerText = activeAccountFilter;
+}
 
+function updatePortfolioCalculations() {
     let now = new Date(); let currentM = now.getMonth(); let currentY = now.getFullYear();
     let lastM = currentM === 0 ? 11 : currentM - 1; let lastMY = currentM === 0 ? currentY - 1 : currentY;
 
@@ -196,19 +365,81 @@ function renderAll() {
         typeLastDate[t] = null;
     });
 
-    // STRICT VALUATION LOGIC
+    // ENHANCED VALUATION LOGIC WITH DATA INTEGRITY
     let totalInterestEarnedAll = 0;
+    let valuationErrors = [];
+    
     Object.keys(db.categories).forEach(type => {
-        let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
-        let invested = filteredInvs.filter(i => !i.isDividend).reduce((sum, inv) => sum + inv.amount, 0) + (db.categoryDetails[type]?.initialBal || 0);
-        totalInvestedAll += invested;
+        try {
+            let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
+            
+            // Data integrity checks
+            filteredInvs.forEach(inv => {
+                if (!inv.amount || inv.amount <= 0) {
+                    valuationErrors.push(`Invalid amount for ${type} investment: ${inv.amount}`);
+                }
+                if (!inv.date || !parseDate(inv.date)) {
+                    valuationErrors.push(`Invalid date for ${type} investment: ${inv.date}`);
+                }
+                if (inv.maturityDate && !parseDate(inv.maturityDate)) {
+                    valuationErrors.push(`Invalid maturity date for ${type} investment: ${inv.maturityDate}`);
+                }
+            });
+            
+            // Filter out invalid investments
+            let validInvs = filteredInvs.filter(inv => 
+                inv.amount && inv.amount > 0 && 
+                inv.date && parseDate(inv.date)
+            );
+            
+            let invested = validInvs.filter(i => !i.isDividend).reduce((sum, inv) => {
+                const amount = parseFloat(inv.amount) || 0;
+                return sum + amount;
+            }, 0) + (db.categoryDetails[type]?.initialBal || 0);
+            
+            totalInvestedAll += invested;
 
-        let valResult = calculateStrictValuation(type, invested, filteredInvs);
-        typeTotals[type] = valResult.total;
-        totalMarketValue += valResult.total;
-        totalInterestEarnedAll += valResult.interest;
-        totalNW += invested;
+            // Enhanced valuation with error handling
+            let valResult;
+            try {
+                valResult = calculateStrictValuation(type, invested, validInvs);
+                
+                // Validate valuation result
+                if (!valResult || typeof valResult.total !== 'number' || isNaN(valResult.total)) {
+                    throw new Error(`Invalid valuation result for ${type}`);
+                }
+                
+                if (valResult.total < 0) {
+                    valuationErrors.push(`Negative valuation for ${type}: ${valResult.total}`);
+                }
+                
+            } catch (error) {
+                console.error(`Valuation error for ${type}:`, error);
+                valuationErrors.push(`Calculation error for ${type}: ${error.message}`);
+                // Fallback to invested amount
+                valResult = { total: invested, interest: 0 };
+            }
+            
+            typeTotals[type] = Math.max(0, valResult.total); // Ensure non-negative
+            totalMarketValue += Math.max(0, valResult.total);
+            totalInterestEarnedAll += Math.max(0, valResult.interest || 0);
+            totalNW += Math.max(0, invested);
+            
+        } catch (error) {
+            console.error(`Critical error processing ${type}:`, error);
+            valuationErrors.push(`Critical error in ${type}: ${error.message}`);
+            // Use fallback values
+            typeTotals[type] = 0;
+        }
     });
+    
+    // Report valuation errors if any
+    if (valuationErrors.length > 0) {
+        console.warn('Data integrity issues found:', valuationErrors);
+        // Show user-friendly error message
+        const errorCount = valuationErrors.length;
+        showSnackbar(`${errorCount} data issue${errorCount > 1 ? 's' : ''} found. Some values may be inaccurate.`, 'warning');
+    }
 
     const pnlEl = document.getElementById('sc-pnl');
     if (pnlEl) {
