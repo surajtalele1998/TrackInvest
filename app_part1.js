@@ -149,6 +149,11 @@ Object.keys(db.categories).forEach(cat => {
     }
 });
 let activeCategory = null, activeAccountFilter = 'All';
+// Tracks which sheet (and sub-sheet) is currently open so closeSubSheet can
+// restore the underlying main sheet to sessionStorage. Previously these were
+// implicit globals, which (a) tripped strict mode and (b) meant that early
+// reads (e.g. from initUI on reload) returned `undefined` instead of `null`.
+let activeMain = null, activeSub = null;
 let currentTotalNW = 0, currentAvgMonthly = 0, currentTypeTotals = {};
 let currentTax80c = 0;
 let chartMonthsRange = 3;
@@ -907,8 +912,11 @@ function closeOverlays(fromPopState = false) {
             console.warn('History navigation failed:', e);
         }
     }
-    
-    // Reset any active sub-sheet tracking
+
+    // Reset sheet-state tracking. Standalone callers (saveInvestment, saveGoal,
+    // exportData, handlePopState, etc.) close all sheets but don't reopen one
+    // afterwards; without this, closeSubSheet would later persist a stale
+    // activeMain to sessionStorage and reopen a closed sheet on next load.
     activeSub = null;
     activeMain = null;
 }
@@ -1866,14 +1874,18 @@ function sanitizeDatabaseObject(dbObj) {
     const sanitized = JSON.parse(JSON.stringify(dbObj));
     
     // Remove potentially dangerous content
+    // Note: 'ai' is accepted for backward compatibility with chat history
+    // saved before the role was normalized to 'assistant'. The renderer treats
+    // any non-'user' role as an AI/assistant bubble, so both values are safe.
+    const allowedRoles = ['user', 'assistant', 'ai'];
     if (sanitized.chatHistory) {
         sanitized.chatHistory = sanitized.chatHistory.map(msg => ({
             ...msg,
             content: sanitizeText(msg.content || ''),
-            role: ['user', 'assistant'].includes(msg.role) ? msg.role : 'user'
+            role: allowedRoles.includes(msg.role) ? msg.role : 'user'
         }));
     }
-    
+
     if (sanitized.chatSessions) {
         sanitized.chatSessions = sanitized.chatSessions.map(session => ({
             ...session,
@@ -1881,7 +1893,7 @@ function sanitizeDatabaseObject(dbObj) {
             messages: (session.messages || []).map(msg => ({
                 ...msg,
                 content: sanitizeText(msg.content || ''),
-                role: ['user', 'assistant'].includes(msg.role) ? msg.role : 'user'
+                role: allowedRoles.includes(msg.role) ? msg.role : 'user'
             }))
         }));
     }
@@ -2014,18 +2026,13 @@ function getThemeColor() {
 }
 
 function escapeHtml(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
-        .replace(/\//g, '&#x2F;')
-        .replace(/=/g, '&#x3D;')
-        .replace(/`/g, '&#x60;')
-        .replace(/!/g, '&#x21;')
-        .replace(/@/g, '&#x40;');
+        .replace(/'/g, '&#39;');
 }
 
 function checkMilestones(nw) {
@@ -3020,12 +3027,10 @@ async function syncHistoricalSIP() {
             });
 
             let schemeName = data.meta.scheme_name;
-            let currentDate = new Date(start); let today = new Date(); let added = 0;
+            let currentDate = monthlyOccurrenceOnOrAfter(start, day);
+            let today = new Date(); let added = 0;
 
             while (currentDate <= today) {
-                currentDate.setDate(day);
-                if (currentDate > today) break;
-
                 let dStr = getLocalYYYYMMDD(currentDate);
                 let checkDate = new Date(currentDate); let foundNav = null;
                 for (let i = 0; i < 7; i++) {
@@ -3036,24 +3041,60 @@ async function syncHistoricalSIP() {
 
                 let units = foundNav ? amt / foundNav : 0;
                 db.investments.push({ id: generateUniqueId(), date: dStr, type: type, amount: amt, units: units, mfCode: code, note: schemeName, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
-                added++; currentDate.setMonth(currentDate.getMonth() + 1);
+                added++;
+                currentDate = advanceMonth(currentDate, day);
             }
 
             saveData(); renderAll(); closeOverlays(); showSnackbar(`Generated ${added} past SIP entries!`, "check_circle");
         } catch (e) { showSnackbar("Failed to fetch MF data", "error"); }
     } else {
         // Fixed income or custom backfill
-        let currentDate = new Date(start); let today = new Date(); let added = 0;
+        let currentDate = monthlyOccurrenceOnOrAfter(start, day);
+        let today = new Date(); let added = 0;
         while (currentDate <= today) {
-            currentDate.setDate(day);
-            if (currentDate > today) break;
             let dStr = getLocalYYYYMMDD(currentDate);
 
             db.investments.push({ id: generateUniqueId(), date: dStr, type: type, amount: amt, note: `${type} (Backfill)`, tags: "backfill", isDividend: false, account: activeAccountFilter === 'All' ? db.accounts[0] : activeAccountFilter });
-            added++; currentDate.setMonth(currentDate.getMonth() + 1);
+            added++;
+            currentDate = advanceMonth(currentDate, day);
         }
         saveData(); renderAll(); closeOverlays(); showSnackbar(`Generated ${added} deposits for ${type}!`, "check_circle");
     }
+}
+
+// Date helpers shared by historical SIP backfill and recurring scheduler.
+// JS Date treats `setDate(31)` followed by `setMonth(+1)` as overflow — e.g.
+// Jan 31 → Feb 31 → Mar 2, silently skipping February. These helpers clamp
+// the requested day to the last day of the resulting month so we always land
+// in the intended calendar month.
+function clampDayToMonth(year, monthIndex, day) {
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    return Math.min(day, lastDay);
+}
+function monthlyOccurrenceOnOrAfter(start, day) {
+    let y = start.getFullYear();
+    let m = start.getMonth();
+    let d = clampDayToMonth(y, m, day);
+    let dt = new Date(y, m, d);
+    if (dt < start) {
+        m += 1;
+        d = clampDayToMonth(y, m, day);
+        dt = new Date(y, m, d);
+    }
+    return dt;
+}
+function advanceMonth(currentDate, day) {
+    const y = currentDate.getFullYear();
+    const m = currentDate.getMonth() + 1;
+    const d = clampDayToMonth(y, m, day);
+    return new Date(y, m, d);
+}
+// Initial nextRun for a recurring SIP: one month after the user-picked start
+// date, clamped to the start's day-of-month so a 31st-of-the-month SIP doesn't
+// silently drift to the next month on creation (Jan 31 + 1mo would otherwise
+// overflow to Mar 2, leaving processRecurring with the wrong intendedDay).
+function nextMonthlyRun(startDate) {
+    return advanceMonth(startDate, startDate.getDate());
 }
 
 const FORM_DRAFT_KEY = 'investFormDraft';

@@ -171,17 +171,21 @@ function saveInvestment() {
         return false; // Explicitly return false to prevent save
     }
 
-    // Duplicate detection within 1 hour for same date/type/amount
+    // Duplicate detection: warn if an entry with the same date, type, and
+    // amount already exists. The previous implementation compared
+    // `db.lastUpdated` against "one hour ago", which only reflected when the
+    // database itself was last saved — not when the matching entry was
+    // added — so it false-positived every save within an hour of any prior
+    // activity. checkDuplicates() runs after save for thorough flagging; this
+    // pre-save warning is just a soft hint before commit.
     if (!editInvId) {
-        let oneHourAgo = Date.now() - (60 * 60 * 1000);
         let recentDuplicate = db.investments.find(i =>
             i.date === date &&
             i.type === currentInvType &&
-            i.amount === amt &&
-            db.lastUpdated > oneHourAgo
+            i.amount === amt
         );
         if (recentDuplicate) {
-            showSnackbar("Similar entry added recently. Check for duplicates.", "warning");
+            showSnackbar("Similar entry already exists. Check for duplicates.", "warning");
         }
     }
     let newEntry = {
@@ -226,7 +230,7 @@ function saveInvestment() {
 
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
-        if (isRecurring) { let nextDate = new Date(date); nextDate.setMonth(nextDate.getMonth() + 1); db.recurring.push({ type: currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
+        if (isRecurring) { let nextDate = nextMonthlyRun(new Date(date)); db.recurring.push({ type: currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
 
         // Save smart defaults for next time
         saveSmartDefault('account_last', acc);
@@ -431,11 +435,15 @@ function renderSearchHistory() {
         return;
     }
 
+    // Apostrophes in the term would close the inline JS string literal even
+    // after escapeHtml encoded them (browsers decode &#39; before running the
+    // attribute as JS), so the term is passed via a data-attribute and read
+    // back from the dataset.
     container.innerHTML = `
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center;">
             <span style="font-size:11px;color:var(--md-outline);">Recent:</span>
             ${history.map(term => `
-                <button onclick="applySearchTerm('${escapeHtml(term)}')" 
+                <button type="button" data-term="${escapeHtml(term)}" onclick="applySearchTerm(this.dataset.term)"
                     style="padding:4px 10px;background:var(--md-surface-container-highest);border:none;border-radius:12px;font-size:12px;color:var(--md-on-surface-variant);cursor:pointer;">
                     ${escapeHtml(term)}
                 </button>
@@ -1655,6 +1663,29 @@ function lockApp() {
 window.checkAppLock = checkAppLock;
 window.unlockApp = unlockApp;
 window.lockApp = lockApp;
+// btoa() only accepts a binary string, but `String.fromCharCode(...bytes)` on
+// large Uint8Arrays exceeds the JS engine argument-count limit and throws
+// "Maximum call stack size exceeded" / RangeError. Chunked conversion avoids
+// the issue for arbitrarily large encrypted payloads.
+function _uint8ToBase64(bytes) {
+    let binary = '';
+    const chunk = 0x8000; // 32 KB at a time
+    for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(
+            null,
+            bytes.subarray(i, Math.min(i + chunk, bytes.length))
+        );
+    }
+    return btoa(binary);
+}
+
+function _base64ToUint8(b64) {
+    const binary = atob(b64);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    return out;
+}
+
 async function encryptData(jsonStr, pin) {
     if (!pin) return btoa(encodeURIComponent(jsonStr));
     const enc = new TextEncoder();
@@ -1665,12 +1696,12 @@ async function encryptData(jsonStr, pin) {
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(jsonStr));
     const buf = new Uint8Array(salt.length + iv.length + ct.byteLength);
     buf.set(salt, 0); buf.set(iv, salt.length); buf.set(new Uint8Array(ct), salt.length + iv.length);
-    return 'ENC2:' + btoa(String.fromCharCode(...buf));
+    return 'ENC2:' + _uint8ToBase64(buf);
 }
 async function decryptData(encStr, pin) {
     if (encStr.startsWith('ENC2:')) {
         if (!pin) throw new Error('PIN required for decryption');
-        const raw = Uint8Array.from(atob(encStr.substring(5)), c => c.charCodeAt(0));
+        const raw = _base64ToUint8(encStr.substring(5));
         const salt = raw.slice(0, 16); const iv = raw.slice(16, 28); const ct = raw.slice(28);
         const enc = new TextEncoder();
         const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveKey']);
@@ -2273,7 +2304,7 @@ async function sendAIChat() {
     try {
         let reply = await callAIApi(promptBase, "You are a highly capable and friendly personal financial advisor. Format output cleanly.");
         let parsedReply = formatAIResponse(reply);
-        document.getElementById('typing').remove(); db.chatHistory.push({ role: 'ai', content: reply }); log.innerHTML += `<div class="chat-bubble ai">${parsedReply}</div>`; saveData(); log.scrollTop = log.scrollHeight; haptic([30, 50]);
+        document.getElementById('typing').remove(); db.chatHistory.push({ role: 'assistant', content: reply }); log.innerHTML += `<div class="chat-bubble ai">${parsedReply}</div>`; saveData(); log.scrollTop = log.scrollHeight; haptic([30, 50]);
     } catch (e) { document.getElementById('typing').remove(); log.innerHTML += `<div class="chat-bubble ai" style="color:var(--md-error);">Connection failed. Check API Keys in settings.</div>`; }
 }
 
@@ -2361,7 +2392,15 @@ function processAITables(text) {
 // Process AI-generated charts using simple HTML/CSS
 function processAICharts(text) {
     // Match [CHART: bar data="10,20,30" labels="A,B,C" colors="#ff0000,#00ff00,#0000ff"]
-    const chartRegex = /\[CHART:\s*(\w+)\s+data="([^"]+)"(?:\s+labels="([^"]*)")?(?:\s+colors="([^"]*)")?\]/g;
+    // Quotes may be HTML-encoded as &quot; because escapeHtml runs first in
+    // formatAIResponse, so the regex accepts either form.
+    const q = '(?:"|&quot;)';
+    const chartRegex = new RegExp(
+        '\\[CHART:\\s*(\\w+)\\s+data=' + q + '([^"&]+)' + q +
+        '(?:\\s+labels=' + q + '([^"&]*)' + q + ')?' +
+        '(?:\\s+colors=' + q + '([^"&]*)' + q + ')?\\]',
+        'g'
+    );
 
     return text.replace(chartRegex, (match, type, dataStr, labelsStr, colorsStr) => {
         const data = dataStr.split(',').map(v => parseFloat(v.trim()) || 0);
