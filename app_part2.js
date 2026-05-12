@@ -116,6 +116,64 @@ function saveInvestment() {
         }
     }
     
+    // ENHANCED BUSINESS LOGIC VALIDATION
+    // Investment amount validation based on type
+    const investmentLimits = {
+        'Stocks': { min: 1, max: 10000000, warning: 1000000 },
+        'SIP': { min: 500, max: 1000000, warning: 100000 },
+        'FD': { min: 1000, max: 10000000, warning: 5000000 },
+        'RD': { min: 500, max: 500000, warning: 100000 },
+        'PPF': { min: 500, max: 150000, warning: 100000 },
+        'EPF': { min: 500, max: 250000, warning: 50000 },
+        'NPS': { min: 500, max: 200000, warning: 50000 },
+        'Gold': { min: 100, max: 5000000, warning: 1000000 },
+        'Real Estate': { min: 10000, max: 100000000, warning: 50000000 },
+        'Crypto': { min: 100, max: 1000000, warning: 100000 }
+    };
+
+    const limits = investmentLimits[currentInvType] || { min: 1, max: 10000000, warning: 1000000 };
+    
+    if (amt < limits.min) {
+        validationErrors.push(`${currentInvType} minimum amount is ${formatMoney(limits.min)}`);
+        errorFields.push('inv-amt');
+    } else if (amt > limits.max) {
+        validationErrors.push(`${currentInvType} maximum amount is ${formatMoney(limits.max)}`);
+        errorFields.push('inv-amt');
+    } else if (amt > limits.warning) {
+        validationErrors.push(`Large amount warning: ${formatMoney(limits.warning)} is typical for ${currentInvType}`);
+        errorFields.push('inv-amt');
+    }
+
+    // Business logic validation for investment types
+    if (currentInvType === 'SIP' && !sipDay) {
+        validationErrors.push("SIP day is required for SIP investments");
+        errorFields.push('inv-sip-day');
+    }
+
+    if ((currentInvType === 'FD' || currentInvType === 'RD') && !intRate) {
+        validationErrors.push("Interest rate is required for Fixed/RD deposits");
+        errorFields.push('inv-interest');
+    }
+
+    if (currentInvType === 'Stocks' && !units) {
+        validationErrors.push("Units are required for stock investments");
+        errorFields.push('inv-qty');
+    }
+
+    if (currentInvType === 'Mutual Funds' && !mfCode) {
+        validationErrors.push("MF code is required for mutual fund investments");
+        errorFields.push('inv-mf-code');
+    }
+
+    // Account validation
+    if (!acc) {
+        validationErrors.push("Account selection is required");
+        errorFields.push('inv-account');
+    } else if (!db.accounts.includes(acc)) {
+        validationErrors.push("Invalid account selected");
+        errorFields.push('inv-account');
+    }
+
     // Enhanced validation with security checks
     if (validationErrors.length > 0) {
         // Clear previous error states
