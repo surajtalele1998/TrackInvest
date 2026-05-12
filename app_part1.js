@@ -3089,6 +3089,13 @@ function advanceMonth(currentDate, day) {
     const d = clampDayToMonth(y, m, day);
     return new Date(y, m, d);
 }
+// Initial nextRun for a recurring SIP: one month after the user-picked start
+// date, clamped to the start's day-of-month so a 31st-of-the-month SIP doesn't
+// silently drift to the next month on creation (Jan 31 + 1mo would otherwise
+// overflow to Mar 2, leaving processRecurring with the wrong intendedDay).
+function nextMonthlyRun(startDate) {
+    return advanceMonth(startDate, startDate.getDate());
+}
 
 const FORM_DRAFT_KEY = 'investFormDraft';
 

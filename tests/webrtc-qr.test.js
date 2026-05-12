@@ -170,6 +170,21 @@ assert.strictEqual(app.calculateInflationValue(100000, -1, 6), null);
     assert.strictEqual(apr.getDate(), 30, 'April clamps day 31 to 30');
 }
 
+// nextMonthlyRun is what saveInvestment uses to seed a recurring SIP's first
+// nextRun. The pre-fix code did `new Date(date); nextDate.setMonth(+1)`, which
+// silently overflowed Jan 31 → Mar 2, leaving processRecurring with the wrong
+// intendedDay. Lock in the clamp behavior end-to-end.
+{
+    const fn = app.nextMonthlyRun;
+    assert(typeof fn === 'function', 'nextMonthlyRun must be exported');
+    const feb = fn(new Date(2024, 0, 31));
+    assert.strictEqual(feb.getMonth(), 1, 'Jan 31 seed must produce a Feb nextRun, not March');
+    assert.strictEqual(feb.getDate(), 29, 'Feb 2024 (leap) clamps to 29');
+    const aprFromMar31 = fn(new Date(2024, 2, 31));
+    assert.strictEqual(aprFromMar31.getMonth(), 3, 'Mar 31 seed must produce an Apr nextRun, not May');
+    assert.strictEqual(aprFromMar31.getDate(), 30, 'April clamps to 30');
+}
+
 // Large payloads must round-trip through encrypt/decrypt without exhausting
 // the JS engine's argument-spread limit on big Uint8Arrays.
 (async () => {
