@@ -28,6 +28,8 @@ if (!db.lastBackupPrompt) db.lastBackupPrompt = '';
 if (!db.navCache) db.navCache = {};
 if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: April (month index 3) for India FY
 if (typeof db.firstTimeTipsShown === 'undefined') db.firstTimeTipsShown = false;
+if (typeof db.aiBubbleEnabled === 'undefined') db.aiBubbleEnabled = true;
+if (!db.aiBubblePosition) db.aiBubblePosition = { bottom: 24, right: 24 };
 
 // Extended user profile with smart defaults (all optional, progressive disclosure)
 if (!db.userProfileExtended) db.userProfileExtended = {
@@ -898,11 +900,13 @@ document.addEventListener('touchstart', e => {
     touchStartX = e.touches[0].clientX;
     
     // Only allow swipe-to-close if we are at the very top of the sheet content
-    // and the touch started on the drag-handle or top area
+    // and the touch started on the drag-handle or very top area (30px)
     const isAtTop = activeSheet.scrollTop <= 0;
-    const isTopArea = (touchStartY - activeSheet.getBoundingClientRect().top) < 100;
+    const rect = activeSheet.getBoundingClientRect();
+    const isTopArea = (touchStartY - rect.top) < 30;
+    const isDragHandle = e.target.classList.contains('drag-handle') || e.target.closest('.drag-handle');
     
-    canSwipeClose = isAtTop && isTopArea;
+    canSwipeClose = isAtTop && (isTopArea || isDragHandle);
 }, { passive: true });
 
 document.addEventListener('touchmove', e => {
@@ -914,9 +918,9 @@ document.addEventListener('touchmove', e => {
     const diffX = touchX - touchStartX;
     const activeSheet = document.querySelector('.sheet.active');
 
-    // Threshold: 100px downward, and primarily vertical (at least 2x vertical vs horizontal)
-    if (activeSheet && diffY > 100 && Math.abs(diffY) > Math.abs(diffX) * 2) {
-        haptic(10);
+    // Threshold: 120px downward (deliberate swipe), and primarily vertical (at least 3x vertical vs horizontal)
+    if (activeSheet && diffY > 120 && Math.abs(diffY) > Math.abs(diffX) * 3) {
+        haptic(15);
         if (activeSheet.classList.contains('sub-sheet')) {
             closeSubSheet();
         } else {

@@ -1,3 +1,6 @@
+let aiBubbleInitialized = false;
+window.activeChatSession = null;
+
 function saveInvestment() {
     haptic(40);
     let date = document.getElementById('inv-date').value;
@@ -621,6 +624,9 @@ function openSettings() {
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
 
+    const bubbleToggle = document.getElementById('ai-bubble-toggle');
+    if (bubbleToggle) bubbleToggle.checked = db.aiBubbleEnabled;
+
     // Refresh manage sections
     renderSettingsSections();
 
@@ -818,6 +824,8 @@ function toggleBiometric() {
     saveData();
     showSnackbar(db.useBiometric ? "Biometric Enabled" : "Biometric Disabled");
 }
+
+window.toggleAIBubbleVisibility = toggleAIBubbleVisibility;
 // App Lock System with Biometric, PIN fallback, rate limiting, and auto-lock
 let appLockState = {
     failedAttempts: 0,
@@ -966,7 +974,7 @@ function unlockApp() {
     let pin = document.getElementById('pin-input-auth').value;
 
     // Validate PIN format
-    if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+    if (!pin || pin.length > 4 || !/^\d{1,4}$/.test(pin)) {
         updateLockScreenMessage('Enter a valid 4-digit PIN');
         haptic([50, 50]);
         return;
@@ -1469,43 +1477,20 @@ async function callAIApi(promptText, systemPrompt = "Act as an elite financial w
 }
 
 function openAIChat() {
-    const log = document.getElementById('ai-chat-log');
-    if (!log) return;
-
-    log.innerHTML = db.chatHistory.map(m => {
-        const content = m.role === 'ai' ? formatAIResponse(m.content) : m.content;
-        return `<div class="chat-bubble ${m.role}">${content}</div>`;
-    }).join('');
-
-    openSheet('ai-chat-sheet');
-
-    setTimeout(() => {
-        log.scrollTop = log.scrollHeight;
-    }, 100);
+    toggleAIPopup(true);
+    renderAIPopupContent('chat');
 }
-// saveChatSession() — simple version removed, better version below (with title/unshift)
+
 function viewChatHistory() {
     haptic(30);
-    let html = db.chatSessions.length === 0 ? `<div class="empty-state-premium"><span class="material-symbols-rounded">forum</span><div class="es-title">No past sessions</div></div>` : "";
-    db.chatSessions.slice().reverse().forEach((sess, idxOriginal) => {
-        let idx = db.chatSessions.length - 1 - idxOriginal;
-        let dStr = new Date(sess.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-        let preview = sess.messages[0] ? sess.messages[0].content.substring(0, 40) + '...' : 'Empty session';
-        html += `<div class="md-card" style="padding:12px; margin-bottom:8px; cursor:pointer; background:var(--md-surface-container-low); border-radius:12px;" onclick="loadChatSession(${idx})"><div style="font-size:12px;color:var(--md-primary);font-weight:500;">${dStr}</div><div style="font-size:14px;margin-top:4px;opacity:0.8;">${preview}</div></div>`;
-    });
-    const list = document.getElementById('chat-history-list');
-    if (list) list.innerHTML = html;
-    openSubSheet('chat-history-sheet');
+    toggleAIPopup(true);
+    renderAIPopupContent('history');
 }
+
 function loadChatSession(idx) {
     haptic(40);
-    const sess = db.chatSessions[idx];
-    if (!sess) return;
-    db.chatHistory = [...sess.messages];
-    saveData();
-    closeSubSheet(true); // Close history sheet without going back in history
-    openAIChat();
-    showSnackbar("Session restored");
+    toggleAIPopup(true);
+    loadChatSessionInPopup(idx);
 }
 
 async function sendAIChat() {
@@ -1729,67 +1714,83 @@ function processAICallouts(text) {
 }
 
 function saveChatSession() {
-    if (db.chatHistory.length === 0) {
-        showSnackbar("No messages to save", "error");
-        return;
+    // Legacy support: if db.chatHistory has items, migrate to activeChatSession or sessions
+    if (db.chatHistory && db.chatHistory.length > 0) {
+        const title = db.chatHistory[0].content.substring(0, 30) + "...";
+        db.chatSessions.unshift({
+            id: generateUniqueId(),
+            date: new Date().toISOString(),
+            title: title,
+            messages: [...db.chatHistory]
+        });
+        db.chatHistory = [];
     }
-    haptic(40);
-    const title = db.chatHistory[0].content.substring(0, 30) + "...";
-    db.chatSessions.unshift({
-        id: generateUniqueId(),
-        date: new Date().toISOString(),
-        title: title,
-        messages: [...db.chatHistory]
-    });
-    db.chatHistory = []; // Clear current for new session
+
+    if (activeChatSession && activeChatSession.messages.length > 0) {
+        const existingIdx = db.chatSessions.findIndex(s => s.id === activeChatSession.id);
+        if (existingIdx !== -1) {
+            db.chatSessions[existingIdx] = JSON.parse(JSON.stringify(activeChatSession));
+        } else {
+            db.chatSessions.unshift(JSON.parse(JSON.stringify(activeChatSession)));
+        }
+    }
+
     saveData();
-    updateChatHistoryUI();
-    openAIChat();
-    showSnackbar("Session saved to history");
+    // updateChatHistoryUI(); // No longer needed if we use renderAIPopupContent('history')
 }
 
 // ==========================================
-// 8.1 FLOATING AI CHAT BUBBLE
+// 8.1 DRAGGABLE AI CHAT BUBBLE (UNIFIED)
 // ==========================================
-let aiBubbleInitialized = false;
-let aiBubbleExpanded = false;
-
 function initAIFloatingBubble() {
-    if (aiBubbleInitialized) return;
+    const existingBubble = document.getElementById('ai-floating-bubble');
+    if (existingBubble) {
+        if (db.aiBubbleEnabled) existingBubble.style.display = 'flex';
+        else existingBubble.style.display = 'none';
+        return;
+    }
+
+    if (!db.aiBubbleEnabled) return;
+
+    // Use saved position or default
+    const pos = db.aiBubblePosition || { bottom: 24, right: 24 };
 
     // Create floating bubble container
     const bubble = document.createElement('div');
     bubble.id = 'ai-floating-bubble';
     bubble.innerHTML = `
-        <div id="ai-bubble-button" onclick="toggleAIBubble()">
-            <span class="material-symbols-rounded" id="ai-bubble-icon">smart_toy</span>
-            <span id="ai-bubble-badge" style="display:none;"></span>
+        <div id="ai-chat-popup" class="hidden">
+            <div id="ai-popup-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div class="ai-pulse-dot"></div>
+                    <span style="font-weight:600;font-size:15px;letter-spacing:0.3px;">Wealth AI</span>
+                </div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <button class="popup-icon-btn" onclick="renderAIPopupContent('history')" title="History">
+                        <span class="material-symbols-rounded">history</span>
+                    </button>
+                    <button class="popup-icon-btn" onclick="startNewChatInPopup()" title="New Chat">
+                        <span class="material-symbols-rounded">add</span>
+                    </button>
+                    <button class="popup-icon-btn" onclick="toggleAIPopup()" style="margin-left:4px;">
+                        <span class="material-symbols-rounded">close</span>
+                    </button>
+                </div>
+            </div>
+            <div id="ai-popup-body" class="scroll-y">
+                <div id="ai-popup-content-area"></div>
+            </div>
+            <div id="ai-popup-footer">
+                <div id="ai-popup-input-container">
+                    <input type="text" id="ai-popup-input" placeholder="How's my wealth growth?" onkeypress="if(event.key==='Enter')sendAIChatInPopup()">
+                    <button id="ai-popup-send-btn" onclick="sendAIChatInPopup()">
+                        <span class="material-symbols-rounded">send</span>
+                    </button>
+                </div>
+            </div>
         </div>
-        <div id="ai-bubble-chat" style="display:none;">
-            <div id="ai-bubble-header">
-                <span class="material-symbols-rounded" style="color:var(--md-primary);">smart_toy</span>
-                <span>AI Assistant</span>
-                <div style="flex:1;"></div>
-                <button class="icon-btn" onclick="viewChatHistoryFromBubble()" title="History">
-                    <span class="material-symbols-rounded">history</span>
-                </button>
-                <button class="icon-btn" onclick="toggleAIBubble()" title="Close">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-            </div>
-            <div id="ai-bubble-messages"></div>
-            <div id="ai-bubble-input-area">
-                <input type="text" id="ai-bubble-input" placeholder="Ask about your portfolio..." 
-                    onkeydown="if(event.key==='Enter')sendAIBubbleMessage()">
-                <button onclick="sendAIBubbleMessage()" id="ai-bubble-send">
-                    <span class="material-symbols-rounded">send</span>
-                </button>
-            </div>
-            <div id="ai-bubble-quick-actions">
-                <button onclick="sendBubbleQuick('How am I doing?')">Portfolio health</button>
-                <button onclick="sendBubbleQuick('What should I invest in?')">Invest tips</button>
-                <button onclick="sendBubbleQuick('Analyze my goals')">Goal check</button>
-            </div>
+        <div id="ai-bubble-button" title="Wealth Assistant">
+            <span class="material-symbols-rounded" id="ai-bubble-icon">smart_toy</span>
         </div>
     `;
 
@@ -1798,134 +1799,127 @@ function initAIFloatingBubble() {
     style.textContent = `
         #ai-floating-bubble {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 9999;
-            font-family: 'Roboto', sans-serif;
+            bottom: ${pos.bottom}px;
+            right: ${pos.right}px;
+            z-index: 10000;
+            touch-action: auto;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 12px;
         }
         #ai-bubble-button {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
             background: var(--md-primary);
             color: var(--md-on-primary);
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            box-shadow: var(--md-elevation-3);
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
+            cursor: grab;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2), inset 0 1px 1px rgba(255,255,255,0.3);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+            touch-action: none;
         }
         #ai-bubble-button:hover {
-            transform: scale(1.05);
-            box-shadow: var(--md-elevation-4);
+            transform: scale(1.08) rotate(5deg);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
         }
         #ai-bubble-button:active {
-            transform: scale(0.95);
+            cursor: grabbing;
+            transform: scale(0.92);
         }
-        #ai-bubble-icon {
-            font-size: 28px;
-        }
-        #ai-bubble-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 20px;
-            height: 20px;
-            background: var(--md-error);
-            border-radius: 50%;
-            border: 2px solid var(--md-surface);
-        }
-        #ai-bubble-chat {
-            position: absolute;
-            bottom: 70px;
-            right: 0;
-            width: 360px;
-            max-width: calc(100vw - 48px);
+        #ai-bubble-icon { font-size: 30px; }
+
+        #ai-chat-popup {
+            width: 340px;
+            max-width: 90vw;
             height: 480px;
-            max-height: calc(100vh - 120px);
+            max-height: 70vh;
+            touch-action: pan-y;
             background: var(--md-surface);
-            border-radius: 20px;
-            box-shadow: var(--md-elevation-4);
+            border-radius: 28px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            animation: aiBubbleSlideIn 0.3s ease-out;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+            border: 1px solid var(--md-outline-variant);
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-origin: bottom right;
         }
-        @keyframes aiBubbleSlideIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        #ai-chat-popup.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
         }
-        #ai-bubble-header {
-            padding: 16px;
+        #ai-chat-popup.hidden { display: none; }
+
+        #ai-popup-header {
+            padding: 16px 20px;
+            background: var(--md-surface-container-high);
             border-bottom: 1px solid var(--md-outline-variant);
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 8px;
-            font-weight: 600;
-            color: var(--md-on-surface);
         }
-        #ai-bubble-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        #ai-bubble-messages .user-msg {
-            align-self: flex-end;
-            background: var(--md-primary);
-            color: var(--md-on-primary);
-            padding: 12px 16px;
-            border-radius: 16px 16px 4px 16px;
-            max-width: 85%;
-            font-size: 14px;
-            line-height: 1.4;
-        }
-        #ai-bubble-messages .ai-msg {
-            align-self: flex-start;
-            background: var(--md-surface-container-highest);
-            color: var(--md-on-surface);
-            padding: 12px 16px;
-            border-radius: 16px 16px 16px 4px;
-            max-width: 95%;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        #ai-bubble-messages .ai-msg table {
-            font-size: 12px;
-            margin: 8px 0;
-        }
-        #ai-bubble-messages .ai-msg h1, 
-        #ai-bubble-messages .ai-msg h2,
-        #ai-bubble-messages .ai-msg h3 {
-            margin: 8px 0;
-        }
-        #ai-bubble-input-area {
-            padding: 12px 16px;
-            border-top: 1px solid var(--md-outline-variant);
-            display: flex;
-            gap: 8px;
-        }
-        #ai-bubble-input {
-            flex: 1;
+        .popup-icon-btn {
+            background: transparent;
             border: none;
-            background: var(--md-surface-container-highest);
-            padding: 12px 16px;
-            border-radius: 24px;
-            font-size: 14px;
+            color: var(--md-on-surface-variant);
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .popup-icon-btn:hover { background: var(--md-surface-container-highest); }
+        .popup-icon-btn span { font-size: 20px; }
+
+        #ai-popup-body {
+            flex: 1;
+            padding: 16px;
+            background: var(--md-surface);
+            touch-action: pan-y;
+        }
+        #ai-popup-footer {
+            padding: 12px 16px 20px 16px;
+            border-top: 1px solid var(--md-outline-variant);
+            background: var(--md-surface-container-low);
+        }
+        #ai-popup-input-container {
+            display: flex;
+            gap: 8px;
+            background: var(--md-surface);
+            border: 1.5px solid var(--md-outline-variant);
+            border-radius: 16px;
+            padding: 6px 6px 6px 14px;
+            align-items: center;
+            transition: border-color 0.3s;
+        }
+        #ai-popup-input-container:focus-within {
+            border-color: var(--md-primary);
+        }
+        #ai-popup-input {
+            flex: 1;
+            background: transparent;
+            border: none;
             outline: none;
             color: var(--md-on-surface);
+            font-size: 14px;
         }
-        #ai-bubble-input::placeholder {
-            color: var(--md-on-surface-variant);
-        }
-        #ai-bubble-send {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
+        #ai-popup-send-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
             background: var(--md-primary);
             color: var(--md-on-primary);
             border: none;
@@ -1933,200 +1927,309 @@ function initAIFloatingBubble() {
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: opacity 0.2s;
         }
-        #ai-bubble-send:hover {
-            transform: scale(1.05);
-        }
-        #ai-bubble-send:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        #ai-bubble-quick-actions {
-            display: flex;
-            gap: 8px;
-            padding: 8px 16px;
-            overflow-x: auto;
-            border-top: 1px solid var(--md-outline-variant);
-        }
-        #ai-bubble-quick-actions button {
-            white-space: nowrap;
-            padding: 8px 14px;
-            background: var(--md-surface-container-highest);
-            border: none;
-            border-radius: 16px;
-            font-size: 12px;
-            color: var(--md-primary);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        #ai-bubble-quick-actions button:hover {
-            background: var(--md-primary-container);
-        }
-        #ai-bubble-typing {
-            display: flex;
-            gap: 4px;
-            padding: 12px;
-        }
-        #ai-bubble-typing span {
+        #ai-popup-send-btn:active { opacity: 0.7; }
+        
+        .ai-pulse-dot {
             width: 8px;
             height: 8px;
-            background: var(--md-outline);
+            background: var(--md-primary);
             border-radius: 50%;
-            animation: typingBounce 1.4s ease-in-out infinite;
+            box-shadow: 0 0 0 rgba(var(--md-primary-rgb), 0.4);
+            animation: ai-pulse 2s infinite;
         }
-        #ai-bubble-typing span:nth-child(2) { animation-delay: 0.2s; }
-        #ai-bubble-typing span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingBounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
+        @keyframes ai-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(65, 95, 145, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(65, 95, 145, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(65, 95, 145, 0); }
         }
-        @media (max-width: 480px) {
-            #ai-floating-bubble {
-                bottom: 16px;
-                right: 16px;
-            }
-            #ai-bubble-chat {
-                width: calc(100vw - 32px);
-                right: -8px;
-            }
+
+        .ai-msg {
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 18px;
+            max-width: 85%;
+            font-size: 13.5px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        .ai-msg.user {
+            background: var(--md-primary-container);
+            color: var(--md-on-primary-container);
+            align-self: flex-end;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+        .ai-msg.bot {
+            background: var(--md-surface-container-high);
+            color: var(--md-on-surface);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+        .history-item-popup {
+            padding: 12px;
+            border-radius: 16px;
+            background: var(--md-surface-container-low);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            border: 1px solid transparent;
+        }
+        .history-item-popup:hover {
+            background: var(--md-surface-container-high);
+            transform: scale(1.02);
+            border-color: var(--md-outline-variant);
         }
     `;
     document.head.appendChild(style);
     document.body.appendChild(bubble);
 
+    // Draggable Logic
+    let isDragging = false;
+    let startX, startY;
+    let initialBottom, initialRight;
+    let dragStartTime;
+
+    const startDrag = (e) => {
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+
+        if (e.type === 'touchstart') {
+            e.stopPropagation();
+        } else {
+            e.preventDefault();
+        }
+
+        isDragging = true;
+        dragStartTime = Date.now();
+        startX = touch.clientX;
+        startY = touch.clientY;
+        initialBottom = db.aiBubblePosition.bottom;
+        initialRight = db.aiBubblePosition.right;
+        bubble.style.transition = 'none';
+
+        // Close popup if dragging starts beyond a small threshold
+    };
+
+    const doDrag = (e) => {
+        if (!isDragging) return;
+
+        const touch = e.type === 'touchmove' ? e.touches[0] : e;
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+
+        // If we've moved more than 5px, it's a real drag, close popup
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            const popup = document.getElementById('ai-chat-popup');
+            if (popup && popup.classList.contains('visible')) {
+                toggleAIPopup(false);
+            }
+        }
+
+        e.stopPropagation();
+        if (e.cancelable) e.preventDefault();
+
+        const newBottom = Math.max(16, Math.min(window.innerHeight - 80, initialBottom - deltaY));
+        const newRight = Math.max(16, Math.min(window.innerWidth - 80, initialRight - deltaX));
+
+        bubble.style.bottom = `${newBottom}px`;
+        bubble.style.right = `${newRight}px`;
+
+        db.aiBubblePosition = { bottom: newBottom, right: newRight };
+    };
+
+    const endDrag = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        e.stopPropagation();
+
+        bubble.style.transition = 'bottom 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), right 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        saveData();
+
+        const dragDuration = Date.now() - dragStartTime;
+        if (dragDuration < 200) {
+            toggleAIPopup();
+        }
+    };
+
+    bubble.querySelector('#ai-bubble-button').addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', endDrag);
+
+    bubble.querySelector('#ai-bubble-button').addEventListener('touchstart', startDrag, { passive: false });
+    document.addEventListener('touchmove', doDrag, { passive: false });
+    document.addEventListener('touchend', endDrag);
+
+    // Stop propagation on popup to prevent global swipe-to-close or other gestures
+    popupEl.addEventListener('touchstart', (e) => {
+        // If we are touching a scrollable area, don't stop propagation to the extent that it breaks scrolling
+        // but DO stop it from reaching the bubble's drag handlers
+        e.stopPropagation();
+    }, { passive: true });
+
+    popupEl.addEventListener('touchmove', (e) => {
+        e.stopPropagation();
+    }, { passive: true });
+
+    popupEl.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+    });
+
+    // Handle clicks inside popup to prevent bubbling to the bubble-toggle
+    popupEl.addEventListener('mousedown', e => e.stopPropagation());
+    popupEl.addEventListener('mousemove', e => e.stopPropagation());
+    popupEl.addEventListener('mouseup', e => e.stopPropagation());
+
     aiBubbleInitialized = true;
 }
 
-function toggleAIBubble() {
-    if (!aiBubbleInitialized) initAIFloatingBubble();
+// Ensure it initializes on load
+setTimeout(initAIFloatingBubble, 1000);
 
-    const chat = document.getElementById('ai-bubble-chat');
-    const button = document.getElementById('ai-bubble-button');
+function toggleAIPopup(forceState, view = 'chat') {
+    const popup = document.getElementById('ai-chat-popup');
+    if (!popup) return;
 
-    if (aiBubbleExpanded) {
-        chat.style.display = 'none';
-        button.style.display = 'flex';
-        aiBubbleExpanded = false;
+    const isVisible = popup.classList.contains('visible');
+    const targetState = forceState !== undefined ? forceState : !isVisible;
+
+    if (targetState) {
+        popup.classList.remove('hidden');
+        setTimeout(() => popup.classList.add('visible'), 10);
+        haptic(40);
+
+        // If it's a fresh open and no session, start one
+        if (!window.activeChatSession && view === 'chat') {
+            startNewChatInPopup();
+        } else {
+            renderAIPopupContent(view);
+        }
     } else {
-        haptic(30);
-        chat.style.display = 'flex';
-        renderAIBubbleMessages();
-        setTimeout(() => {
-            const input = document.getElementById('ai-bubble-input');
-            if (input) input.focus();
-        }, 100);
-        aiBubbleExpanded = true;
+        popup.classList.remove('visible');
+        setTimeout(() => popup.classList.add('hidden'), 400);
     }
 }
 
-function renderAIBubbleMessages() {
-    const container = document.getElementById('ai-bubble-messages');
+function renderAIPopupContent(view, data = null) {
+    const container = document.getElementById('ai-popup-content-area');
+    const footer = document.getElementById('ai-popup-footer');
     if (!container) return;
 
-    if (db.chatHistory.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:40px 20px;color:var(--md-outline);">
-                <span class="material-symbols-rounded" style="font-size:48px;margin-bottom:16px;display:block;">smart_toy</span>
-                <div style="font-size:16px;font-weight:500;margin-bottom:8px;">Hi! I'm your AI Assistant</div>
-                <div style="font-size:13px;">Ask me about your portfolio, goals, or investment strategies.</div>
-            </div>`;
-        return;
+    if (view === 'history') {
+        footer.style.display = 'none';
+        let html = '<div style="font-weight:600; margin-bottom:12px; opacity:0.7; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Past Sessions</div>';
+        db.chatSessions.forEach((sess, idx) => {
+            const date = new Date(sess.date).toLocaleDateString();
+            html += `
+                <div class="history-item-popup" onclick="loadChatSessionInPopup(${idx})">
+                    <div style="font-weight:600; font-size:14px; color:var(--md-on-surface);">${escapeHtml(sess.title)}</div>
+                    <div style="font-size:11px; opacity:0.6; margin-top:4px;">${date} • ${sess.messages.length} messages</div>
+                </div>
+            `;
+        });
+        if (db.chatSessions.length === 0) {
+            html += '<div style="text-align:center; padding:40px 20px; opacity:0.5; font-size:13px;">No history yet. Start a new conversation!</div>';
+        }
+        container.innerHTML = html;
+    } else if (view === 'report') {
+        footer.style.display = 'none';
+        container.innerHTML = data || '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data.</div>';
+    } else {
+        footer.style.display = 'block';
+        container.innerHTML = '<div id="ai-popup-messages" style="display:flex; flex-direction:column;"></div>';
+        renderPopupMessages();
     }
-
-    container.innerHTML = db.chatHistory.map(m => {
-        const content = m.role === 'ai' ? formatAIResponse(m.content) : escapeHtml(m.content);
-        const className = m.role === 'ai' ? 'ai-msg' : 'user-msg';
-        return `<div class="${className}">${content}</div>`;
-    }).join('');
-
-    container.scrollTop = container.scrollHeight;
 }
 
-async function sendAIBubbleMessage() {
-    const input = document.getElementById('ai-bubble-input');
-    const msg = input.value.trim();
-    if (!msg) return;
+function renderPopupMessages() {
+    const msgContainer = document.getElementById('ai-popup-messages');
+    if (!msgContainer) return;
 
-    if (!db.geminiKey && !db.groqKey) {
-        showSnackbar("Add API key in Settings → AI", "key");
+    if (!window.activeChatSession) {
+        msgContainer.innerHTML = '<div style="text-align:center; padding:40px 20px; opacity:0.5; font-size:13px;">Ask your Wealth Assistant anything about your portfolio!</div>';
         return;
     }
 
-    // Add user message
-    db.chatHistory.push({ role: 'user', content: msg });
+    let html = '';
+    window.activeChatSession.messages.forEach(msg => {
+        html += `<div class="ai-msg ${msg.role === 'user' ? 'user' : 'bot'}">${formatAIResponse(msg.content)}</div>`;
+    });
+    msgContainer.innerHTML = html;
+
+    // Scroll to bottom
+    const body = document.getElementById('ai-popup-body');
+    if (body) body.scrollTop = body.scrollHeight;
+}
+
+function startNewChatInPopup() {
+    saveChatSession(); // Save current if any
+    activeChatSession = { id: generateUniqueId(), date: new Date().toISOString(), title: "New Conversation", messages: [] };
+    renderAIPopupContent('chat');
+    haptic(30);
+    document.getElementById('ai-popup-input')?.focus();
+}
+
+function loadChatSessionInPopup(idx) {
+    saveChatSession(); // Save current
+    activeChatSession = JSON.parse(JSON.stringify(db.chatSessions[idx]));
+    renderAIPopupContent('chat');
+    haptic(30);
+}
+
+async function sendAIChatInPopup() {
+    const input = document.getElementById('ai-popup-input');
+    if (!input || !input.value.trim()) return;
+
+    const text = input.value.trim();
     input.value = '';
-    renderAIBubbleMessages();
+    haptic(40);
+
+    if (!activeChatSession) {
+        activeChatSession = { id: generateUniqueId(), date: new Date().toISOString(), title: text.substring(0, 30), messages: [] };
+    }
+
+    activeChatSession.messages.push({ role: 'user', content: text });
+    renderPopupMessages();
 
     // Show typing
-    const container = document.getElementById('ai-bubble-messages');
-    const typingId = 'typing-' + Date.now();
-    container.innerHTML += `<div class="ai-msg" id="${typingId}">
-        <div id="ai-bubble-typing"><span></span><span></span><span></span></div>
-    </div>`;
-    container.scrollTop = container.scrollHeight;
+    const msgContainer = document.getElementById('ai-popup-messages');
+    const typing = document.createElement('div');
+    typing.className = 'ai-msg bot';
+    typing.innerHTML = '<span class="ai-loading-icon material-symbols-rounded" style="font-size:18px;">autorenew</span> thinking...';
+    msgContainer.appendChild(typing);
 
-    // Build context-rich prompt
-    const historyStr = db.chatHistory.slice(-6).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
-    const portfolioData = JSON.stringify(currentTypeTotals);
-    const goalsData = JSON.stringify(db.goals.map(g => ({ name: g.name, target: g.target, saved: g.saved })));
-    const sipData = JSON.stringify(db.recurring.map(r => ({ type: r.type, amount: r.amount })));
-
-    const prompt = `You are a personal financial advisor analyzing this user's portfolio.
-
-USER FINANCIAL DATA:
-- Net Worth: ₹${formatInr(currentTotalNW)}
-- Monthly Investment: ₹${formatInr(currentAvgMonthly)}
-- Portfolio Breakdown: ${portfolioData}
-- Financial Goals: ${goalsData}
-- Active SIPs: ${sipData}
-
-Recent conversation:
-${historyStr}
-
-User's new question: "${msg}"
-
-Provide a helpful, specific response using their actual financial data. 
-You can use these special formats:
-- Tables: | Header | Header | with | separators
-- Progress: [PROGRESS: 75% Goal Progress]
-- Charts: [CHART: bar data="10000,20000,30000" labels="Jan,Feb,Mar"]
-- Callouts: [!TIP] for tips, [!WARNING] for warnings, [!INFO] for info
-
-Keep it concise (2-3 paragraphs max) and actionable.`;
+    const body = document.getElementById('ai-popup-body');
+    if (body) body.scrollTop = body.scrollHeight;
 
     try {
-        const reply = await callAIApi(prompt, "You are a concise financial advisor. Use visual elements when helpful.");
-        document.getElementById(typingId).remove();
-        db.chatHistory.push({ role: 'ai', content: reply });
-        saveData();
-        renderAIBubbleMessages();
-        haptic([30, 50]);
+        const context = `User Portfolio: ${JSON.stringify({ nw: currentTotalNW, allocation: currentTypeTotals, targets: db.allocTargets })}. 
+        Recent Investments: ${JSON.stringify(db.investments.slice(-10))}.
+        History: ${JSON.stringify(activeChatSession.messages.slice(-5))}.`;
+
+        const response = await callAIApi(text, "You are a personalized wealth assistant. Keep responses helpful and concise. Use simple HTML for formatting.");
+
+        msgContainer.removeChild(typing);
+        activeChatSession.messages.push({ role: 'assistant', content: response });
+
+        if (activeChatSession.title === "New Conversation") {
+            activeChatSession.title = text.substring(0, 25) + (text.length > 25 ? '...' : '');
+        }
+
+        renderPopupMessages();
+        saveChatSession(); // Auto-save after each message
     } catch (e) {
-        document.getElementById(typingId).innerHTML = 'Sorry, I had trouble connecting. Check your API keys in Settings.';
+        msgContainer.removeChild(typing);
+        showSnackbar("AI thinking failed. Check API keys.", "error");
     }
 }
 
-function sendBubbleQuick(text) {
-    const input = document.getElementById('ai-bubble-input');
-    input.value = text;
-    sendAIBubbleMessage();
-}
+window.toggleAIPopup = toggleAIPopup;
+window.renderAIPopupContent = renderAIPopupContent;
+window.startNewChatInPopup = startNewChatInPopup;
+window.loadChatSessionInPopup = loadChatSessionInPopup;
+window.sendAIChatInPopup = sendAIChatInPopup;
 
-function viewChatHistoryFromBubble() {
-    toggleAIBubble(); // Close bubble
-    viewChatHistory(); // Open history sheet
-}
 
-// Initialize bubble on app load
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initAIFloatingBubble, 2000);
-}, { once: true });
-
-window.toggleAIBubble = toggleAIBubble;
-window.sendAIBubbleMessage = sendAIBubbleMessage;
-window.sendBubbleQuick = sendBubbleQuick;
-window.viewChatHistoryFromBubble = viewChatHistoryFromBubble;
 
 function updateChatHistoryUI() {
     let html = "";
@@ -2170,6 +2273,14 @@ async function fetchAIPrediction() {
 }
 
 function openAIPredictSheet() {
+    closeOverlays();
+    window.activeChatSession = {
+        id: 'forecast_' + Date.now(),
+        title: 'Predictive Wealth Forecasting',
+        messages: [{ role: 'assistant', content: 'Generating your predictive wealth forecast...' }],
+        type: 'forecast'
+    };
+    toggleAIPopup(true, 'report');
     generateAIForecast();
 }
 
@@ -2178,9 +2289,12 @@ function openAIPredictSheet() {
 async function generateAIForecast() {
     haptic(30);
     if (!db.geminiKey && !db.groqKey) { showSnackbar('Add API Key in Settings', 'key'); return; }
-    openSubSheet('ai-predict-sheet');
-    let content = document.getElementById('ai-predict-sheet-content');
-    content.innerHTML = `<div style="padding:24px;text-align:center;color:var(--md-primary);"><span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span><div style="margin-top:12px;font-size:14px;">Generating category-wise forecast...</div></div>`;
+
+    renderAIPopupContent('report', `
+        <div style="padding:24px;text-align:center;color:var(--md-primary);">
+            <span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span>
+            <div style="margin-top:12px;font-size:14px;">Generating category-wise forecast...</div>
+        </div>`);
 
     // Build category monthly data (last 3 months per category)
     let now = new Date(); let catMonthly = {};
@@ -2230,29 +2344,29 @@ async function generateAIForecast() {
                     </div>`;
         });
         html += `</div>`;
-        content.innerHTML = html;
+        renderAIPopupContent('report', html);
     } catch (e) {
-        content.innerHTML = `<div style="padding:16px;color:var(--md-error);text-align:center;">Failed to generate prediction. Check API keys.</div>`;
+        renderAIPopupContent('report', `<div style="padding:16px;color:var(--md-error);text-align:center;">Failed to generate prediction. Check API keys.</div>`);
     }
 }
 
 async function openWealthBlueprint() {
-    haptic(40);
-    openSubSheet('wealth-blueprint-sheet');
+    closeOverlays();
+    window.activeChatSession = { id: 'report_' + Date.now(), title: 'Wealth Blueprint', messages: [], type: 'report' };
+    toggleAIPopup(true, 'report');
     generateWealthBlueprint();
 }
 
 async function generateWealthBlueprint() {
     if (!db.geminiKey && !db.groqKey) {
-        document.getElementById('wealth-blueprint-content').innerHTML = `<div style="padding:40px;text-align:center;color:var(--md-error);">Add API Key in Settings to generate Wealth Blueprint.</div>`;
+        renderAIPopupContent('report', `<div style="padding:40px;text-align:center;color:var(--md-error);">Add API Key in Settings to generate Wealth Blueprint.</div>`);
         return;
     }
 
-    let container = document.getElementById('wealth-blueprint-content');
-    container.innerHTML = `<div style="padding:40px; text-align:center;">
+    renderAIPopupContent('report', `<div style="padding:40px; text-align:center;">
         <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px; color:var(--md-primary);">psychology</span>
         <div style="margin-top:16px; font-weight:500;">Drafting your personalized wealth strategy...</div>
-    </div>`;
+    </div>`);
 
     let portfolioData = {
         totalNetWorth: currentTotalNW,
@@ -2281,9 +2395,9 @@ async function generateWealthBlueprint() {
 
     try {
         let report = await callAIApi(prompt, "You are a master of financial aesthetics. Use clean HTML/CSS.");
-        container.innerHTML = report;
+        renderAIPopupContent('report', report);
     } catch (e) {
-        container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--md-error);">Failed to generate blueprint. Check connection.</div>`;
+        renderAIPopupContent('report', `<div style="padding:40px;text-align:center;color:var(--md-error);">Failed to generate blueprint. Check connection.</div>`);
     }
 }
 
@@ -2329,24 +2443,13 @@ async function askAIEngine(context) {
         return;
     }
 
-    const aiContainer = document.getElementById('ai-response-container');
-    const chartSection = document.getElementById('ai-report-charts');
-
-    // UI Loading State with contextual labels
-    let loadingLabel = "Analyzing Data...";
-    if (context === 'full_report') loadingLabel = "Conducting Strategic Wealth Audit...";
-    if (context === 'allocation') loadingLabel = "Analyzing Asset Distribution & Risk...";
-    if (context === 'ledger') loadingLabel = "Auditing Behavioral Spending Habits...";
-
-    aiContainer.innerHTML = `
+    toggleAIPopup(true);
+    renderAIPopupContent('report', `
         <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
             <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
             <div style="margin-top:16px; font-weight:500; font-family:'Google Sans';">${loadingLabel}</div>
             <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
-        </div>`;
-
-    if (chartSection) chartSection.style.display = 'none';
-    openSubSheet('ai-sheet');
+        </div>`);
 
     // 1. DATA PREP (Shared Context)
     const now = new Date();
@@ -2459,15 +2562,10 @@ async function askAIEngine(context) {
 
     try {
         const response = await callAIApi(promptBase, "You are a top-tier Financial AI. Your responses are deep, informative, and strategically superior.");
-        aiContainer.innerHTML = formatAIResponse(response);
-
-        if ((context === 'full_report' || context === 'allocation') && chartSection) {
-            chartSection.style.display = 'flex';
-            renderAIReportCharts(payload.allocation);
-        }
+        renderAIPopupContent('report', formatAIResponse(response));
         haptic([30, 50]);
     } catch (e) {
         console.error("AI Engine Error:", e);
-        aiContainer.innerHTML = `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`;
+        renderAIPopupContent('report', `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`);
     }
 }

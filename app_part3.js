@@ -125,22 +125,19 @@ async function downloadAIReport() {
         console.error("PDF Generation failed:", error);
         showSnackbar("Export failed. Try again.", "error");
     } finally {
-        // Restore original styles but respect if the sheet was closed in the meantime
-        const isStillActive = element.classList.contains('active');
-        if (!isStillActive && !wasHidden) {
-            // User closed it during generation - don't force display back to original if it was 'block'
-            element.style.visibility = originalStyles.visibility;
-            element.style.position = originalStyles.position;
-            element.style.zIndex = originalStyles.zIndex;
-            // Keep display as is (likely 'block' from CSS, but transform/bottom handles it)
-        } else {
-            Object.assign(element.style, originalStyles);
+        // Restore original styles strictly
+        element.style.visibility = originalStyles.visibility || '';
+        element.style.position = originalStyles.position || '';
+        element.style.zIndex = originalStyles.zIndex || '';
+        element.style.display = originalStyles.display || '';
+        
+        // If the sheet was closed while generating, ensure it stays closed
+        if (!element.classList.contains('active')) {
+            element.style.display = 'none';
+            element.style.visibility = 'hidden';
         }
         
-        // Ensure no capturing visibility artifacts remain
-        if (wasHidden && !isStillActive) {
-            element.style.display = 'none';
-        }
+        console.log("PDF Generation Cleanup Complete");
     }
 }
 
@@ -1398,7 +1395,12 @@ function updateAdvisorWidget() {
     const advisorCard = document.getElementById('advisor-card');
     if (!advisorText || !advisorCard) return;
 
-    // Always show the advisor card now with the enhanced health display
+    // Hide legacy advisor card if unified bubble is enabled to reduce front-page complexity
+    if (db.aiBubbleEnabled) {
+        advisorCard.style.display = 'none';
+        return;
+    }
+
     advisorCard.style.display = 'block';
     
     let html = `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">

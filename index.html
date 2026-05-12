@@ -187,32 +187,6 @@
                     style="font-size:16px;color:var(--md-outline);">swipe</span></div>
 
             <div class="widget-carousel">
-                <div class="carousel-card md-primary-container" style="border:none; cursor:pointer;"
-                    onclick="openAIPredictSheet()">
-                    <div
-                        style="font-size:13px; font-weight:600; color:var(--md-on-primary-container); margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                        <span class="material-symbols-rounded" style="font-size:18px;">psychology</span> AI Wealth
-                        Forecast
-                    </div>
-                    <div id="ai-predict-text-dashboard"
-                        style="font-size:12px; line-height:1.4; color:var(--md-on-primary-container); opacity:0.9;">
-                        Analyzing portfolio efficiency and growth...
-                    </div>
-                </div>
-
-                <div class="carousel-card"
-                    style="background:var(--md-secondary-container); color:var(--md-on-secondary-container); border:none; cursor:pointer;"
-                    onclick="openWealthBlueprint()">
-                    <div
-                        style="font-size:13px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
-                        <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Wealth
-                        Blueprint
-                    </div>
-                    <div style="font-size:12px; line-height:1.4; opacity:0.9;">
-                        Generate full wealth audit & future strategy...
-                    </div>
-                </div>
-
                 <div class="carousel-card" onclick="openMonthDetails('tax')">
                     <div class="tax-header">80C Status <span id="tax-val"
                             style="font-size:12px; color:var(--md-on-surface);">0 / 1.5L</span></div>
@@ -254,35 +228,7 @@
                 <div id="advisor-text"></div>
             </div>
 
-            <!-- Premium AI Widget -->
-            <div class="ai-widget md-primary-container"
-                style="margin-bottom:24px; cursor:pointer; padding:24px; border-radius:28px; position:relative; overflow:hidden; box-shadow:var(--md-elevation-2);"
-                onclick="openAIChat()">
-                <div
-                    style="position:absolute; top:-30%; right:-10%; width:150px; height:150px; background:var(--md-primary); opacity:0.15; border-radius:50%; filter:blur(40px);">
-                </div>
-                <div
-                    style="display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1;">
-                    <div style="display:flex; align-items:center; gap:20px;">
-                        <div
-                            style="background:var(--md-primary); color:var(--md-on-primary); width:56px; height:56px; border-radius:20px; display:flex; align-items:center; justify-content:center; box-shadow: 0 8px 16px rgba(var(--md-primary-rgb), 0.2);">
-                            <span class="material-symbols-rounded" style="font-size:32px;">magic_button</span>
-                        </div>
-                        <div>
-                            <div
-                                style="font-weight:700; font-size:18px; color:var(--md-on-primary-container); letter-spacing:-0.02em;">
-                                AI Wealth Engine</div>
-                            <div
-                                style="font-size:13px; opacity:0.85; color:var(--md-on-primary-container); margin-top:2px;">
-                                Advanced portfolio analysis & insights</div>
-                        </div>
-                    </div>
-                    <div
-                        style="background:var(--md-primary); color:var(--md-on-primary); width:32px; height:32px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                        <span class="material-symbols-rounded" style="font-size:18px;">arrow_forward</span>
-                    </div>
-                </div>
-            </div>
+
             <div class="md-card" style="margin-bottom:24px; cursor:pointer;" onclick="openDividendSheet()">
                 <div
                     style="font-size:14px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;color:var(--md-primary);">
@@ -315,9 +261,6 @@
 
             <div class="section-title">
                 Portfolio Breakdown
-                <button class="ai-widget-mini" onclick="askAIEngine('full_report')">
-                    <span class="material-symbols-rounded">analytics</span> Full AI Report
-                </button>
             </div>
 
             <div class="portfolio-grid" id="portfolio-grid"></div>
@@ -338,9 +281,7 @@
         </div>
 
         <div id="tab-ledger" class="tab-content">
-            <div class="section-title">Investment Ledger <button class="ai-widget-mini"
-                    onclick="askAIEngine('ledger')"><span class="material-symbols-rounded"
-                        style="font-size:14px;">auto_awesome</span> AI Habits</button></div>
+            <div class="section-title">Investment Ledger</div>
 
             <!-- Ledger insights bar -->
             <div class="insights-bar" id="ledger-insights-bar">
@@ -749,9 +690,15 @@
                 <div class="input-container"><label>App Lock PIN (4 digits)</label><input type="password" id="settings-pin" class="md-input" placeholder="Set PIN" maxlength="4"></div>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; gap:12px;">
                     <button class="btn-primary" style="flex:1;" onclick="savePin()">Set PIN</button>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <label class="switch"><input type="checkbox" id="use-biometric-toggle" onchange="toggleBiometric()"><span class="slider"></span></label>
-                        <span style="font-size:12px;">Biometric</span>
+                    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <label class="switch"><input type="checkbox" id="use-biometric-toggle" onchange="toggleBiometric()"><span class="slider"></span></label>
+                            <span style="font-size:12px;">Biometric</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                            <label class="switch"><input type="checkbox" id="ai-bubble-toggle" onchange="toggleAIBubbleVisibility()"><span class="slider"></span></label>
+                            <span style="font-size:12px;">AI Assistant Bubble</span>
+                        </div>
                     </div>
                 </div>
 
@@ -906,34 +853,8 @@
         <button class="btn-primary" style="margin-top:12px;" onclick="syncHistoricalSIP()">Generate History</button>
     </div>
 
-    <div class="sheet sub-sheet" id="ai-sheet" style="max-height:85vh; background: var(--md-surface-container);">
-        <div class="drag-handle"></div>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h3 class="sheet-title" style="margin:0;"><span class="material-symbols-rounded"
-                    style="color:var(--md-primary);">auto_awesome</span> AI Report</h3>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button class="ai-widget-mini"
-                    style="background:var(--md-secondary-container); color:var(--md-on-secondary-container);"
-                    onclick="downloadAIReport()"><span class="material-symbols-rounded"
-                        style="font-size:16px;">download</span> PDF</button>
-                <button class="icon-btn" onclick="closeSubSheet()"><span
-                        class="material-symbols-rounded">close</span></button>
-            </div>
-        </div>
+    <!-- AI sheet consolidated in bubble popup -->
 
-        <div style="overflow-y: auto; overflow-x: hidden; padding: 0 16px 40px 16px; flex-grow: 1;">
-
-            <div id="ai-report-charts"
-                style="display:none; flex-direction:row; gap:8px; margin-bottom:16px;overflow-y: auto;">
-                <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
-                        id="aiChartPie" height="120"></canvas></div>
-                <div style="flex:1; background:var(--md-surface); padding:12px; border-radius:16px;"><canvas
-                        id="aiChartBar" height="120"></canvas></div>
-            </div>
-
-            <div id="ai-response-container" class="ai-md" style="overflow-y:auto; padding-bottom:24px;"></div>
-        </div>
-    </div>
 
     <div class="sheet sub-sheet" id="month-sheet" style="max-height:85vh;">
         <div class="drag-handle"></div>
@@ -1121,94 +1042,8 @@
         <div id="inf-result" style="margin-top:16px;font-weight:500;text-align:center;"></div>
     </div>
 
-    <div class="sheet sub-sheet" id="ai-chat-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
-        <div class="drag-handle"></div>
-        <div class="sheet-title"
-            style="margin-bottom: 12px; flex-shrink: 0; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
-                    style="color:var(--md-primary);">psychology</span> AI Assistant</div>
-            <div style="display:flex;gap:8px;align-items:center;">
-                <button class="ai-widget-mini"
-                    style="background:var(--md-surface-container-highest);color:var(--md-on-surface);"
-                    onclick="viewChatHistory()"><span class="material-symbols-rounded"
-                        style="font-size:16px;">history</span></button>
-                <button class="ai-widget-mini" onclick="saveChatSession()"><span class="material-symbols-rounded"
-                        style="font-size:16px;">add</span> New</button>
-                <button class="icon-btn" onclick="closeSubSheet()"><span
-                        class="material-symbols-rounded">close</span></button>
-            </div>
-        </div>
-        <div class="ai-chat-log" id="ai-chat-log"></div>
-        <div class="ai-quick-chips"
-            style="display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;scrollbar-width:none;">
-            <button class="md-chip"
-                onclick="document.getElementById('ai-chat-input').value='Analyze my portfolio diversification';sendAIChat()">Portfolio
-                Analysis</button>
-            <button class="md-chip"
-                onclick="document.getElementById('ai-chat-input').value='Am I on track for my FIRE goal?';sendAIChat()">FIRE
-                Check</button>
-            <button class="md-chip"
-                onclick="document.getElementById('ai-chat-input').value='How can I optimize my SIPs?';sendAIChat()">SIP
-                Optimization</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-            <input type="text" id="ai-chat-input" class="search-box" style="margin:0;flex:1;"
-                placeholder="Ask me anything..." onkeypress="if(event.key==='Enter')sendAIChat()">
-            <button class="icon-btn" style="background:var(--md-primary);color:var(--md-on-primary);"
-                onclick="sendAIChat()"><span class="material-symbols-rounded">send</span></button>
-        </div>
-    </div>
+    <!-- AI sub-sheets consolidated in bubble popup -->
 
-    <div class="sheet sub-sheet" id="chat-history-sheet" style="max-height:85vh;">
-        <div class="drag-handle"></div>
-        <h3 class="sheet-title">
-            <span style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">history</span>
-                Past Sessions</span>
-            <button class="icon-btn" onclick="closeSubSheet()"><span
-                    class="material-symbols-rounded">close</span></button>
-        </h3>
-        <div id="chat-history-list" class="list" style="overflow-y:auto;padding-bottom:20px;"></div>
-    </div>
-
-    <!-- Wealth Blueprint Sheet -->
-    <div class="sheet sub-sheet" id="wealth-blueprint-sheet"
-        style="max-height:90vh; display:flex; flex-direction:column;">
-        <div class="drag-handle"></div>
-        <div class="sheet-title" style="margin-bottom: 12px; flex-shrink: 0;">
-            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
-                    style="color:var(--md-primary);">auto_awesome</span> Wealth Blueprint</div>
-            <button class="icon-btn" onclick="closeSubSheet()"><span
-                    class="material-symbols-rounded">close</span></button>
-        </div>
-        <div id="wealth-blueprint-content" class="scroll-y" style="flex:1; padding:16px; padding-bottom:32px;">
-            <div style="padding:40px; text-align:center;">
-                <span class="material-symbols-rounded ai-loading-icon"
-                    style="font-size:48px; color:var(--md-primary);">psychology</span>
-                <div style="margin-top:16px; font-weight:500;">Drafting your personalized wealth strategy...</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Next Month Prediction Sheet -->
-    <div class="sheet sub-sheet" id="ai-predict-sheet" style="max-height:90vh;">
-        <div class="drag-handle"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 style="margin:0;font-size:20px;font-weight:500;display:flex;align-items:center;gap:8px;">
-                <span class="material-symbols-rounded" style="color:var(--md-primary);">psychology</span> Next Month AI
-                Forecast
-            </h3>
-            <button class="icon-btn" onclick="closeSubSheet()"><span
-                    class="material-symbols-rounded">close</span></button>
-        </div>
-        <p style="font-size:13px;color:var(--md-on-surface-variant);margin-bottom:16px;">Category-wise AI prediction
-            based on your investment history and patterns.</p>
-        <div id="ai-predict-sheet-content" style="display:flex;flex-direction:column;gap:12px;">
-            <div style="padding:24px;text-align:center;color:var(--md-primary);">
-                <span class="material-symbols-rounded ai-loading-icon" style="font-size:32px;">autorenew</span>
-                <div style="margin-top:12px;font-size:14px;">Analyzing your investment patterns...</div>
-            </div>
-        </div>
-    </div>
 
     <div class="sheet sub-sheet" id="dividend-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
         <div class="drag-handle"></div>
