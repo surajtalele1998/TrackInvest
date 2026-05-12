@@ -4,10 +4,10 @@ window.activeChatSession = null;
 function saveInvestment() {
     haptic(40);
     
-    // Show loading state
-    const saveBtn = document.getElementById('inv-save-btn');
+    // Show loading state - find the save button in the invest sheet
+    const saveBtn = document.querySelector('#invest-sheet button[onclick="saveInvestment()"]');
     if (saveBtn) {
-        setButtonLoading('inv-save-btn', true);
+        setButtonLoading(saveBtn, true);
     }
     
     // Get and validate all form inputs
@@ -225,7 +225,7 @@ function saveInvestment() {
         });
         
         // Reset button state
-        if (saveBtn) setButtonLoading('inv-save-btn', false);
+        if (saveBtn) setButtonLoading(saveBtn, false);
         return false; // Explicitly return false to prevent save
     }
 
@@ -1455,10 +1455,18 @@ function toggleAIBubble() {
     haptic(30);
     db.aiBubbleEnabled = !db.aiBubbleEnabled;
     saveData();
-    const bubble = document.getElementById('ai-floating-bubble');
-    if (bubble) {
-        bubble.style.display = db.aiBubbleEnabled ? 'flex' : 'none';
+    
+    if (db.aiBubbleEnabled) {
+        // Initialize or show the bubble
+        initAIFloatingBubble();
+    } else {
+        // Hide the bubble
+        const bubble = document.getElementById('ai-floating-bubble');
+        if (bubble) {
+            bubble.style.display = 'none';
+        }
     }
+    
     const toggle = document.getElementById('ai-bubble-toggle');
     if (toggle) toggle.checked = db.aiBubbleEnabled;
     showSnackbar(db.aiBubbleEnabled ? "AI Assistant Enabled" : "AI Assistant Disabled");
@@ -2610,9 +2618,11 @@ function saveChatSession() {
 function initAIFloatingBubble() {
     const existingBubble = document.getElementById('ai-floating-bubble');
     if (existingBubble) {
-        if (db.aiBubbleEnabled) existingBubble.style.display = 'flex';
-        else existingBubble.style.display = 'none';
-        return;
+        // Cleanup existing event listeners before removing
+        if (existingBubble._cleanupListeners) {
+            existingBubble._cleanupListeners();
+        }
+        existingBubble.remove();
     }
 
     if (!db.aiBubbleEnabled) return;
@@ -2701,9 +2711,9 @@ function initAIFloatingBubble() {
 
         #ai-chat-popup {
             width: 340px;
-            max-width: 90vw;
+            max-width: 95vw;
             height: 480px;
-            max-height: 70vh;
+            max-height: 80vh;
             touch-action: pan-y;
             background: var(--md-surface);
             border-radius: 28px;
@@ -2717,6 +2727,31 @@ function initAIFloatingBubble() {
             pointer-events: none;
             transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             transform-origin: bottom right;
+            /* Dynamic positioning based on bubble location */
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+        }
+        
+        /* Mobile-specific popup adjustments */
+        @media (max-width: 480px) {
+            #ai-chat-popup {
+                width: 100vw;
+                max-width: 100vw;
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+                bottom: 0;
+                right: 0;
+                transform-origin: bottom center;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            #ai-chat-popup {
+                height: 90vh;
+                max-height: 90vh;
+            }
         }
         #ai-chat-popup.visible {
             opacity: 1;
@@ -2906,19 +2941,28 @@ function initAIFloatingBubble() {
         const viewportHeight = window.innerHeight;
         const viewportWidth = window.innerWidth;
         const bubbleSize = 60; // Approximate bubble size
+        const safeArea = {
+            top: window.safeAreaInsets?.top || 0,
+            bottom: window.safeAreaInsets?.bottom || 0,
+            left: window.safeAreaInsets?.left || 0,
+            right: window.safeAreaInsets?.right || 0
+        };
 
         // Calculate new position with boundaries
         let newBottom = initialBottom - deltaY;
         let newRight = initialRight - deltaX;
 
-        // Apply boundaries (keep bubble within viewport)
-        newBottom = Math.max(10, Math.min(viewportHeight - bubbleSize - 10, newBottom));
-        newRight = Math.max(10, Math.min(viewportWidth - bubbleSize - 10, newRight));
+        // Apply boundaries (keep bubble within viewport and safe areas)
+        newBottom = Math.max(safeArea.bottom + 10, Math.min(viewportHeight - bubbleSize - safeArea.top - 10, newBottom));
+        newRight = Math.max(safeArea.right + 10, Math.min(viewportWidth - bubbleSize - safeArea.left - 10, newRight));
 
         bubble.style.bottom = `${newBottom}px`;
         bubble.style.right = `${newRight}px`;
 
         db.aiBubblePosition = { bottom: newBottom, right: newRight };
+        
+        // Update popup position dynamically based on bubble position
+        updatePopupPosition(newBottom, newRight, viewportWidth, viewportHeight);
     };
 
     const endDrag = (e) => {
@@ -2974,12 +3018,27 @@ function initAIFloatingBubble() {
         bubbleButton.addEventListener('touchstart', startDrag, { passive: false });
     }
     
+    // Store event listeners for cleanup
+    const cleanupListeners = () => {
+        if (bubbleButton) {
+            bubbleButton.removeEventListener('mousedown', startDrag);
+            bubbleButton.removeEventListener('touchstart', startDrag);
+        }
+        document.removeEventListener('mousemove', doDrag);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', doDrag, { passive: false, capture: true });
+        document.removeEventListener('touchend', endDrag, { capture: true });
+    };
+    
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', endDrag);
     
     // Use capture phase for touch events to ensure they're handled before other elements
     document.addEventListener('touchmove', doDrag, { passive: false, capture: true });
     document.addEventListener('touchend', endDrag, { capture: true });
+    
+    // Store cleanup function on the bubble element for later use
+    bubble._cleanupListeners = cleanupListeners;
 
     // Stop propagation on popup to prevent global swipe-to-close or other gestures
     popupEl.addEventListener('touchstart', (e) => {
@@ -2996,6 +3055,60 @@ function initAIFloatingBubble() {
         e.stopPropagation();
     });
 
+    // Dynamic popup positioning based on bubble location
+    const updatePopupPosition = (bubbleBottom, bubbleRight, viewportWidth, viewportHeight) => {
+        const popup = document.getElementById('ai-chat-popup');
+        if (!popup) return;
+        
+        const isMobile = viewportWidth <= 480;
+        const popupWidth = isMobile ? viewportWidth : 340;
+        const popupHeight = isMobile ? viewportHeight : 480;
+        
+        if (isMobile) {
+            // On mobile, popup takes full screen
+            popup.style.bottom = '0';
+            popup.style.right = '0';
+            popup.style.width = '100vw';
+            popup.style.height = '100vh';
+            popup.style.borderRadius = '0';
+            popup.style.transformOrigin = 'bottom center';
+        } else {
+            // On desktop, position popup intelligently based on bubble position
+            let popupBottom = bubbleBottom + 70; // Position above bubble
+            let popupRight = bubbleRight;
+            let transformOrigin = 'bottom right';
+            
+            // Adjust if popup would go off top of screen
+            if (popupBottom + popupHeight > viewportHeight) {
+                popupBottom = Math.max(10, viewportHeight - popupHeight - 10);
+                transformOrigin = 'center right';
+            }
+            
+            // Adjust if popup would go off right of screen
+            if (popupRight + popupWidth > viewportWidth) {
+                popupRight = Math.max(10, viewportWidth - popupWidth - 10);
+                transformOrigin = transformOrigin.replace('right', 'left');
+            }
+            
+            // Adjust if popup would go off left of screen
+            if (popupRight < 10) {
+                popupRight = 10;
+                transformOrigin = transformOrigin.replace('left', 'right');
+            }
+            
+            popup.style.bottom = `${popupBottom}px`;
+            popup.style.right = `${popupRight}px`;
+            popup.style.width = `${popupWidth}px`;
+            popup.style.height = `${popupHeight}px`;
+            popup.style.borderRadius = '28px';
+            popup.style.transformOrigin = transformOrigin;
+        }
+    };
+
+    // Initialize popup position and make function globally accessible
+    window.updateAIPopupPosition = updatePopupPosition;
+    updatePopupPosition(pos.bottom, pos.right, window.innerWidth, window.innerHeight);
+    
     // Handle clicks inside popup to prevent bubbling to the bubble-toggle
     popupEl.addEventListener('mousedown', e => e.stopPropagation());
     popupEl.addEventListener('mousemove', e => e.stopPropagation());
@@ -3019,6 +3132,11 @@ function toggleAIPopup(forceState, view = 'chat') {
         setTimeout(() => popup.classList.add('visible'), 10);
         haptic(40);
 
+        // Update popup position when opening
+        if (window.updateAIPopupPosition && db.aiBubblePosition) {
+            window.updateAIPopupPosition(db.aiBubblePosition.bottom, db.aiBubblePosition.right, window.innerWidth, window.innerHeight);
+        }
+
         // If it's a fresh open and no session, start one
         if (!window.activeChatSession && view === 'chat') {
             startNewChatInPopup();
@@ -3028,6 +3146,11 @@ function toggleAIPopup(forceState, view = 'chat') {
     } else {
         popup.classList.remove('visible');
         setTimeout(() => popup.classList.add('hidden'), 400);
+        
+        // Clear active chat session when closing popup
+        if (window.activeChatSession) {
+            window.activeChatSession = null;
+        }
     }
 }
 

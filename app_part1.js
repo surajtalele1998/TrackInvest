@@ -338,36 +338,8 @@ style.textContent = `
         width: 300px; height: 300px;
     }
     
-    .quick-actions-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        z-index: 1000;
-        animation: slideUp 0.3s ease-out;
-    }
-    
     /* Mobile-specific optimizations */
     @media (max-width: 768px) {
-        .quick-actions-container {
-            bottom: 16px;
-            right: 16px;
-            gap: 6px;
-        }
-        
-        .quick-action-btn {
-            padding: 10px 12px;
-            border-radius: 20px;
-            min-width: 120px;
-            font-size: 13px;
-        }
-        
-        .quick-action-label {
-            font-size: 12px;
-        }
-        
         .sheet {
             max-width: 95vw;
             margin: 0 auto;
@@ -430,33 +402,6 @@ style.textContent = `
             padding: 8px 16px;
             font-size: 14px;
         }
-    }
-    
-    .quick-action-btn {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 12px 16px;
-        border: none;
-        border-radius: 24px;
-        color: white;
-        font-size: 14px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: transform 0.2s ease-out;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        min-width: 140px;
-        justify-content: flex-start;
-    }
-    
-    .quick-action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    }
-    
-    .quick-action-label {
-        font-size: 13px;
-        font-weight: 500;
     }
     
     .input-error {
@@ -609,7 +554,6 @@ function installPWA() {
 // Initialize mobile optimizations and PWA features
 document.addEventListener('DOMContentLoaded', () => {
     optimizeForMobile();
-    setTimeout(addQuickActions, 1000);
     registerServiceWorker();
     installPWA();
 });
@@ -893,6 +837,16 @@ function closeOverlays(fromPopState = false) {
         });
     }
     
+    // Also close AI bubble popup if open
+    const aiPopup = document.getElementById('ai-chat-popup');
+    if (aiPopup && aiPopup.classList.contains('visible')) {
+        aiPopup.classList.remove('visible');
+        setTimeout(() => aiPopup.classList.add('hidden'), 400);
+        if (window.activeChatSession) {
+            window.activeChatSession = null;
+        }
+    }
+    
     // Reset edit states
     editInvId = null; 
     editGoalId = null;
@@ -914,7 +868,7 @@ function closeOverlays(fromPopState = false) {
     }
 
     // Reset sheet-state tracking. Standalone callers (saveInvestment, saveGoal,
-    // exportData, handlePopState, etc.) close all sheets but don't reopen one
+    // exportData, handlePopState, popstate, etc.) close all sheets but don't reopen one
     // afterwards; without this, closeSubSheet would later persist a stale
     // activeMain to sessionStorage and reopen a closed sheet on next load.
     activeSub = null;
@@ -1249,78 +1203,6 @@ function getSmartDefaults() {
         sipDay: suggestedSipDay,
         account: db.accounts?.[0] || 'Main Portfolio'
     };
-}
-
-// Quick action buttons for common tasks
-function addQuickActions() {
-    const quickActions = [
-        {
-            icon: 'add_circle',
-            label: 'Quick Investment',
-            action: () => {
-                const defaults = getSmartDefaults();
-                openInvestSheet();
-                setTimeout(() => {
-                    const dateField = document.getElementById('inv-date');
-                    const amtField = document.getElementById('inv-amt');
-                    const typeField = document.getElementById('inv-type');
-                    
-                    if (dateField) dateField.value = defaults.date;
-                    if (amtField) amtField.value = defaults.amount;
-                    if (typeField) typeField.value = defaults.type;
-                }, 200);
-            },
-            color: 'var(--md-primary)'
-        },
-        {
-            icon: 'trending_up',
-            label: 'Add SIP',
-            action: () => {
-                openInvestSheet();
-                setTimeout(() => {
-                    document.getElementById('inv-is-monthly').checked = true;
-                    const defaults = getSmartDefaults();
-                    document.getElementById('inv-sip-day').value = defaults.sipDay;
-                }, 200);
-            },
-            color: 'var(--md-success)'
-        },
-        {
-            icon: 'analytics',
-            label: 'View Report',
-            action: () => {
-                if (typeof generateAIReport === 'function') {
-                    generateAIReport();
-                }
-            },
-            color: 'var(--md-tertiary)'
-        },
-        {
-            icon: 'settings',
-            label: 'Quick Settings',
-            action: () => openSettings(),
-            color: 'var(--md-secondary-container)'
-        }
-    ];
-    
-    // Create floating action buttons
-    const actionContainer = document.createElement('div');
-    actionContainer.id = 'quick-actions';
-    actionContainer.className = 'quick-actions-container';
-    actionContainer.innerHTML = quickActions.map(action => `
-        <button class="quick-action-btn btn-ripple hover-lift" 
-                style="background: ${action.color};"
-                onclick="(${action.action})()"
-                aria-label="${action.label}">
-            <span class="material-symbols-rounded">${action.icon}</span>
-            <span class="quick-action-label">${action.label}</span>
-        </button>
-    `).join('');
-    
-    // Add to page if not exists
-    if (!document.getElementById('quick-actions')) {
-        document.body.appendChild(actionContainer);
-    }
 }
 
 function showShortcutsHelp() {
