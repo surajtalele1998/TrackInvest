@@ -819,10 +819,71 @@ function deleteCategory(name) {
 }
 
 // savePin() defined in app_part1.js (removed weaker duplicate)
-function toggleBiometric() {
-    db.useBiometric = document.getElementById('use-biometric-toggle').checked;
+async function toggleBiometric() {
+    const toggle = document.getElementById('use-biometric-toggle');
+    if (toggle.checked) {
+        const success = await registerBiometric();
+        if (!success) {
+            toggle.checked = false;
+            db.useBiometric = false;
+            showSnackbar("Biometric registration failed. Please try again.", "error");
+        } else {
+            db.useBiometric = true;
+            showSnackbar("Biometric Enabled Successfully");
+        }
+    } else {
+        db.useBiometric = false;
+        db.biometricCredentialId = null;
+        showSnackbar("Biometric Disabled");
+    }
     saveData();
-    showSnackbar(db.useBiometric ? "Biometric Enabled" : "Biometric Disabled");
+}
+
+async function registerBiometric() {
+    if (!window.PublicKeyCredential) return false;
+    
+    // Check if platform authenticator is available
+    const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+    if (!available) {
+        showSnackbar("Platform biometric not available", "warning");
+        return false;
+    }
+
+    try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        const userId = new Uint8Array(16);
+        window.crypto.getRandomValues(userId);
+
+        const cred = await navigator.credentials.create({
+            publicKey: {
+                challenge,
+                rp: { name: "TrackInvest" },
+                user: {
+                    id: userId,
+                    name: "user@trackinvest",
+                    displayName: "TrackInvest User"
+                },
+                pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+                authenticatorSelection: {
+                    authenticatorAttachment: "platform",
+                    userVerification: "required",
+                    residentKey: "preferred"
+                },
+                timeout: 60000
+            }
+        });
+
+        if (cred) {
+            // Store rawId as base64
+            db.biometricCredentialId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+            return true;
+        }
+    } catch (e) {
+        console.error("Biometric registration error:", e);
+        return false;
+    }
+    return false;
 }
 
 window.toggleAIBubbleVisibility = toggleAIBubbleVisibility;
@@ -885,17 +946,34 @@ async function checkAppLock() {
 window.checkAppLock = checkAppLock;
 
 async function attemptBiometricAuth() {
+    if (!db.biometricCredentialId || !window.PublicKeyCredential) return false;
+
     try {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+        
+        // Convert base64 back to Uint8Array
+        const rawIdStr = atob(db.biometricCredentialId);
+        const rawId = new Uint8Array(rawIdStr.length);
+        for (let i = 0; i < rawIdStr.length; i++) {
+            rawId[i] = rawIdStr.charCodeAt(i);
+        }
+
         const cred = await navigator.credentials.get({
             publicKey: {
-                challenge: new Uint8Array(32),
-                timeout: 30000,
-                allowCredentials: [],
-                userVerification: 'required'
+                challenge,
+                allowCredentials: [{
+                    id: rawId,
+                    type: 'public-key'
+                }],
+                userVerification: 'required',
+                timeout: 30000
             }
         });
         return !!cred;
     } catch (e) {
+        console.error("Biometric auth error:", e);
+        // If it's a specific error like NotFoundError, it might mean the credential was deleted from device
         return false;
     }
 }

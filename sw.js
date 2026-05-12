@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v59';
+const CACHE_NAME = 'invest-pro-v60';
 
 const CORE_ASSETS = [
     './',
