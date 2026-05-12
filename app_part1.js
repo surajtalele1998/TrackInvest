@@ -149,6 +149,11 @@ Object.keys(db.categories).forEach(cat => {
     }
 });
 let activeCategory = null, activeAccountFilter = 'All';
+// Tracks which sheet (and sub-sheet) is currently open so closeSubSheet can
+// restore the underlying main sheet to sessionStorage. Previously these were
+// implicit globals, which (a) tripped strict mode and (b) meant that early
+// reads (e.g. from initUI on reload) returned `undefined` instead of `null`.
+let activeMain = null, activeSub = null;
 let currentTotalNW = 0, currentAvgMonthly = 0, currentTypeTotals = {};
 let currentTax80c = 0;
 let chartMonthsRange = 3;
@@ -907,6 +912,13 @@ function closeOverlays(fromPopState = false) {
             console.warn('History navigation failed:', e);
         }
     }
+
+    // Reset sheet-state tracking. Standalone callers (saveInvestment, saveGoal,
+    // exportData, handlePopState, etc.) close all sheets but don't reopen one
+    // afterwards; without this, closeSubSheet would later persist a stale
+    // activeMain to sessionStorage and reopen a closed sheet on next load.
+    activeSub = null;
+    activeMain = null;
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
