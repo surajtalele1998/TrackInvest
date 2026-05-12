@@ -239,11 +239,16 @@ function processRecurring() {
     db.recurring.forEach(rec => {
         let nextDate = parseDate(rec.nextRun); let maxSafety = 24;
         let missedMonths = 0;
+        // Preserve the user's intended day-of-month so a 31st-day SIP doesn't
+        // drift to the 1st of the next month after passing through February.
+        const intendedDay = nextDate.getDate();
         while (nextDate <= today && maxSafety > 0) {
             db.investments.push({
                 id: generateUniqueId(), date: getLocalYYYYMMDD(nextDate), type: rec.type, amount: rec.amount, note: rec.note + ' (Auto)', tags: rec.tags || '', isDividend: false, account: rec.account || db.accounts[0]
             });
-            nextDate.setMonth(nextDate.getMonth() + 1); rec.nextRun = getLocalYYYYMMDD(nextDate); updated = true; maxSafety--; processedCount++; missedMonths++;
+            nextDate = advanceMonth(nextDate, intendedDay);
+            rec.nextRun = getLocalYYYYMMDD(nextDate);
+            updated = true; maxSafety--; processedCount++; missedMonths++;
         }
         // Warn user if multiple months were processed at once
         if (missedMonths > 1) {
@@ -257,88 +262,11 @@ function processRecurring() {
 }
 
 // ==========================================
-// 9. OPTIMIZED MASTER RENDER ENGINE
+// 9. MASTER RENDER SECTIONS
 // ==========================================
-let renderInProgress = false;
-let renderQueue = [];
-let lastRenderTime = 0;
-
-// Debounce utility function
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-// Debounced render to prevent excessive calls
-const debouncedRenderAll = debounce(() => {
-    if (renderInProgress) {
-        renderQueue.push('full');
-        return;
-    }
-    
-    renderInProgress = true;
-    const startTime = performance.now();
-    
-    try {
-        performOptimizedRender();
-    } catch (error) {
-        console.error('Render error:', error);
-        showSnackbar('Render failed', 'error');
-    } finally {
-        renderInProgress = false;
-        lastRenderTime = startTime;
-        
-        // Process queued renders
-        if (renderQueue.length > 0) {
-            const nextRender = renderQueue.shift();
-            setTimeout(() => debouncedRenderAll(), 16); // Next frame
-        }
-    }
-}, 100); // 100ms debounce
-
-function performOptimizedRender() {
-    // Only update changed sections
-    const changes = detectRenderChanges();
-    if (changes.dividend) updateDividendTotals();
-    if (changes.accountFilter) updateAccountFilter();
-    if (changes.portfolio) updatePortfolioCalculations();
-    if (changes.dashboard) updateDashboardElements();
-    if (changes.goals) updateGoalsSection();
-    if (changes.history) updateHistorySection();
-}
-
-function detectRenderChanges() {
-    const now = Date.now();
-    const changes = {
-        dividend: false,
-        accountFilter: false,
-        portfolio: false,
-        dashboard: false,
-        goals: false,
-        history: false
-    };
-    
-    // Check if enough time has passed for full render
-    if (now - lastRenderTime < 1000) {
-        return changes; // Skip if rendered recently
-    }
-    
-    // Always update critical data on full render
-    changes.dividend = true;
-    changes.portfolio = true;
-    changes.dashboard = true;
-    changes.goals = true;
-    changes.history = true;
-    
-    return changes;
-}
+// renderAll() (below) is the master entry point. The section helpers here
+// (updateDividendTotals, updateAccountFilter, updatePortfolioCalculations)
+// are also exposed individually for callers that only need a partial refresh.
 
 function updateDividendTotals() {
     let dividendTotal = db.investments.filter(i => i.isDividend && !(db.categories[i.type]?.excludeDividend)).reduce((s, i) => s + i.amount, 0);
@@ -797,6 +725,16 @@ function updatePortfolioCalculations() {
     let pCircle = document.getElementById('progress-circle'); if (pCircle) pCircle.style.strokeDashoffset = 188.4 * (1 - pct / 100);
 
     renderQuickAddChips(); updateRebalanceBadge(); autoBackupReminder();
+}
+
+// Master render entry point. Earlier refactors split the monolithic renderer
+// into updateDividendTotals/updateAccountFilter/updatePortfolioCalculations
+// but left the renderAll() callers and the window alias dangling, which broke
+// the entire app on load. This wrapper restores the original behavior.
+function renderAll() {
+    if (typeof updateAccountFilter === 'function') updateAccountFilter();
+    if (typeof updateDividendTotals === 'function') updateDividendTotals();
+    if (typeof updatePortfolioCalculations === 'function') updatePortfolioCalculations();
 }
 window.renderAll = renderAll;
 window.getEmptyStateHTML = getEmptyStateHTML;
