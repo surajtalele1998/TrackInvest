@@ -886,7 +886,21 @@ async function registerBiometric() {
     return false;
 }
 
-window.toggleAIBubbleVisibility = toggleAIBubbleVisibility;
+function toggleAIBubble() {
+    haptic(30);
+    db.aiBubbleEnabled = !db.aiBubbleEnabled;
+    saveData();
+    const bubble = document.getElementById('ai-floating-bubble');
+    if (bubble) {
+        bubble.style.display = db.aiBubbleEnabled ? 'flex' : 'none';
+    }
+    const toggle = document.getElementById('ai-bubble-toggle');
+    if (toggle) toggle.checked = db.aiBubbleEnabled;
+    showSnackbar(db.aiBubbleEnabled ? "AI Assistant Enabled" : "AI Assistant Disabled");
+}
+window.toggleAIBubble = toggleAIBubble;
+window.toggleAIBubbleVisibility = toggleAIBubble; // Preserved in case of legacy HTML references
+
 // App Lock System with Biometric, PIN fallback, rate limiting, and auto-lock
 let appLockState = {
     failedAttempts: 0,
