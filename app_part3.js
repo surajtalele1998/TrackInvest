@@ -120,16 +120,27 @@ async function downloadAIReport() {
         });
         
         pdf.save(opt.filename);
-        
-        // Restore original styles
-        Object.assign(element.style, originalStyles);
-        
         showSnackbar("PDF Downloaded!", "check_circle");
     } catch (error) {
         console.error("PDF Generation failed:", error);
-        // Restore styles on error
-        Object.assign(element.style, originalStyles);
         showSnackbar("Export failed. Try again.", "error");
+    } finally {
+        // Restore original styles but respect if the sheet was closed in the meantime
+        const isStillActive = element.classList.contains('active');
+        if (!isStillActive && !wasHidden) {
+            // User closed it during generation - don't force display back to original if it was 'block'
+            element.style.visibility = originalStyles.visibility;
+            element.style.position = originalStyles.position;
+            element.style.zIndex = originalStyles.zIndex;
+            // Keep display as is (likely 'block' from CSS, but transform/bottom handles it)
+        } else {
+            Object.assign(element.style, originalStyles);
+        }
+        
+        // Ensure no capturing visibility artifacts remain
+        if (wasHidden && !isStillActive) {
+            element.style.display = 'none';
+        }
     }
 }
 

@@ -884,22 +884,45 @@ function initUI() {
 
 // --- Mobile Swipe to Close Sheets ---
 let touchStartY = 0;
+let touchStartX = 0;
+let canSwipeClose = false;
+
 document.addEventListener('touchstart', e => {
+    const activeSheet = document.querySelector('.sheet.active');
+    if (!activeSheet) {
+        canSwipeClose = false;
+        return;
+    }
+    
     touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+    
+    // Only allow swipe-to-close if we are at the very top of the sheet content
+    // and the touch started on the drag-handle or top area
+    const isAtTop = activeSheet.scrollTop <= 0;
+    const isTopArea = (touchStartY - activeSheet.getBoundingClientRect().top) < 100;
+    
+    canSwipeClose = isAtTop && isTopArea;
 }, { passive: true });
 
 document.addEventListener('touchmove', e => {
+    if (!canSwipeClose) return;
+
     const touchY = e.touches[0].clientY;
-    const diff = touchY - touchStartY;
+    const touchX = e.touches[0].clientX;
+    const diffY = touchY - touchStartY;
+    const diffX = touchX - touchStartX;
     const activeSheet = document.querySelector('.sheet.active');
 
-    if (activeSheet && diff > 100 && activeSheet.scrollTop <= 0) {
-        // Drag down to close
+    // Threshold: 100px downward, and primarily vertical (at least 2x vertical vs horizontal)
+    if (activeSheet && diffY > 100 && Math.abs(diffY) > Math.abs(diffX) * 2) {
+        haptic(10);
         if (activeSheet.classList.contains('sub-sheet')) {
             closeSubSheet();
         } else {
             closeOverlays();
         }
+        canSwipeClose = false; // Prevent double trigger
     }
 }, { passive: true });
 
