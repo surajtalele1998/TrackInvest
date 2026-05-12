@@ -239,11 +239,16 @@ function processRecurring() {
     db.recurring.forEach(rec => {
         let nextDate = parseDate(rec.nextRun); let maxSafety = 24;
         let missedMonths = 0;
+        // Preserve the user's intended day-of-month so a 31st-day SIP doesn't
+        // drift to the 1st of the next month after passing through February.
+        const intendedDay = nextDate.getDate();
         while (nextDate <= today && maxSafety > 0) {
             db.investments.push({
                 id: generateUniqueId(), date: getLocalYYYYMMDD(nextDate), type: rec.type, amount: rec.amount, note: rec.note + ' (Auto)', tags: rec.tags || '', isDividend: false, account: rec.account || db.accounts[0]
             });
-            nextDate.setMonth(nextDate.getMonth() + 1); rec.nextRun = getLocalYYYYMMDD(nextDate); updated = true; maxSafety--; processedCount++; missedMonths++;
+            nextDate = advanceMonth(nextDate, intendedDay);
+            rec.nextRun = getLocalYYYYMMDD(nextDate);
+            updated = true; maxSafety--; processedCount++; missedMonths++;
         }
         // Warn user if multiple months were processed at once
         if (missedMonths > 1) {
@@ -797,6 +802,16 @@ function updatePortfolioCalculations() {
     let pCircle = document.getElementById('progress-circle'); if (pCircle) pCircle.style.strokeDashoffset = 188.4 * (1 - pct / 100);
 
     renderQuickAddChips(); updateRebalanceBadge(); autoBackupReminder();
+}
+
+// Master render entry point. Earlier refactors split the monolithic renderer
+// into updateDividendTotals/updateAccountFilter/updatePortfolioCalculations
+// but left the renderAll() callers and the window alias dangling, which broke
+// the entire app on load. This wrapper restores the original behavior.
+function renderAll() {
+    if (typeof updateAccountFilter === 'function') updateAccountFilter();
+    if (typeof updateDividendTotals === 'function') updateDividendTotals();
+    if (typeof updatePortfolioCalculations === 'function') updatePortfolioCalculations();
 }
 window.renderAll = renderAll;
 window.getEmptyStateHTML = getEmptyStateHTML;
