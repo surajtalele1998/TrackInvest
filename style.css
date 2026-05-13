@@ -143,6 +143,7 @@ body {
     scrollbar-width: thin;
     scrollbar-color: var(--md-outline-variant) transparent;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 .scroll-y::-webkit-scrollbar {
     width: 4px;
@@ -1575,13 +1576,17 @@ input[type=range]::-webkit-slider-runnable-track {
     margin: 0 auto;
     max-width: 600px;
     background: var(--md-surface-container-low);
-    border-radius: 28px 28px 0 0;
+    backdrop-filter: blur(20px);
+    border-radius: 32px 32px 0 0;
     padding: 24px;
-    transition: 0.4s cubic-bezier(0.2, 0, 0, 1);
+    transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.1);
     z-index: 30;
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
     display: block;
+    overscroll-behavior: contain;
+    box-shadow: 0 -12px 48px rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 .sheet.active {
@@ -1594,13 +1599,8 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 @keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 .ai-loading-icon {
@@ -1609,24 +1609,25 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 .drag-handle {
-    width: 32px;
-    height: 4px;
+    width: 40px;
+    height: 5px;
     background: var(--md-outline);
-    opacity: 0.4;
-    border-radius: 2px;
-    margin: 0 auto 24px auto;
+    opacity: 0.3;
+    border-radius: 10px;
+    margin: -8px auto 20px auto;
     flex-shrink: 0;
 }
 
 .sheet-title {
     margin: 0 0 24px 0;
-    font-size: 22px;
-    font-weight: 400;
+    font-size: 24px;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: space-between;
     color: var(--md-on-surface);
     flex-shrink: 0;
+    letter-spacing: -0.5px;
 }
 
 .input-container {

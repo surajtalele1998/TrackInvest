@@ -374,6 +374,7 @@
             <button class="icon-btn" onclick="closeOverlays()"><span
                     class="material-symbols-rounded">close</span></button>
         </div>
+        <div class="scroll-y" style="flex:1; padding-bottom:20px;">
         <div id="recurring-total-display"
             style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:13px;font-weight:500;">Monthly Auto-SIP Total</span>
@@ -383,12 +384,14 @@
         <button class="btn-primary" onclick="openInvestSheet(); closeOverlays();" style="margin-top:8px;">
             <span class="material-symbols-rounded">add</span> Add New SIP
         </button>
+        </div>
     </div>
 
     <div class="sheet" id="invest-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" id="invest-sheet-title">Log Investment</h3>
 
+        <div class="scroll-y" style="flex:1; padding-bottom:20px;">
         <div class="quick-chips" id="type-chips"></div>
 
         <div class="input-row">
@@ -530,6 +533,7 @@
             <button class="btn-secondary" onclick="deleteInvestment()" id="del-inv-btn"
                 style="display:none;color:var(--md-error);border-color:var(--md-error);flex:0.4;">Delete</button>
             <button class="btn-primary" onclick="saveInvestment()" style="flex:1;">Save Entry</button>
+        </div>
         </div>
     </div>
 

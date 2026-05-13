@@ -3,13 +3,13 @@ window.activeChatSession = null;
 
 function saveInvestment() {
     haptic(40);
-    
+
     // Show loading state - find the save button in the invest sheet
     const saveBtn = document.querySelector('#invest-sheet button[onclick="saveInvestment()"]');
     if (saveBtn) {
         setButtonLoading(saveBtn, true);
     }
-    
+
     // Get and validate all form inputs
     const formInputs = {
         date: document.getElementById('inv-date')?.value || '',
@@ -33,7 +33,7 @@ function saveInvestment() {
         investMode: document.getElementById('inv-mode')?.value || '',
         sipDay: parseInt(document.getElementById('inv-sip-day')?.value) || null
     };
-    
+
     // Add input field animations
     Object.keys(formInputs).forEach(key => {
         const element = document.getElementById(`inv-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`);
@@ -42,7 +42,7 @@ function saveInvestment() {
             setTimeout(() => element.classList.remove('input-focused'), 300);
         }
     });
-    
+
     // Sanitize text inputs
     const sanitizedInputs = {
         ...formInputs,
@@ -52,13 +52,13 @@ function saveInvestment() {
         broker: sanitizeText(formInputs.broker),
         acc: sanitizeText(formInputs.acc)
     };
-    
+
     let { date, amt, note, tags, subCat, broker, growth, isDiv, acc, matDate, intRate, initialPayment, isTemplate, isRecurring, units, mfCode, isMonthlyContrib, payoutType, investMode, sipDay } = sanitizedInputs;
 
     // Enhanced validation with field-specific error messages and visual feedback
     const validationErrors = [];
     const errorFields = [];
-    
+
     if (!date || isNaN(amt)) {
         validationErrors.push("Date and Amount required");
         errorFields.push('inv-date', 'inv-amt');
@@ -67,17 +67,17 @@ function saveInvestment() {
             validationErrors.push("Amount must be greater than zero");
             errorFields.push('inv-amt');
         }
-        
+
         if (units !== null && units <= 0) {
             validationErrors.push("Units must be greater than zero");
             errorFields.push('inv-qty');
         }
-        
+
         if (intRate !== null && (intRate < 0 || intRate > 25)) {
             validationErrors.push("Interest rate must be between 0% and 25%");
             errorFields.push('inv-interest');
         }
-        
+
         if (matDate && date) {
             let matD = new Date(matDate);
             let invD = new Date(date);
@@ -93,7 +93,7 @@ function saveInvestment() {
                 }
             }
         }
-        
+
         if (initialPayment !== null && initialPayment <= 0) {
             validationErrors.push("Initial payment must be greater than zero");
             errorFields.push('inv-initial-payment');
@@ -115,7 +115,7 @@ function saveInvestment() {
             }
         }
     }
-    
+
     // ENHANCED BUSINESS LOGIC VALIDATION
     // Investment amount validation based on type
     const investmentLimits = {
@@ -132,7 +132,7 @@ function saveInvestment() {
     };
 
     const limits = investmentLimits[currentInvType] || { min: 1, max: 10000000, warning: 1000000 };
-    
+
     if (amt < limits.min) {
         validationErrors.push(`${currentInvType} minimum amount is ${formatMoney(limits.min)}`);
         errorFields.push('inv-amt');
@@ -179,11 +179,11 @@ function saveInvestment() {
         // Clear previous error states
         document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
         document.querySelectorAll('.error-message').forEach(el => el.remove());
-        
+
         // Show errors with visual feedback
         validationErrors.forEach((error, index) => {
             showSnackbar(error, "error");
-            
+
             // Highlight error fields with security checks
             if (errorFields[index]) {
                 const field = document.getElementById(errorFields[index]);
@@ -191,18 +191,18 @@ function saveInvestment() {
                     // Prevent XSS through field attributes
                     field.classList.add('input-error');
                     field.focus();
-                    
+
                     // Add inline error message with sanitization
                     const errorMsg = document.createElement('div');
                     errorMsg.className = 'error-message';
                     errorMsg.textContent = error;
                     errorMsg.style.cssText = 'color: var(--md-error); font-size: 12px; margin-top: 4px;';
-                    
+
                     // Securely append error message
                     if (field.parentNode && field.parentNode.appendChild) {
                         field.parentNode.appendChild(errorMsg);
                     }
-                    
+
                     // Remove error state on input with validation
                     field.addEventListener('input', function removeError() {
                         field.classList.remove('input-error');
@@ -212,7 +212,7 @@ function saveInvestment() {
                         }
                         field.removeEventListener('input', removeError);
                     }, { once: true });
-                    
+
                     // Prevent form submission if validation fails
                     field.addEventListener('keydown', function preventSubmit(e) {
                         if (e.key === 'Enter') {
@@ -223,7 +223,7 @@ function saveInvestment() {
                 }
             }
         });
-        
+
         // Reset button state
         if (saveBtn) setButtonLoading(saveBtn, false);
         return false; // Explicitly return false to prevent save
@@ -373,8 +373,8 @@ function buildUnifiedItemHTML(inv) {
     return `
             <div class="swipe-wrapper" data-id="${inv.id}">
                 <div class="swipe-bg">
-                    <div class="left-action"><span class="material-symbols-rounded">edit</span> Edit</div>
-                    <div class="right-action">Delete <span class="material-symbols-rounded">delete</span></div>
+                    <div class="left-action"><span class="material-symbols-rounded">edit</span></div>
+                    <div class="right-action"><span class="material-symbols-rounded">delete</span></div>
                 </div>
                 <div class="unified-item front" onclick="openInvestSheet(${inv.id})">
                     <div class="unified-icon" style="background:${meta.color};"><span class="material-symbols-rounded">${meta.icon}</span></div>
@@ -573,283 +573,122 @@ window.attachSwipeListeners = attachSwipeListeners;
 window.getEmptyStateHTML = getEmptyStateHTML;
 
 function attachSwipeListeners(cE) {
-    if (!cE) return; 
-    
-    // Mobile-optimized gesture state management
+    if (!cE) return;
+
     let gestureState = {
-        startX: 0, 
-        startY: 0, 
-        currentX: 0, 
-        activeItem: null, 
-        isSwiping: false, 
-        hapticTriggered: false, 
-        touchStartTime: 0,
-        touchId: null,
-        velocityX: 0,
-        lastX: 0,
-        lastTime: 0,
-        longPressTimer: null,
-        isLongPress: false
+        startX: 0,
+        startY: 0,
+        currentX: 0,
+        activeItem: null,
+        isSwiping: false,
+        hapticTriggered: false,
+        touchId: null
     };
-    
-    // Mobile-optimized touch handling
+
     const handleTouchStart = (e) => {
-        // Prevent conflicts with AI bubble and interactive elements
-        if (e.target.closest('#ai-floating-bubble') || 
-            e.target.closest('.ai-bubble-popup') ||
-            e.target.closest('button') ||
-            e.target.closest('.quick-action-btn') ||
-            e.target.closest('input') ||
-            e.target.closest('select') ||
-            e.target.closest('textarea')) {
-            return;
-        }
-        
-        const wrapper = e.target.closest('.swipe-wrapper'); 
-        if (!wrapper) return; 
-        
-        const frontElement = wrapper.querySelector('.front'); 
-        if (!frontElement || !frontElement.hasAttribute('onclick')) return; 
-        
+        if (e.target.closest('button, input, select, textarea, .icon-btn')) return;
+
+        const wrapper = e.target.closest('.swipe-wrapper');
+        if (!wrapper) return;
+
+        const frontElement = wrapper.querySelector('.front');
+        if (!frontElement) return;
+
         const touch = e.touches[0];
         gestureState = {
-            ...gestureState,
-            startX: touch.clientX, 
+            startX: touch.clientX,
             startY: touch.clientY,
             currentX: touch.clientX,
             activeItem: frontElement,
             touchId: touch.identifier,
-            touchStartTime: Date.now(),
-            lastX: touch.clientX,
-            lastTime: Date.now(),
-            isLongPress: false,
-            longPressTimer: setTimeout(() => {
-                gestureState.isLongPress = true;
-                frontElement.style.transform = 'scale(0.95)';
-                haptic([50, 30]);
-            }, 500) // Long press after 500ms
+            isSwiping: false,
+            hapticTriggered: false
         };
-        
-        // Enhanced mobile visual feedback
-        frontElement.classList.add('swiping'); 
+
+        frontElement.classList.add('swiping');
         frontElement.style.transition = 'none';
-        frontElement.style.userSelect = 'none';
-        frontElement.style.webkitUserSelect = 'none';
-        frontElement.style.webkitTapHighlightColor = 'transparent';
-        
-        // Mobile-specific feedback
-        if ('vibrate' in navigator) {
-            navigator.vibrate(10); // Light feedback on touch start
-        }
     };
-    
+
     const handleTouchMove = (e) => {
-        if (!gestureState.activeItem || gestureState.touchId === null) return;
-        
-        // Find the touch matching our start touch
+        if (!gestureState.activeItem) return;
         const touch = Array.from(e.touches).find(t => t.identifier === gestureState.touchId);
         if (!touch) return;
-        
+
         const deltaX = touch.clientX - gestureState.startX;
         const deltaY = Math.abs(touch.clientY - gestureState.startY);
-        const currentTime = Date.now();
-        
-        // Calculate velocity for better gesture recognition
-        const timeDelta = currentTime - gestureState.lastTime;
-        if (timeDelta > 0) {
-            gestureState.velocityX = (touch.clientX - gestureState.lastX) / timeDelta;
-            gestureState.lastX = touch.clientX;
-            gestureState.lastTime = currentTime;
-        }
-        
-        // More strict vertical swipe detection
-        if (!gestureState.isSwiping && deltaY > 20) { 
+
+        if (!gestureState.isSwiping && deltaY > 15) {
             resetSwipeState();
-            return; 
-        } 
-        
-        if (Math.abs(deltaX) > 15) {
-            gestureState.isSwiping = true;
-            e.preventDefault(); // Prevent page scroll
+            return;
         }
-        
+
+        if (Math.abs(deltaX) > 10) {
+            gestureState.isSwiping = true;
+            if (e.cancelable) e.preventDefault();
+        }
+
         if (gestureState.isSwiping) {
-            // Clamp movement to reasonable bounds
             const clampedDeltaX = Math.max(-100, Math.min(100, deltaX));
-            gestureState.currentX = gestureState.startX + clampedDeltaX;
-            
+            gestureState.currentX = touch.clientX;
             gestureState.activeItem.style.transform = `translateX(${clampedDeltaX}px)`;
-            
-            // Enhanced haptic feedback based on velocity and position
+
             if (!gestureState.hapticTriggered && Math.abs(clampedDeltaX) > 50) {
-                const intensity = Math.abs(gestureState.velocityX) > 0.5 ? [40, 40] : [25, 25];
-                haptic(clampedDeltaX < 0 ? intensity : [20]);
+                haptic(15);
                 gestureState.hapticTriggered = true;
             }
         }
     };
-    
+
     const handleTouchEnd = (e) => {
         if (!gestureState.activeItem) return;
-        
-        // Clear long press timer
-        if (gestureState.longPressTimer) {
-            clearTimeout(gestureState.longPressTimer);
-            gestureState.longPressTimer = null;
-        }
-        
-        // Find the touch matching our start touch
         const touch = Array.from(e.changedTouches).find(t => t.identifier === gestureState.touchId);
-        if (!touch) return;
-        
-        const finalDeltaX = gestureState.currentX - gestureState.startX;
-        const touchDuration = Date.now() - gestureState.touchStartTime;
-        const finalVelocity = Math.abs(gestureState.velocityX);
-        
-        // Mobile-specific gesture handling
-        if (gestureState.isLongPress) {
-            // Long press action - show context menu or quick actions
-            haptic([80, 40, 80]);
-            const wrapper = gestureState.activeItem.closest('.swipe-wrapper');
-            if (wrapper) {
-                const id = parseFloat(wrapper.getAttribute('data-id'));
-                showMobileContextMenu(id, touch.clientX, touch.clientY);
-            }
+        if (!touch) {
             resetSwipeState();
             return;
         }
-        
-        resetSwipeState();
-        
-        const wrapper = gestureState.activeItem.closest('.swipe-wrapper'); 
-        if (!wrapper) return; 
-        
+
+        const finalDeltaX = touch.clientX - gestureState.startX;
+        const wrapper = gestureState.activeItem.closest('.swipe-wrapper');
         const id = parseFloat(wrapper.getAttribute('data-id'));
-        
-        // Mobile-optimized gesture recognition
-        const isValidSwipe = gestureState.isSwiping && 
-                              touchDuration < 600 && 
-                              Math.abs(finalDeltaX) > 40 &&
-                              finalVelocity > 0.1;
-        
-        if (isValidSwipe) {
-            if (finalDeltaX < -50) { 
-                haptic(50); 
-                gestureState.activeItem.style.transform = `translateX(-100%)`; 
-                setTimeout(() => { 
-                    editInvId = id; 
-                    deleteInvestment(); 
-                }, 200); 
-            } else if (finalDeltaX > 50) { 
-                haptic(30); 
-                gestureState.activeItem.style.transform = `translateX(0px)`; 
-                setTimeout(() => {
-                    openInvestSheet(id); 
-                }, 100);
-            } else { 
-                gestureState.activeItem.style.transform = `translateX(0px)`; 
+
+        if (gestureState.isSwiping) {
+            if (finalDeltaX < -60) {
+                haptic(40);
+                gestureState.activeItem.style.transition = 'transform 0.3s ease-out';
+                gestureState.activeItem.style.transform = `translateX(-100%)`;
+                setTimeout(() => { editInvId = id; deleteInvestment(); }, 200);
+            } else if (finalDeltaX > 60) {
+                haptic(20);
+                gestureState.activeItem.style.transition = 'transform 0.2s ease-out';
+                gestureState.activeItem.style.transform = `translateX(0px)`;
+                setTimeout(() => { openInvestSheet(id); }, 100);
+            } else {
+                gestureState.activeItem.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
+                gestureState.activeItem.style.transform = `translateX(0px)`;
             }
         } else {
-            // Animate back to center for invalid gestures
-            gestureState.activeItem.style.transition = 'transform 0.2s ease-out';
-            gestureState.activeItem.style.transform = `translateX(0px)`; 
+            gestureState.activeItem.style.transform = `translateX(0px)`;
         }
+
+        resetSwipeState();
     };
 
-// Mobile context menu for long press
-function showMobileContextMenu(itemId, x, y) {
-    // Remove existing context menu
-    const existing = document.getElementById('mobile-context-menu');
-    if (existing) existing.remove();
-    
-    const menu = document.createElement('div');
-    menu.id = 'mobile-context-menu';
-    menu.className = 'mobile-context-menu slide-up';
-    menu.innerHTML = `
-        <div class="mobile-context-item" onclick="editInvestmentFromContext(${itemId})">
-            <span class="material-symbols-rounded">edit</span>
-            <span>Edit</span>
-        </div>
-        <div class="mobile-context-item" onclick="duplicateInvestmentFromContext(${itemId})">
-            <span class="material-symbols-rounded">content_copy</span>
-            <span>Duplicate</span>
-        </div>
-        <div class="mobile-context-item" onclick="deleteInvestmentFromContext(${itemId})">
-            <span class="material-symbols-rounded" style="color: var(--md-error);">delete</span>
-            <span>Delete</span>
-        </div>
-        <div class="mobile-context-cancel" onclick="closeMobileContextMenu()">
-            <span>Cancel</span>
-        </div>
-    `;
-    
-    // Position menu
-    menu.style.left = Math.min(x, window.innerWidth - 250) + 'px';
-    menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
-    
-    document.body.appendChild(menu);
-    
-    // Close on outside tap
-    setTimeout(() => {
-        document.addEventListener('click', closeMobileContextMenu, { once: true });
-        document.addEventListener('touchstart', closeMobileContextMenu, { once: true });
-    }, 100);
-}
-
-function closeMobileContextMenu() {
-    const menu = document.getElementById('mobile-context-menu');
-    if (menu) {
-        menu.classList.add('fade-out');
-        setTimeout(() => menu.remove(), 200);
-    }
-}
-
-function editInvestmentFromContext(id) {
-    closeMobileContextMenu();
-    openInvestSheet(id);
-}
-
-function duplicateInvestmentFromContext(id) {
-    closeMobileContextMenu();
-    const investment = db.investments.find(i => i.id === id);
-    if (investment) {
-        // Create duplicate with new ID and today's date
-        const duplicate = {
-            ...investment,
-            id: generateUniqueId(),
-            date: new Date().toISOString().split('T')[0],
-            isDividend: false
-        };
-        db.investments.push(duplicate);
-        saveData();
-        renderAll();
-        showSnackbar('Investment duplicated', 'content_copy');
-    }
-}
-
-function deleteInvestmentFromContext(id) {
-    closeMobileContextMenu();
-    editInvId = id;
-    deleteInvestment();
-}
-    
     const resetSwipeState = () => {
         if (gestureState.activeItem) {
-            gestureState.activeItem.classList.remove('swiping'); 
-            gestureState.activeItem.style.transition = 'transform 0.3s ease';
-            gestureState.activeItem.style.userSelect = '';
-            gestureState.activeItem.style.webkitUserSelect = '';
+            gestureState.activeItem.classList.remove('swiping');
+            gestureState.activeItem.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
         }
-        
-        // Reset only the gesture-related properties
         gestureState.activeItem = null;
         gestureState.isSwiping = false;
-        gestureState.hapticTriggered = false;
         gestureState.touchId = null;
-        gestureState.velocityX = 0;
     };
-    
-    // Add mobile-specific gesture support
+
+    cE.addEventListener('touchstart', handleTouchStart, { passive: true });
+    cE.addEventListener('touchmove', handleTouchMove, { passive: false });
+    cE.addEventListener('touchend', handleTouchEnd, { passive: true });
+}
+
+// Add mobile-specific gesture support
 function addMobileGestures(container) {
     let pullToRefreshState = {
         startY: 0,
@@ -858,23 +697,23 @@ function addMobileGestures(container) {
         threshold: 80,
         maxPull: 120
     };
-    
+
     const handlePullStart = (e) => {
         if (e.target.closest('.sheet') || e.target.closest('.quick-actions-container')) return;
-        
+
         pullToRefreshState.startY = e.touches[0].clientY;
         pullToRefreshState.isPulling = true;
     };
-    
+
     const handlePullMove = (e) => {
         if (!pullToRefreshState.isPulling) return;
-        
+
         const currentY = e.touches[0].clientY;
         pullToRefreshState.pullDistance = currentY - pullToRefreshState.startY;
-        
+
         if (pullToRefreshState.pullDistance > 0 && pullToRefreshState.pullDistance < pullToRefreshState.maxPull) {
             e.preventDefault();
-            
+
             // Show pull indicator
             const indicator = document.getElementById('pull-refresh-indicator');
             if (indicator) {
@@ -883,19 +722,19 @@ function addMobileGestures(container) {
             }
         }
     };
-    
+
     const handlePullEnd = (e) => {
         if (!pullToRefreshState.isPulling) return;
-        
+
         if (pullToRefreshState.pullDistance >= pullToRefreshState.threshold) {
             // Trigger refresh
             performPullToRefresh();
         }
-        
+
         // Reset state
         pullToRefreshState.isPulling = false;
         pullToRefreshState.pullDistance = 0;
-        
+
         // Hide indicator
         const indicator = document.getElementById('pull-refresh-indicator');
         if (indicator) {
@@ -903,7 +742,7 @@ function addMobileGestures(container) {
             indicator.style.opacity = '0';
         }
     };
-    
+
     container.addEventListener('touchstart', handlePullStart, { passive: true });
     container.addEventListener('touchmove', handlePullMove, { passive: false });
     container.addEventListener('touchend', handlePullEnd, { passive: true });
@@ -912,7 +751,7 @@ function addMobileGestures(container) {
 function performPullToRefresh() {
     haptic([30, 30, 50]);
     showSnackbar('Refreshing...', 'refresh');
-    
+
     // Add visual feedback
     const indicator = document.getElementById('pull-refresh-indicator');
     if (indicator) {
@@ -921,7 +760,7 @@ function performPullToRefresh() {
             <div style="margin-top: 8px;">Refreshing...</div>
         `;
     }
-    
+
     // Refresh data
     setTimeout(() => {
         renderAll();
@@ -945,7 +784,7 @@ function hidePullRefreshIndicator() {
 // Add pull-to-refresh indicator
 function showPullRefreshIndicator() {
     if (document.getElementById('pull-refresh-indicator')) return;
-    
+
     const indicator = document.createElement('div');
     indicator.id = 'pull-refresh-indicator';
     indicator.className = 'pull-refresh-indicator';
@@ -972,22 +811,21 @@ function showPullRefreshIndicator() {
         z-index: 3000;
         opacity: 0;
     `;
-    
-    document.body.appendChild(indicator);
-}
 
-// Add event listeners with proper options
+    document.body.appendChild(indicator);
+
+    // Add event listeners with proper options
     cE.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
     cE.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
     cE.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
     cE.addEventListener('touchcancel', resetSwipeState, { passive: true, capture: true });
-    
+
     // Add mobile gestures to main content
     if (cE.id === 'ledger-history-list') {
         addMobileGestures(cE);
         showPullRefreshIndicator();
     }
-    
+
     // Cleanup function for memory management
     return () => {
         cE.removeEventListener('touchstart', handleTouchStart);
@@ -1406,7 +1244,7 @@ async function toggleBiometric() {
 
 async function registerBiometric() {
     if (!window.PublicKeyCredential) return false;
-    
+
     // Check if platform authenticator is available
     const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
     if (!available) {
@@ -1455,7 +1293,7 @@ function toggleAIBubble() {
     haptic(30);
     db.aiBubbleEnabled = !db.aiBubbleEnabled;
     saveData();
-    
+
     if (db.aiBubbleEnabled) {
         // Initialize or show the bubble
         initAIFloatingBubble();
@@ -1466,7 +1304,7 @@ function toggleAIBubble() {
             bubble.style.display = 'none';
         }
     }
-    
+
     const toggle = document.getElementById('ai-bubble-toggle');
     if (toggle) toggle.checked = db.aiBubbleEnabled;
     showSnackbar(db.aiBubbleEnabled ? "AI Assistant Enabled" : "AI Assistant Disabled");
@@ -1538,7 +1376,7 @@ async function attemptBiometricAuth() {
     try {
         const challenge = new Uint8Array(32);
         window.crypto.getRandomValues(challenge);
-        
+
         // Convert base64 back to Uint8Array
         const rawIdStr = atob(db.biometricCredentialId);
         const rawId = new Uint8Array(rawIdStr.length);
@@ -2193,15 +2031,15 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
 
                 const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
+                    headers: {
+                        'Content-Type': 'application/json',
                         'x-goog-api-key': db.geminiKey,
                         'User-Agent': 'TrackInvest/1.0'
                     },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: `${systemPrompt}\n\n${sanitizedPrompt}` }] }],
-                        generationConfig: { 
-                            temperature: 0.7, 
+                        generationConfig: {
+                            temperature: 0.7,
                             maxOutputTokens: 1000,
                             topK: 40,
                             topP: 0.95
@@ -2214,18 +2052,18 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
 
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     // Handle Gemini API specific errors
                     if (data.error) {
                         throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
                     }
-                    
+
                     responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not process that request.';
                     break;
                 } else {
                     const errorText = await getErrorMessage(res);
                     lastError = new Error(`Gemini HTTP ${res.status}: ${errorText}`);
-                    
+
                     if (attempt === maxRetries) {
                         console.warn("Gemini failed after retries:", lastError);
                     }
@@ -2233,17 +2071,17 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
             } catch (e) {
                 clearTimeout(timeoutId);
                 lastError = e;
-                
+
                 if (e.name === 'AbortError') {
                     console.warn("Gemini request timed out");
                 } else {
                     console.warn(`Gemini attempt ${attempt + 1} failed:`, e);
                 }
-                
+
                 if (attempt === maxRetries) {
                     console.warn("Gemini failed after retries:", lastError);
                 }
-                
+
                 // Exponential backoff
                 if (attempt < maxRetries) {
                     await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
@@ -2261,8 +2099,8 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
 
                 const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
                     method: 'POST',
-                    headers: { 
-                        'Authorization': `Bearer ${db.groqKey}`, 
+                    headers: {
+                        'Authorization': `Bearer ${db.groqKey}`,
                         'Content-Type': 'application/json',
                         'User-Agent': 'TrackInvest/1.0'
                     },
@@ -2279,18 +2117,18 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
 
                 if (res.ok) {
                     const data = await res.json();
-                    
+
                     // Handle Groq API specific errors
                     if (data.error) {
                         throw new Error(`Groq API Error: ${data.error.message || 'Unknown error'}`);
                     }
-                    
+
                     responseText = data.choices?.[0]?.message?.content || 'Sorry, I could not process that request.';
                     break;
                 } else {
                     const errorText = await getErrorMessage(res);
                     lastError = new Error(`Groq HTTP ${res.status}: ${errorText}`);
-                    
+
                     if (attempt === maxRetries) {
                         console.warn("Groq failed after retries:", lastError);
                     }
@@ -2298,17 +2136,17 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
             } catch (e) {
                 clearTimeout(timeoutId);
                 lastError = e;
-                
+
                 if (e.name === 'AbortError') {
                     console.warn("Groq request timed out");
                 } else {
                     console.warn(`Groq attempt ${attempt + 1} failed:`, e);
                 }
-                
+
                 if (attempt === maxRetries) {
                     console.warn("Groq failed after retries:", lastError);
                 }
-                
+
                 // Exponential backoff
                 if (attempt < maxRetries) {
                     await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
@@ -2736,21 +2574,15 @@ function initAIFloatingBubble() {
         /* Mobile-specific popup adjustments */
         @media (max-width: 480px) {
             #ai-chat-popup {
-                width: 100vw;
+                width: calc(100vw - 32px);
                 max-width: 100vw;
-                height: 100vh;
-                max-height: 100vh;
-                border-radius: 0;
-                bottom: 0;
-                right: 0;
+                height: 80vh;
+                max-height: 85vh;
+                border-radius: 28px;
+                bottom: 80px;
+                right: 16px;
                 transform-origin: bottom center;
-            }
-        }
-        
-        @media (max-height: 600px) {
-            #ai-chat-popup {
-                height: 90vh;
-                max-height: 90vh;
+                box-shadow: 0 12px 48px rgba(0,0,0,0.4);
             }
         }
         #ai-chat-popup.visible {
@@ -2960,7 +2792,7 @@ function initAIFloatingBubble() {
         bubble.style.right = `${newRight}px`;
 
         db.aiBubblePosition = { bottom: newBottom, right: newRight };
-        
+
         // Update popup position dynamically based on bubble position
         updatePopupPosition(newBottom, newRight, viewportWidth, viewportHeight);
     };
@@ -3017,7 +2849,7 @@ function initAIFloatingBubble() {
         bubbleButton.addEventListener('mousedown', startDrag);
         bubbleButton.addEventListener('touchstart', startDrag, { passive: false });
     }
-    
+
     // Store event listeners for cleanup
     const cleanupListeners = () => {
         if (bubbleButton) {
@@ -3029,14 +2861,14 @@ function initAIFloatingBubble() {
         document.removeEventListener('touchmove', doDrag, { passive: false, capture: true });
         document.removeEventListener('touchend', endDrag, { capture: true });
     };
-    
+
     document.addEventListener('mousemove', doDrag);
     document.addEventListener('mouseup', endDrag);
-    
+
     // Use capture phase for touch events to ensure they're handled before other elements
     document.addEventListener('touchmove', doDrag, { passive: false, capture: true });
     document.addEventListener('touchend', endDrag, { capture: true });
-    
+
     // Store cleanup function on the bubble element for later use
     bubble._cleanupListeners = cleanupListeners;
 
@@ -3059,11 +2891,11 @@ function initAIFloatingBubble() {
     const updatePopupPosition = (bubbleBottom, bubbleRight, viewportWidth, viewportHeight) => {
         const popup = document.getElementById('ai-chat-popup');
         if (!popup) return;
-        
+
         const isMobile = viewportWidth <= 480;
         const popupWidth = isMobile ? viewportWidth : 340;
         const popupHeight = isMobile ? viewportHeight : 480;
-        
+
         if (isMobile) {
             // On mobile, popup takes full screen
             popup.style.bottom = '0';
@@ -3077,25 +2909,25 @@ function initAIFloatingBubble() {
             let popupBottom = bubbleBottom + 70; // Position above bubble
             let popupRight = bubbleRight;
             let transformOrigin = 'bottom right';
-            
+
             // Adjust if popup would go off top of screen
             if (popupBottom + popupHeight > viewportHeight) {
                 popupBottom = Math.max(10, viewportHeight - popupHeight - 10);
                 transformOrigin = 'center right';
             }
-            
+
             // Adjust if popup would go off right of screen
             if (popupRight + popupWidth > viewportWidth) {
                 popupRight = Math.max(10, viewportWidth - popupWidth - 10);
                 transformOrigin = transformOrigin.replace('right', 'left');
             }
-            
+
             // Adjust if popup would go off left of screen
             if (popupRight < 10) {
                 popupRight = 10;
                 transformOrigin = transformOrigin.replace('left', 'right');
             }
-            
+
             popup.style.bottom = `${popupBottom}px`;
             popup.style.right = `${popupRight}px`;
             popup.style.width = `${popupWidth}px`;
@@ -3108,7 +2940,7 @@ function initAIFloatingBubble() {
     // Initialize popup position and make function globally accessible
     window.updateAIPopupPosition = updatePopupPosition;
     updatePopupPosition(pos.bottom, pos.right, window.innerWidth, window.innerHeight);
-    
+
     // Handle clicks inside popup to prevent bubbling to the bubble-toggle
     popupEl.addEventListener('mousedown', e => e.stopPropagation());
     popupEl.addEventListener('mousemove', e => e.stopPropagation());
@@ -3146,7 +2978,7 @@ function toggleAIPopup(forceState, view = 'chat') {
     } else {
         popup.classList.remove('visible');
         setTimeout(() => popup.classList.add('hidden'), 400);
-        
+
         // Clear active chat session when closing popup
         if (window.activeChatSession) {
             window.activeChatSession = null;
@@ -3207,7 +3039,7 @@ function renderPopupMessages() {
 
 function startNewChatInPopup() {
     saveChatSession(); // Save current if any
-    activeChatSession = { id: generateUniqueId(), date: new Date().toISOString(), title: "New Conversation", messages: [] };
+    window.activeChatSession = { id: generateUniqueId(), date: new Date().toISOString(), title: "New Conversation", messages: [] };
     renderAIPopupContent('chat');
     haptic(30);
     document.getElementById('ai-popup-input')?.focus();
@@ -3215,7 +3047,7 @@ function startNewChatInPopup() {
 
 function loadChatSessionInPopup(idx) {
     saveChatSession(); // Save current
-    activeChatSession = JSON.parse(JSON.stringify(db.chatSessions[idx]));
+    window.activeChatSession = JSON.parse(JSON.stringify(db.chatSessions[idx]));
     renderAIPopupContent('chat');
     haptic(30);
 }
