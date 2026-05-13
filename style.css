@@ -1563,7 +1563,7 @@ body.lock-scroll {
     opacity: 0;
     pointer-events: none;
     transition: 0.3s;
-    z-index: 40;
+    z-index: 1001;
 }
 
 .scrim-sub.active {
@@ -1596,7 +1596,7 @@ body.lock-scroll {
 }
 
 .sheet.sub-sheet {
-    z-index: 50;
+    z-index: 1002;
     background: var(--md-surface-container);
 }
 
