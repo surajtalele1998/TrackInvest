@@ -1526,12 +1526,7 @@ input[type=range]::-webkit-slider-runnable-track {
     transform: scale(0.96);
 }
 
-body.lock-scroll {
-    overflow: hidden !important;
-    height: 100vh !important;
-    position: fixed !important;
-    width: 100% !important;
-}
+
 
 .scrim {
     position: fixed;
