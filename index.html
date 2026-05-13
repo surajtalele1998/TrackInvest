@@ -212,6 +212,19 @@
                             id="fire-target">Target: 0</span></div>
                 </div>
 
+                <div class="carousel-card"
+                    style="background:var(--md-secondary-container); color:var(--md-on-secondary-container); border:none; cursor:pointer;"
+                    onclick="openWealthBlueprint()">
+                    <div
+                        style="font-size:13px; font-weight:600; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> Wealth
+                        Blueprint
+                    </div>
+                    <div style="font-size:12px; line-height:1.4; opacity:0.9;">
+                        Generate full wealth audit & future strategy...
+                    </div>
+                </div>
+
                 <div class="carousel-card">
                     <div style="font-size:13px;font-weight:500;margin-bottom:8px;" id="heatmap-month-title">Consistency
                         Calendar</div>
@@ -261,6 +274,9 @@
 
             <div class="section-title">
                 Portfolio Breakdown
+                <button class="ai-widget-mini" onclick="askAIEngine('full_report')">
+                    <span class="material-symbols-rounded">analytics</span> Full AI Report
+                </button>
             </div>
 
             <div class="portfolio-grid" id="portfolio-grid"></div>
@@ -281,7 +297,9 @@
         </div>
 
         <div id="tab-ledger" class="tab-content">
-            <div class="section-title">Investment Ledger</div>
+            <div class="section-title">Investment Ledger <button class="ai-widget-mini"
+                    onclick="askAIEngine('ledger')"><span class="material-symbols-rounded"
+                        style="font-size:14px;">auto_awesome</span> AI Habits</button></div>
 
             <!-- Ledger insights bar -->
             <div class="insights-bar" id="ledger-insights-bar">
@@ -387,7 +405,7 @@
         </div>
     </div>
 
-    <div class="sheet" id="invest-sheet">
+    <div class="sheet" id="invest-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" id="invest-sheet-title">Log Investment</h3>
 

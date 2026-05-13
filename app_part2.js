@@ -3342,6 +3342,11 @@ async function askAIEngine(context) {
         return;
     }
 
+    let loadingLabel = "Analyzing Data...";
+    if (context === 'full_report') loadingLabel = "Conducting Strategic Wealth Audit...";
+    if (context === 'allocation') loadingLabel = "Analyzing Asset Distribution & Risk...";
+    if (context === 'ledger') loadingLabel = "Auditing Behavioral Spending Habits...";
+
     toggleAIPopup(true);
     renderAIPopupContent('report', `
         <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">

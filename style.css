@@ -1578,16 +1578,19 @@ input[type=range]::-webkit-slider-runnable-track {
     padding: 24px;
     z-index: 1000;
     transform: translateY(100%);
-    transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1);
+    transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1), visibility 0s 0.4s;
     max-height: 92vh;
     overflow-y: auto;
     overscroll-behavior: contain;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
     border-top: 1px solid rgba(255,255,255,0.05);
+    visibility: hidden;
 }
 
 .sheet.active {
     transform: translateY(0);
+    visibility: visible;
+    transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1), visibility 0s 0s;
 }
 
 .sheet.sub-sheet {
