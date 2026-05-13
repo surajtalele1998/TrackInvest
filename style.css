@@ -146,14 +146,17 @@ body {
     overscroll-behavior: contain;
     touch-action: pan-y;
 }
+
 body.lock-scroll {
     overflow: hidden !important;
     touch-action: none;
     -webkit-overflow-scrolling: none;
 }
+
 .scroll-y::-webkit-scrollbar {
     width: 4px;
 }
+
 .scroll-y::-webkit-scrollbar-thumb {
     background-color: var(--md-outline-variant);
     border-radius: 10px;
@@ -1566,6 +1569,14 @@ input[type=range]::-webkit-slider-runnable-track {
     pointer-events: auto;
 }
 
+.sheet-display {
+    height: 85vh;
+    max-height: 85vh;
+    flex-direction: column;
+    overflow: hidden;
+    display: flex;
+}
+
 .sheet {
     position: fixed;
     bottom: 0;
@@ -1583,7 +1594,7 @@ input[type=range]::-webkit-slider-runnable-track {
     overflow-y: auto;
     overscroll-behavior: contain;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
-    border-top: 1px solid rgba(255,255,255,0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
     visibility: hidden;
 }
 
@@ -1599,8 +1610,13 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .ai-loading-icon {
@@ -2551,7 +2567,7 @@ input:checked+.slider:before {
 .s-tab.active {
     background: var(--md-surface) !important;
     color: var(--md-primary) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .s-tab {
@@ -2585,8 +2601,15 @@ input:checked+.slider:before {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #settings-sheet {
@@ -2605,6 +2628,7 @@ input:checked+.slider:before {
 #settings-content-scroll::-webkit-scrollbar {
     width: 4px;
 }
+
 #settings-content-scroll::-webkit-scrollbar-thumb {
     background: var(--md-surface-container-highest);
     border-radius: 10px;

@@ -393,242 +393,252 @@
                     class="material-symbols-rounded">close</span></button>
         </div>
         <div class="scroll-y" style="flex:1; padding-bottom:20px;">
-        <div id="recurring-total-display"
-            style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:13px;font-weight:500;">Monthly Auto-SIP Total</span>
-            <span style="font-size:20px;font-weight:600;" id="recurring-total-val">₹0</span>
-        </div>
-        <div id="recurring-list" style="margin-bottom:16px;"></div>
-        <button class="btn-primary" onclick="openInvestSheet(); closeOverlays();" style="margin-top:8px;">
-            <span class="material-symbols-rounded">add</span> Add New SIP
-        </button>
+            <div id="recurring-total-display"
+                style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:16px;padding:14px 18px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;font-weight:500;">Monthly Auto-SIP Total</span>
+                <span style="font-size:20px;font-weight:600;" id="recurring-total-val">₹0</span>
+            </div>
+            <div id="recurring-list" style="margin-bottom:16px;"></div>
+            <button class="btn-primary" onclick="openInvestSheet(); closeOverlays();" style="margin-top:8px;">
+                <span class="material-symbols-rounded">add</span> Add New SIP
+            </button>
         </div>
     </div>
 
-    <div class="sheet" id="invest-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet sheet-display" id="invest-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" id="invest-sheet-title">Log Investment</h3>
 
         <div class="scroll-y" style="flex:1; padding-bottom:20px;">
-        <div class="quick-chips" id="type-chips"></div>
+            <div class="quick-chips" id="type-chips"></div>
 
-        <div class="input-row">
-            <div class="input-container" style="flex:1"><label>Account</label><select id="inv-account"
-                    class="md-input"></select></div>
-            <div class="input-container" style="flex:1"><label>Date</label><input type="date" id="inv-date"
-                    class="md-input"></div>
-        </div>
-
-        <div class="input-row">
-            <div class="input-container" style="flex:1"><label>Sub-Category</label><input type="text" id="inv-subcat"
-                    class="md-input" placeholder="e.g. Flexi Cap / Tax Saver"></div>
-            <div class="input-container" style="flex:1"><label>Broker / Platform</label><input type="text"
-                    id="inv-broker" class="md-input" placeholder="e.g. Zerodha / Groww"></div>
-        </div>
-
-        <div id="dynamic-mf-search" style="display:none; flex-direction:column; gap:8px; margin-bottom:16px;">
-            <label style="font-size: 12px; color: var(--md-on-surface-variant); font-weight: 500;">Live Mutual Fund /
-                Stock Search</label>
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="inv-mf-query" class="md-input"
-                    style="flex:1; background:var(--md-surface-container-highest); padding:12px; border-radius:8px;"
-                    placeholder="Fund Name (e.g. Parag Parikh)">
-                <button class="btn-secondary"
-                    style="width:auto; padding:0 16px; border-radius:8px; border:none; background:var(--md-primary-container); color:var(--md-on-primary-container);"
-                    onclick="searchMFForLog()">Search</button>
+            <div class="input-row">
+                <div class="input-container" style="flex:1"><label>Account</label><select id="inv-account"
+                        class="md-input"></select></div>
+                <div class="input-container" style="flex:1"><label>Date</label><input type="date" id="inv-date"
+                        class="md-input"></div>
             </div>
-            <select id="inv-mf-select" class="md-input"
-                style="display:none; background:var(--md-surface-container-highest); padding:12px; border-radius:8px; width: 100%;"
-                onchange="handleMFSelectForLog(this)"></select>
-            <input type="hidden" id="inv-mf-code-hidden">
-            <input type="hidden" id="inv-units-hidden">
-        </div>
 
-        <div id="dynamic-qty-price" class="input-row" style="display:none;">
-            <div class="input-container" style="flex:1"><label>Quantity / Units</label><input type="number" id="inv-qty"
-                    class="md-input" placeholder="0" step="0.0001" oninput="calculateDynamicTotal()"></div>
-            <div class="input-container" style="flex:1"><label>Price / NAV (₹)</label><input type="number"
-                    id="inv-price" class="md-input" placeholder="0.00" step="0.0001" oninput="calculateDynamicTotal()">
+            <div class="input-row">
+                <div class="input-container" style="flex:1"><label>Sub-Category</label><input type="text"
+                        id="inv-subcat" class="md-input" placeholder="e.g. Flexi Cap / Tax Saver"></div>
+                <div class="input-container" style="flex:1"><label>Broker / Platform</label><input type="text"
+                        id="inv-broker" class="md-input" placeholder="e.g. Zerodha / Groww"></div>
             </div>
-        </div>
 
-        <div id="dynamic-fd-fields" class="input-row" style="display:none;">
-            <div class="input-container" style="flex:1"><label>Interest Rate (% APY)</label><input type="number"
-                    id="inv-interest" class="md-input" placeholder="e.g. 7.1" step="0.1"></div>
-            <div class="input-container" style="flex:1"><label>Payout Type</label>
-                <select id="inv-payout" class="md-input">
-                    <option value="quarterly">Cumulative (Quarterly)</option>
-                    <option value="monthly">Monthly Payout</option>
-                    <option value="maturity">On Maturity (Simple)</option>
-                </select>
+            <div id="dynamic-mf-search" style="display:none; flex-direction:column; gap:8px; margin-bottom:16px;">
+                <label style="font-size: 12px; color: var(--md-on-surface-variant); font-weight: 500;">Live Mutual Fund
+                    /
+                    Stock Search</label>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="inv-mf-query" class="md-input"
+                        style="flex:1; background:var(--md-surface-container-highest); padding:12px; border-radius:8px;"
+                        placeholder="Fund Name (e.g. Parag Parikh)">
+                    <button class="btn-secondary"
+                        style="width:auto; padding:0 16px; border-radius:8px; border:none; background:var(--md-primary-container); color:var(--md-on-primary-container);"
+                        onclick="searchMFForLog()">Search</button>
+                </div>
+                <select id="inv-mf-select" class="md-input"
+                    style="display:none; background:var(--md-surface-container-highest); padding:12px; border-radius:8px; width: 100%;"
+                    onchange="handleMFSelectForLog(this)"></select>
+                <input type="hidden" id="inv-mf-code-hidden">
+                <input type="hidden" id="inv-units-hidden">
             </div>
-        </div>
 
-        <div id="dynamic-growth-fields" class="input-row" style="display:none;">
-            <div class="input-container" style="flex:1"><label>Expected Appreciation (% Yr)</label><input type="number"
-                    id="inv-growth" class="md-input" placeholder="e.g. 12" step="0.1"></div>
-        </div>
-
-        <div id="dynamic-sip-day-field" class="input-row" style="display:none;">
-            <div class="input-container" style="flex:1"><label>SIP Date (Day of Month)</label><input type="number"
-                    id="inv-sip-day" class="md-input" placeholder="e.g. 5" min="1" max="31"></div>
-            <div class="input-container" style="flex:1"><label>Investment Mode</label>
-                <select id="inv-mode" class="md-input">
-                    <option value="monthly">Monthly SIP</option>
-                    <option value="lumpsum">One-time / Lumpsum</option>
-                </select>
-            </div>
-        </div>
-
-        <div id="dynamic-sip-fields" style="display:none; margin-bottom:16px;">
-            <div class="input-container" style="margin-bottom:0;">
-                <label>Initial Payment / Lump Sum (₹)</label>
-                <input type="number" id="inv-initial-payment" class="md-input" placeholder="0.00">
-            </div>
-            <div style="font-size:11px;color:var(--md-primary);margin-top:4px;">Logs an immediate one-time balance
-                alongside the recurring config.</div>
-        </div>
-
-        <div class="input-container"><label id="inv-amt-label">Amount (₹)</label><input type="number" id="inv-amt"
-                class="md-input" placeholder="0.00" oninput="reverseCalculateUnits()"></div>
-
-        <div class="input-row">
-            <div class="input-container" style="flex:2"><label>Asset Note / Name</label><input type="text" id="inv-note"
-                    class="md-input" placeholder="e.g. Nifty 50"></div>
-            <div class="input-container" style="flex:1"><label>Tags</label>
-                <div style="display:flex;align-items:center;">
-                    <input type="text" id="inv-tags" class="md-input" placeholder="#Tax">
-                    <button class="ai-button-inline"
-                        style="background:transparent;border:none;color:var(--md-primary);cursor:pointer;"
-                        onclick="generateAITags()" title="Auto-Generate Tags"><span
-                            class="material-symbols-rounded">auto_awesome</span></button>
+            <div id="dynamic-qty-price" class="input-row" style="display:none;">
+                <div class="input-container" style="flex:1"><label>Quantity / Units</label><input type="number"
+                        id="inv-qty" class="md-input" placeholder="0" step="0.0001" oninput="calculateDynamicTotal()">
+                </div>
+                <div class="input-container" style="flex:1"><label>Price / NAV (₹)</label><input type="number"
+                        id="inv-price" class="md-input" placeholder="0.00" step="0.0001"
+                        oninput="calculateDynamicTotal()">
                 </div>
             </div>
-        </div>
 
-        <div id="maturity-box-simple" class="input-container"><label>Maturity Date (Optional)</label><input type="date"
-                id="inv-maturity-simple" class="md-input"></div>
+            <div id="dynamic-fd-fields" class="input-row" style="display:none;">
+                <div class="input-container" style="flex:1"><label>Interest Rate (% APY)</label><input type="number"
+                        id="inv-interest" class="md-input" placeholder="e.g. 7.1" step="0.1"></div>
+                <div class="input-container" style="flex:1"><label>Payout Type</label>
+                    <select id="inv-payout" class="md-input">
+                        <option value="quarterly">Cumulative (Quarterly)</option>
+                        <option value="monthly">Monthly Payout</option>
+                        <option value="maturity">On Maturity (Simple)</option>
+                    </select>
+                </div>
+            </div>
 
-        <div class="switch-container" id="monthly-contrib-wrapper">
-            <div><label>Monthly Contribution Flag</label>
-                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Mark as recurring monthly
-                    investment</div>
+            <div id="dynamic-growth-fields" class="input-row" style="display:none;">
+                <div class="input-container" style="flex:1"><label>Expected Appreciation (% Yr)</label><input
+                        type="number" id="inv-growth" class="md-input" placeholder="e.g. 12" step="0.1"></div>
             </div>
-            <label class="switch"><input type="checkbox" id="inv-is-monthly"><span class="slider"></span></label>
-        </div>
 
-        <div class="switch-container">
-            <div><label>Dividend / Return</label>
-                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Exclude from monthly
-                    target</div>
+            <div id="dynamic-sip-day-field" class="input-row" style="display:none;">
+                <div class="input-container" style="flex:1"><label>SIP Date (Day of Month)</label><input type="number"
+                        id="inv-sip-day" class="md-input" placeholder="e.g. 5" min="1" max="31"></div>
+                <div class="input-container" style="flex:1"><label>Investment Mode</label>
+                    <select id="inv-mode" class="md-input">
+                        <option value="monthly">Monthly SIP</option>
+                        <option value="lumpsum">One-time / Lumpsum</option>
+                    </select>
+                </div>
             </div>
-            <label class="switch"><input type="checkbox" id="inv-dividend"><span class="slider"></span></label>
-        </div>
-        <div class="switch-container" id="recurring-switch-wrapper">
-            <div><label id="recurring-label-text">Auto-SIP (Recurring)</label>
-                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Logs automatically every
-                    month</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="inv-recurring"><span class="slider"></span></label>
-        </div>
-        <div class="switch-container" id="tpl-switch-wrap" style="border:1px dashed var(--md-primary);">
-            <div><label style="color:var(--md-primary);">Save Quick-Log Template</label>
-                <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Pin to home screen</div>
-            </div>
-            <label class="switch"><input type="checkbox" id="inv-template"><span class="slider"></span></label>
-        </div>
 
-        <div id="invest-smart-preview"
-            style="display:none; background:var(--md-primary-container); color:var(--md-on-primary-container); padding:16px; border-radius:16px; margin:16px 0; font-size:13px; line-height:1.5;">
-            <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-                <span class="material-symbols-rounded" style="font-size:18px;">analytics</span>
-                Smart Insight
+            <div id="dynamic-sip-fields" style="display:none; margin-bottom:16px;">
+                <div class="input-container" style="margin-bottom:0;">
+                    <label>Initial Payment / Lump Sum (₹)</label>
+                    <input type="number" id="inv-initial-payment" class="md-input" placeholder="0.00">
+                </div>
+                <div style="font-size:11px;color:var(--md-primary);margin-top:4px;">Logs an immediate one-time balance
+                    alongside the recurring config.</div>
             </div>
-            <div id="smart-preview-content"></div>
-        </div>
 
-        <div style="display:flex;gap:12px;margin-top:16px;">
-            <button class="btn-secondary" onclick="deleteInvestment()" id="del-inv-btn"
-                style="display:none;color:var(--md-error);border-color:var(--md-error);flex:0.4;">Delete</button>
-            <button class="btn-primary" onclick="saveInvestment()" style="flex:1;">Save Entry</button>
-        </div>
+            <div class="input-container"><label id="inv-amt-label">Amount (₹)</label><input type="number" id="inv-amt"
+                    class="md-input" placeholder="0.00" oninput="reverseCalculateUnits()"></div>
+
+            <div class="input-row">
+                <div class="input-container" style="flex:2"><label>Asset Note / Name</label><input type="text"
+                        id="inv-note" class="md-input" placeholder="e.g. Nifty 50"></div>
+                <div class="input-container" style="flex:1"><label>Tags</label>
+                    <div style="display:flex;align-items:center;">
+                        <input type="text" id="inv-tags" class="md-input" placeholder="#Tax">
+                        <button class="ai-button-inline"
+                            style="background:transparent;border:none;color:var(--md-primary);cursor:pointer;"
+                            onclick="generateAITags()" title="Auto-Generate Tags"><span
+                                class="material-symbols-rounded">auto_awesome</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="maturity-box-simple" class="input-container"><label>Maturity Date (Optional)</label><input
+                    type="date" id="inv-maturity-simple" class="md-input"></div>
+
+            <div class="switch-container" id="monthly-contrib-wrapper">
+                <div><label>Monthly Contribution Flag</label>
+                    <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Mark as recurring
+                        monthly
+                        investment</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="inv-is-monthly"><span class="slider"></span></label>
+            </div>
+
+            <div class="switch-container">
+                <div><label>Dividend / Return</label>
+                    <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Exclude from monthly
+                        target</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="inv-dividend"><span class="slider"></span></label>
+            </div>
+            <div class="switch-container" id="recurring-switch-wrapper">
+                <div><label id="recurring-label-text">Auto-SIP (Recurring)</label>
+                    <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Logs automatically
+                        every
+                        month</div>
+                </div>
+                <label class="switch"><input type="checkbox" id="inv-recurring"><span class="slider"></span></label>
+            </div>
+            <div class="switch-container" id="tpl-switch-wrap" style="border:1px dashed var(--md-primary);">
+                <div><label style="color:var(--md-primary);">Save Quick-Log Template</label>
+                    <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:2px;">Pin to home screen
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="inv-template"><span class="slider"></span></label>
+            </div>
+
+            <div id="invest-smart-preview"
+                style="display:none; background:var(--md-primary-container); color:var(--md-on-primary-container); padding:16px; border-radius:16px; margin:16px 0; font-size:13px; line-height:1.5;">
+                <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                    <span class="material-symbols-rounded" style="font-size:18px;">analytics</span>
+                    Smart Insight
+                </div>
+                <div id="smart-preview-content"></div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:16px;">
+                <button class="btn-secondary" onclick="deleteInvestment()" id="del-inv-btn"
+                    style="display:none;color:var(--md-error);border-color:var(--md-error);flex:0.4;">Delete</button>
+                <button class="btn-primary" onclick="saveInvestment()" style="flex:1;">Save Entry</button>
+            </div>
         </div>
     </div>
 
-    <div class="sheet" id="category-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet" id="category-sheet"
+        style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle" style="flex-shrink:0;"></div>
-        <div class="sheet-title" style="margin-bottom:12px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
+        <div class="sheet-title"
+            style="margin-bottom:12px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
             <h3 id="cat-sheet-title" style="margin:0;">Category</h3>
-            <button class="icon-btn" onclick="closeOverlays()"><span class="material-symbols-rounded">close</span></button>
+            <button class="icon-btn" onclick="closeOverlays()"><span
+                    class="material-symbols-rounded">close</span></button>
         </div>
-        
+
         <div class="scroll-y" style="flex:1; padding-bottom:20px;">
-        <div class="input-row" style="margin-bottom:16px;">
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Market Value Override (₹)</label><input
-                    type="number" id="cat-cmv-input" class="md-input" placeholder="0"></div>
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Target Alloc %</label><input
-                    type="number" id="cat-target-alloc" class="md-input" placeholder="25"></div>
-            <button class="btn-primary" style="width:auto;padding:0 20px;border-radius:12px;"
-                onclick="saveCatSettings()"><span class="material-symbols-rounded">save</span></button>
-        </div>
-        <div class="input-row" style="margin-bottom:16px;">
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Initial Balance (Earlier
-                    Money)</label><input type="number" id="cat-initial-bal" class="md-input" placeholder="0"></div>
-            <div class="input-container" style="flex:1;margin-bottom:0;"><label>Default Rate (%)</label><input
-                    type="number" id="cat-interest-rate" class="md-input" placeholder="7.1" step="0.1"></div>
-        </div>
+            <div class="input-row" style="margin-bottom:16px;">
+                <div class="input-container" style="flex:1;margin-bottom:0;"><label>Market Value Override
+                        (₹)</label><input type="number" id="cat-cmv-input" class="md-input" placeholder="0"></div>
+                <div class="input-container" style="flex:1;margin-bottom:0;"><label>Target Alloc %</label><input
+                        type="number" id="cat-target-alloc" class="md-input" placeholder="25"></div>
+                <button class="btn-primary" style="width:auto;padding:0 20px;border-radius:12px;"
+                    onclick="saveCatSettings()"><span class="material-symbols-rounded">save</span></button>
+            </div>
+            <div class="input-row" style="margin-bottom:16px;">
+                <div class="input-container" style="flex:1;margin-bottom:0;"><label>Initial Balance (Earlier
+                        Money)</label><input type="number" id="cat-initial-bal" class="md-input" placeholder="0"></div>
+                <div class="input-container" style="flex:1;margin-bottom:0;"><label>Default Rate (%)</label><input
+                        type="number" id="cat-interest-rate" class="md-input" placeholder="7.1" step="0.1"></div>
+            </div>
 
-        <div class="input-container" style="margin-bottom:24px;">
-            <label
-                style="font-size:13px; font-weight:700; color:var(--md-primary); margin-bottom:8px; display:block;">LOG
-                POPUP FIELDS</label>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;" id="cat-field-config">
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-interest"> Interest Rate</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-payout"> Payout Type</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-maturity"> Maturity Date</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-sipday"> SIP Day</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-mf"> MF Search</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-qty"> Qty/Price</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-broker"> Broker</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-subcat"> Sub-Category</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-monthly"> Monthly Contribution</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-simple"> Simple Mode</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
-                        id="cfg-growth"> Growth Rate</label>
+            <div class="input-container" style="margin-bottom:24px;">
+                <label
+                    style="font-size:13px; font-weight:700; color:var(--md-primary); margin-bottom:8px; display:block;">LOG
+                    POPUP FIELDS</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;" id="cat-field-config">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-interest"> Interest Rate</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-payout"> Payout Type</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-maturity"> Maturity Date</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-sipday"> SIP Day</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-mf"> MF Search</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-qty"> Qty/Price</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-broker"> Broker</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-subcat"> Sub-Category</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-monthly"> Monthly Contribution</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-simple"> Simple Mode</label>
+                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox"
+                            id="cfg-growth"> Growth Rate</label>
+                </div>
+            </div>
+
+            <div class="chart-container-js" style="height: 120px; margin-bottom: 16px;"><canvas
+                    id="categoryHistoryChart"></canvas></div>
+
+            <button class="btn-secondary" style="width:100%; margin-bottom:24px;"
+                onclick="viewCategoryLedger(activeCategory)">
+                <span class="material-symbols-rounded">history_edu</span> View Detailed Ledger
+            </button>
+
+            <div style="margin-bottom:32px;">
+                <div class="tax-split-bar">
+                    <div class="tax-split-lt" id="tax-lt-fill" style="width:50%;"></div>
+                    <div class="tax-split-st" id="tax-st-fill" style="width:50%;"></div>
+                </div>
+                <div class="tax-split-legend"
+                    style="display:flex; justify-content:space-between; font-size: 12px; font-weight:500;"><span
+                        id="tax-lt-label" style="color:var(--md-success);">LTCG: 0</span><span id="tax-st-label"
+                        style="color:#D96200;">STCG: 0</span></div>
+                <div id="cat-asset-list" class="list" style="margin-bottom:24px;"></div>
+                <div style="font-size:16px;font-weight:500;margin-bottom:12px;">Recent Entries</div>
+                <div id="cat-history-list" class="list"></div>
             </div>
         </div>
-
-        <div class="chart-container-js" style="height: 120px; margin-bottom: 16px;"><canvas
-                id="categoryHistoryChart"></canvas></div>
-
-        <button class="btn-secondary" style="width:100%; margin-bottom:24px;" onclick="viewCategoryLedger(activeCategory)">
-            <span class="material-symbols-rounded">history_edu</span> View Detailed Ledger
-        </button>
-
-        <div style="margin-bottom:32px;">
-            <div class="tax-split-bar">
-                <div class="tax-split-lt" id="tax-lt-fill" style="width:50%;"></div>
-                <div class="tax-split-st" id="tax-st-fill" style="width:50%;"></div>
-            </div>
-            <div class="tax-split-legend"
-                style="display:flex; justify-content:space-between; font-size: 12px; font-weight:500;"><span
-                    id="tax-lt-label" style="color:var(--md-success);">LTCG: 0</span><span id="tax-st-label"
-                    style="color:#D96200;">STCG: 0</span></div>
-        <div id="cat-asset-list" class="list" style="margin-bottom:24px;"></div>
-        <div style="font-size:16px;font-weight:500;margin-bottom:12px;">Recent Entries</div>
-        <div id="cat-history-list" class="list"></div>
-        </div>
-    </div>
     </div>
 
     <div class="sheet" id="goal-sheet">
@@ -659,25 +669,36 @@
             Target</button>
     </div>
 
-    <div class="sheet" id="settings-sheet" style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet" id="settings-sheet"
+        style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
         <div class="sheet-title" style="margin-bottom:12px; flex-shrink:0;">
-            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">settings</span> Settings</div>
-            <button class="icon-btn" onclick="closeOverlays()"><span class="material-symbols-rounded">close</span></button>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">settings</span>
+                Settings</div>
+            <button class="icon-btn" onclick="closeOverlays()"><span
+                    class="material-symbols-rounded">close</span></button>
         </div>
 
-        <div class="settings-tabs" style="display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:20px; flex-shrink:0;">
-            <button class="s-tab active" onclick="switchSettingsTab('profile', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Profile</button>
-            <button class="s-tab" onclick="switchSettingsTab('security', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">App</button>
-            <button class="s-tab" onclick="switchSettingsTab('manage', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Manage</button>
-            <button class="s-tab" onclick="switchSettingsTab('data', this)" style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Data</button>
+        <div class="settings-tabs"
+            style="display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:20px; flex-shrink:0;">
+            <button class="s-tab active" onclick="switchSettingsTab('profile', this)"
+                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Profile</button>
+            <button class="s-tab" onclick="switchSettingsTab('security', this)"
+                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">App</button>
+            <button class="s-tab" onclick="switchSettingsTab('manage', this)"
+                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Manage</button>
+            <button class="s-tab" onclick="switchSettingsTab('data', this)"
+                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Data</button>
         </div>
 
         <div id="settings-content-scroll" class="scroll-y" style="flex:1; padding-bottom:20px;">
             <!-- Tab 1: Profile -->
             <div id="stab-profile" class="s-tab-content active">
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Financial Profile</div>
-                <div class="input-container"><label>Gross Annual Salary (₹)</label><input type="number" id="settings-salary" class="md-input" placeholder="e.g. 1500000"></div>
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Financial Profile</div>
+                <div class="input-container"><label>Gross Annual Salary (₹)</label><input type="number"
+                        id="settings-salary" class="md-input" placeholder="e.g. 1500000"></div>
                 <div class="input-row">
                     <div class="input-container" style="flex:1"><label>Tax Regime</label>
                         <select id="settings-regime" class="md-input">
@@ -685,7 +706,8 @@
                             <option value="old">Old</option>
                         </select>
                     </div>
-                    <div class="input-container" style="flex:1"><label>Monthly Expenses (₹)</label><input type="number" id="settings-expenses" class="md-input" placeholder="e.g. 50000"></div>
+                    <div class="input-container" style="flex:1"><label>Monthly Expenses (₹)</label><input type="number"
+                            id="settings-expenses" class="md-input" placeholder="e.g. 50000"></div>
                 </div>
                 <div class="input-row">
                     <div class="input-container" style="flex:1"><label>FY Start Month</label>
@@ -694,66 +716,103 @@
                             <option value="3">April (India)</option>
                         </select>
                     </div>
-                    <div class="input-container" style="flex:1"><label>Currency</label><input type="text" id="settings-currency" class="md-input" value="₹"></div>
+                    <div class="input-container" style="flex:1"><label>Currency</label><input type="text"
+                            id="settings-currency" class="md-input" value="₹"></div>
                 </div>
-                <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span class="material-symbols-rounded">save</span> Save Profile</button>
-                
-                <div style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Quick Tools</div>
+                <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span
+                        class="material-symbols-rounded">save</span> Save Profile</button>
+
+                <div
+                    style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Quick Tools</div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">calculate</span> XIRR</button>
-                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">trending_up</span> SIP Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">real_estate_agent</span> EMI Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size: 18px;">price_change</span> Inflation</button>
+                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">calculate</span> XIRR</button>
+                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">trending_up</span> SIP
+                        Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">real_estate_agent</span> EMI
+                        Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">price_change</span>
+                        Inflation</button>
                 </div>
             </div>
 
             <!-- Tab 2: Security & App -->
             <div id="stab-security" class="s-tab-content" style="display:none;">
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">App Security</div>
-                <div class="input-container"><label>App Lock PIN (4 digits)</label><input type="password" id="settings-pin" class="md-input" placeholder="Set PIN" maxlength="4"></div>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; gap:12px;">
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    App Security</div>
+                <div class="input-container"><label>App Lock PIN (4 digits)</label><input type="password"
+                        id="settings-pin" class="md-input" placeholder="Set PIN" maxlength="4"></div>
+                <div
+                    style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px; gap:12px;">
                     <button class="btn-primary" style="flex:1;" onclick="savePin()">Set PIN</button>
                     <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <label class="switch"><input type="checkbox" id="use-biometric-toggle" onchange="toggleBiometric()"><span class="slider"></span></label>
+                            <label class="switch"><input type="checkbox" id="use-biometric-toggle"
+                                    onchange="toggleBiometric()"><span class="slider"></span></label>
                             <span style="font-size:12px;">Biometric</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-                            <label class="switch"><input type="checkbox" id="ai-bubble-toggle" onchange="toggleAIBubbleVisibility()"><span class="slider"></span></label>
+                            <label class="switch"><input type="checkbox" id="ai-bubble-toggle"
+                                    onchange="toggleAIBubbleVisibility()"><span class="slider"></span></label>
                             <span style="font-size:12px;">AI Assistant Bubble</span>
                         </div>
                     </div>
                 </div>
 
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">AI Strategy Keys</div>
-                <div class="input-container"><label>Groq API Key (Primary)</label><input type="password" id="groq-api-key" class="md-input" placeholder="gsk_..."></div>
-                <div class="input-container"><label>Gemini API Key (Fallback)</label><input type="password" id="gemini-api-key" class="md-input" placeholder="AIza..."></div>
-                <button class="btn-primary" onclick="saveApiKeys()"><span class="material-symbols-rounded">key</span> Save API Keys</button>
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    AI Strategy Keys</div>
+                <div class="input-container"><label>Groq API Key (Primary)</label><input type="password"
+                        id="groq-api-key" class="md-input" placeholder="gsk_..."></div>
+                <div class="input-container"><label>Gemini API Key (Fallback)</label><input type="password"
+                        id="gemini-api-key" class="md-input" placeholder="AIza..."></div>
+                <button class="btn-primary" onclick="saveApiKeys()"><span class="material-symbols-rounded">key</span>
+                    Save API Keys</button>
 
-                <div style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Theme</div>
+                <div
+                    style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Theme</div>
                 <div class="theme-picker" id="theme-picker" style="margin-bottom:24px;">
-                    <div class="theme-swatch ts-indigo active" style="background: #415F91;" onclick="setTheme('indigo')"></div>
-                    <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')"></div>
+                    <div class="theme-swatch ts-indigo active" style="background: #415F91;"
+                        onclick="setTheme('indigo')"></div>
+                    <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')">
+                    </div>
                     <div class="theme-swatch ts-sunset" style="background: #924C00;" onclick="setTheme('sunset')"></div>
-                    <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')"></div>
+                    <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')">
+                    </div>
                 </div>
-                
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Milestone Badges</div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Milestone Badges</div>
                 <div class="badge-grid" id="badge-grid"></div>
             </div>
 
             <!-- Tab 3: Manage Accounts & Categories -->
             <div id="stab-manage" class="s-tab-content" style="display:none;">
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Manage Accounts</div>
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Manage Accounts</div>
                 <div id="account-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
                 <div class="input-row" style="margin-bottom:24px;">
-                    <input type="text" id="new-acc-name" class="md-input" placeholder="New Account Name" style="flex:1;">
-                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addAccount()"><span class="material-symbols-rounded">add</span></button>
+                    <input type="text" id="new-acc-name" class="md-input" placeholder="New Account Name"
+                        style="flex:1;">
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addAccount()"><span
+                            class="material-symbols-rounded">add</span></button>
                 </div>
 
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Manage Categories</div>
-                <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
-                <div style="font-size:12px; color:var(--md-on-surface-variant); margin-bottom:4px;">Add New Category</div>
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Manage Categories</div>
+                <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                </div>
+                <div style="font-size:12px; color:var(--md-on-surface-variant); margin-bottom:4px;">Add New Category
+                </div>
                 <div class="input-row">
                     <input type="text" id="new-cat-name" class="md-input" placeholder="Name" style="flex:1.5;">
                     <select id="new-cat-template" class="md-input" style="flex:1;">
@@ -763,14 +822,17 @@
                         <option value="stock">Stock (Qty/Price)</option>
                         <option value="growth">Growth (%)</option>
                     </select>
-                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addCustomCategory()"><span class="material-symbols-rounded">add</span></button>
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addCustomCategory()"><span
+                            class="material-symbols-rounded">add</span></button>
                 </div>
             </div>
 
             <!-- Tab 4: Data Management -->
             <div id="stab-data" class="s-tab-content" style="display:none;">
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">Data Operations</div>
-                
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Data Operations</div>
+
                 <div class="settings-action-card" onclick="exportData()">
                     <span class="material-symbols-rounded" style="color:var(--md-primary);">cloud_download</span>
                     <div style="flex:1;">
@@ -807,21 +869,32 @@
 
                 <div style="display:flex;align-items:center;gap:12px;margin:16px 0; padding:0 8px;">
                     <input type="checkbox" id="encrypt-backup-toggle" checked style="width:18px;height:18px;">
-                    <label for="encrypt-backup-toggle" style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt Backup with App PIN</label>
+                    <label for="encrypt-backup-toggle"
+                        style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt Backup with App PIN</label>
                 </div>
 
-                <div style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase; margin-top:24px;">Reports & Sync</div>
-                <button class="btn-primary" style="background:var(--md-secondary-container);color:var(--md-on-secondary-container); margin-bottom:8px;" onclick="openSheet('history-sync-sheet')">
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase; margin-top:24px;">
+                    Reports & Sync</div>
+                <button class="btn-primary"
+                    style="background:var(--md-secondary-container);color:var(--md-on-secondary-container); margin-bottom:8px;"
+                    onclick="openSheet('history-sync-sheet')">
                     <span class="material-symbols-rounded">history_edu</span> Universal Generator
                 </button>
-                <button class="btn-primary" style="background:var(--md-surface-container-highest);color:var(--md-on-surface); margin-bottom:8px;" onclick="exportTaxPDF()">
+                <button class="btn-primary"
+                    style="background:var(--md-surface-container-highest);color:var(--md-on-surface); margin-bottom:8px;"
+                    onclick="exportTaxPDF()">
                     <span class="material-symbols-rounded">picture_as_pdf</span> 80C Tax Report
                 </button>
-                <button class="btn-primary" style="background:var(--md-primary-container);color:var(--md-on-primary-container); margin-bottom:8px;" onclick="openSheet('webrtc-sync-sheet')">
+                <button class="btn-primary"
+                    style="background:var(--md-primary-container);color:var(--md-on-primary-container); margin-bottom:8px;"
+                    onclick="openSheet('webrtc-sync-sheet')">
                     <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
                 </button>
-                
-                <button id="pwa-install-btn" class="btn-primary" style="display:none; background:var(--md-primary); color:var(--md-on-primary); margin-top:16px;" onclick="triggerPWAInstall()">
+
+                <button id="pwa-install-btn" class="btn-primary"
+                    style="display:none; background:var(--md-primary); color:var(--md-on-primary); margin-top:16px;"
+                    onclick="triggerPWAInstall()">
                     <span class="material-symbols-rounded">install_mobile</span> Install App
                 </button>
             </div>

@@ -169,7 +169,7 @@ function cleanupCharts() {
             chart.destroy();
         }
     });
-    
+
     portfolioChartInstance = null;
     rollingChartInstance = null;
     categoryChartInstance = null;
@@ -452,18 +452,18 @@ document.head.appendChild(style);
 // Mobile performance optimizations
 function optimizeForMobile() {
     // Enable passive event listeners for better scroll performance
-    document.addEventListener('touchstart', () => {}, { passive: true });
-    
+    document.addEventListener('touchstart', () => { }, { passive: true });
+
     // Optimize scrolling performance
     if ('scrollBehavior' in document.documentElement.style) {
         document.documentElement.style.scrollBehavior = 'smooth';
     }
-    
+
     // Reduce motion for users who prefer it
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.documentElement.style.setProperty('--animation-duration', '0.01ms');
     }
-    
+
     // Preload critical resources
     if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
@@ -478,7 +478,7 @@ function optimizeForMobile() {
             });
         });
     }
-    
+
     // Optimize images for mobile
     const images = document.querySelectorAll('img');
     images.forEach(img => {
@@ -504,32 +504,7 @@ function installPWA() {
     if (window.matchMedia('(display-mode: standalone)').matches) {
         document.body.classList.add('pwa-standalone');
     }
-    
-    // Add install prompt
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        
-        // Show install banner
-        const installBanner = document.createElement('div');
-        installBanner.className = 'pwa-install-banner slide-up';
-        installBanner.innerHTML = `
-            <div class="pwa-install-content">
-                <span class="material-symbols-rounded">download</span>
-                <span>Install TrackInvest</span>
-                <button onclick="installPWAApp()">
-                    <span class="material-symbols-rounded">add</span>
-                    Install
-                </button>
-                <button onclick="dismissPWAInstall()">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
-            </div>
-        `;
-        document.body.appendChild(installBanner);
-    });
-    
+
     window.installPWAApp = () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
@@ -541,7 +516,7 @@ function installPWA() {
             });
         }
     };
-    
+
     window.dismissPWAInstall = () => {
         const banner = document.querySelector('.pwa-install-banner');
         if (banner) {
@@ -645,7 +620,7 @@ function showLoadingOverlay(containerId, message = 'Loading...') {
             <div style="margin-top:16px;color:var(--md-on-surface-variant);font-size:14px;">${escapeHtml(message)}</div>
         </div>
     `;
-    
+
     container.appendChild(overlay);
 }
 
@@ -767,8 +742,8 @@ function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
  * @param {number} num - The number to format
  * @returns {string} Formatted currency string
  */
-function formatMoney(num) { 
-    return db.privacyMode ? '•••••' : '₹' + formatInr(num); 
+function formatMoney(num) {
+    return db.privacyMode ? '•••••' : '₹' + formatInr(num);
 }
 
 /**
@@ -783,11 +758,11 @@ function showSnackbar(msg, icon = "info", type = "info") {
         console.warn('Snackbar element not found');
         return;
     }
-    
-    const iconText = icon === "check_circle" ? "Success" : 
-                     icon === "error" ? "Error" : 
-                     icon === "warning" ? "Warning" : "Information";
-    
+
+    const iconText = icon === "check_circle" ? "Success" :
+        icon === "error" ? "Error" :
+            icon === "warning" ? "Warning" : "Information";
+
     sb.innerHTML = `
         <span class="material-symbols-rounded" style="font-size:20px;" aria-hidden="true">${escapeHtml(icon)}</span>
         <span class="snackbar-message" role="status" aria-live="polite" aria-atomic="true">
@@ -797,11 +772,11 @@ function showSnackbar(msg, icon = "info", type = "info") {
     sb.setAttribute("role", "alert");
     sb.setAttribute("aria-label", `${iconText}: ${msg}`);
     sb.classList.add("show");
-    
+
     // Auto-focus for screen readers
     sb.setAttribute("tabindex", "0");
     sb.focus();
-    
+
     setTimeout(() => {
         sb.classList.remove("show");
         sb.removeAttribute("tabindex");
@@ -822,7 +797,7 @@ function closeOverlays(fromPopState = false) {
             }
         });
     }
-    
+
     const scrims = document.querySelectorAll('.scrim.active, .scrim-sub.active');
     if (scrims) {
         scrims.forEach(scrim => {
@@ -833,7 +808,7 @@ function closeOverlays(fromPopState = false) {
     }
 
     document.body.classList.remove('lock-scroll');
-    
+
     // Also close AI bubble popup if open
     const aiPopup = document.getElementById('ai-chat-popup');
     if (aiPopup && aiPopup.classList.contains('visible')) {
@@ -843,18 +818,18 @@ function closeOverlays(fromPopState = false) {
             window.activeChatSession = null;
         }
     }
-    
+
     // Reset edit states
-    editInvId = null; 
+    editInvId = null;
     editGoalId = null;
-    
+
     // Clear session storage
     try {
         sessionStorage.removeItem('currentSheet');
     } catch (e) {
         console.warn('Failed to clear sessionStorage:', e);
     }
-    
+
     // Handle history navigation
     if (!fromPopState && history && history.state && history.state.sheetId) {
         try {
@@ -887,50 +862,50 @@ function openSheet(sheetId, fromRestore = false) {
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
     const targetSheet = document.getElementById(sheetId);
-    
+
     if (!targetSheet) {
         console.warn(`Sheet with ID "${sheetId}" not found`);
         return;
     }
-    
+
     if (isSubSheet) {
         // Clear previous sub-sheets to prevent stacking
         document.querySelectorAll('.sheet.sub-sheet.active').forEach(el => {
             el.classList.remove('active');
         });
-        
+
         // Ensure main scrim stays active and add sub-scrim
         document.getElementById('scrim')?.classList.add('active');
         document.getElementById('scrim-sub')?.classList.add('active');
-        
+
         // Animate in new sub-sheet
         setTimeout(() => {
             targetSheet.classList.add('active');
         }, 50);
-        
+
         activeSub = sheetId;
     } else {
         // If opening a main sheet, close EVERYTHING first (including sub-sheets)
         closeOverlays(true); // Close without triggering history back
-        
+
         // Then open new main sheet with animation
         document.getElementById('scrim')?.classList.add('active');
-        
+
         setTimeout(() => {
             targetSheet.classList.add('active');
         }, 50);
-        
+
         activeMain = sheetId;
         activeSub = null;
     }
-    
+
     document.body.classList.add('lock-scroll');
-    
+
     sessionStorage.setItem('currentSheet', sheetId);
-    
+
     // Initialize sheet-specific content
     if (sheetId === 'history-sync-sheet') populateSyncDropdown();
-    
+
     if (!fromRestore) pushSheetState(sheetId);
 }
 
@@ -1123,7 +1098,7 @@ document.addEventListener('keydown', e => {
     Object.keys(shortcuts).forEach(key => {
         const keys = key.split('|');
         const matches = keys.some(k => e.key === k);
-        const modifierMatch = key.includes('|') ? 
+        const modifierMatch = key.includes('|') ?
             (e.key === key.split('|')[0] && !e.shiftKey && !e.ctrlKey && !e.altKey) ||
             (e.key === key.split('|')[1] && e.shiftKey && !e.ctrlKey && !e.altKey) :
             e.key === key && !e.shiftKey && !e.ctrlKey && !e.altKey;
@@ -1151,7 +1126,7 @@ function announceToScreenReader(message) {
     announcement.className = 'sr-only';
     announcement.textContent = message;
     announcement.style.cssText = 'position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;';
-    
+
     document.body.appendChild(announcement);
     setTimeout(() => document.body.removeChild(announcement), 1000);
 }
@@ -1161,7 +1136,7 @@ function getSmartDefaults() {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const currentHour = now.getHours();
-    
+
     // Time-based investment type suggestions
     let suggestedType = currentInvType;
     if (currentHour >= 9 && currentHour <= 11) {
@@ -1169,22 +1144,22 @@ function getSmartDefaults() {
     } else if (currentHour >= 18 && currentHour <= 20) {
         suggestedType = 'Stocks'; // Evening - Market review time
     }
-    
+
     // Amount suggestions based on history
     const recentInvestments = db.investments
         .filter(i => !i.isDividend)
         .slice(-10);
-    const avgAmount = recentInvestments.length > 0 
+    const avgAmount = recentInvestments.length > 0
         ? recentInvestments.reduce((sum, i) => sum + i.amount, 0) / recentInvestments.length
         : 5000;
-    
+
     // Smart SIP day based on salary date patterns
     let suggestedSipDay = 1; // Default to 1st
     if (db.userProfile.salary) {
         // Assume salary is credited around 1st-5th of month
         suggestedSipDay = 3; // 3rd of month
     }
-    
+
     return {
         date: today,
         type: suggestedType,
@@ -1304,16 +1279,16 @@ window.showFirstTimeTips = showFirstTimeTips;
 
 function saveData() {
     db.lastUpdated = Date.now();
-    
+
     // Validate and sanitize critical data before saving
     const sanitizedDb = sanitizeDatabaseObject(db);
-    
+
     // Save data first using cross-browser compatible function
     if (!safeLocalStorageSet('appHubInvestDb', sanitizedDb)) {
         handleStorageError(new Error('localStorage access denied'));
         return;
     }
-    
+
     // Check storage quota asynchronously (non-blocking)
     checkStorageQuota(sanitizedDb);
 }
@@ -1327,9 +1302,9 @@ function handleStorageError(error) {
     } else if (error.name === 'TypeError') {
         errorMessage = "Data format error. Some data may be corrupted.";
     }
-    
+
     showSnackbar(errorMessage, "error");
-    
+
     // Attempt recovery actions
     attemptStorageRecovery().catch(error => {
         console.error('Recovery system failed:', error);
@@ -1346,14 +1321,14 @@ async function attemptStorageRecovery() {
         { name: 'Reset Settings', action: resetCorruptedSettings, priority: 4 },
         { name: 'Export Emergency Backup', action: createEmergencyBackup, priority: 0 }
     ];
-    
+
     let recoverySuccessful = false;
-    
+
     for (const strategy of recoveryStrategies) {
         try {
             console.log(`Attempting recovery: ${strategy.name}`);
             const result = await strategy.action();
-            
+
             if (result.success) {
                 showSnackbar(`Recovery successful: ${strategy.name}`, 'check_circle');
                 recoverySuccessful = true;
@@ -1365,7 +1340,7 @@ async function attemptStorageRecovery() {
             console.error(`Recovery error: ${strategy.name}`, error);
         }
     }
-    
+
     if (!recoverySuccessful) {
         showSnackbar("All recovery attempts failed. Please contact support.", "error");
         // Show manual recovery options
@@ -1379,9 +1354,9 @@ async function clearChatHistory() {
             const originalLength = db.chatHistory.length;
             db.chatHistory = db.chatHistory.slice(-50);
             localStorage.setItem('appHubInvestDb', JSON.stringify(db));
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 message: `Cleared ${originalLength - 50} old chat messages`,
                 spaceFreed: estimateSpaceSaved(originalLength - 50)
             };
@@ -1395,13 +1370,13 @@ async function clearChatHistory() {
 async function clearNavigationCache() {
     try {
         const cacheSize = db.navCache ? Object.keys(db.navCache).length : 0;
-        
+
         if (cacheSize > 100) {
             db.navCache = {};
             localStorage.setItem('appHubInvestDb', JSON.stringify(db));
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 message: `Cleared ${cacheSize} cache entries`,
                 spaceFreed: estimateSpaceSaved(cacheSize * 100) // Rough estimate
             };
@@ -1417,7 +1392,7 @@ async function clearImageCache() {
         // Clear any cached images or blobs
         const images = document.querySelectorAll('img[data-cache]');
         let clearedCount = 0;
-        
+
         images.forEach(img => {
             if (img.dataset.cache) {
                 URL.revokeObjectURL(img.src);
@@ -1425,9 +1400,9 @@ async function clearImageCache() {
                 clearedCount++;
             }
         });
-        
-        return { 
-            success: true, 
+
+        return {
+            success: true,
             message: `Cleared ${clearedCount} cached images`,
             spaceFreed: estimateSpaceSaved(clearedCount * 50000) // Rough estimate
         };
@@ -1442,7 +1417,7 @@ async function resetCorruptedSettings() {
             const value = db[key];
             return typeof value === 'undefined' || value === null || (Array.isArray(value) && value.length === 0);
         });
-        
+
         if (corruptedKeys.length > 0) {
             // Reset to default values
             const defaults = {
@@ -1452,17 +1427,17 @@ async function resetCorruptedSettings() {
                 allocTargets: {},
                 navCache: {}
             };
-            
+
             Object.keys(defaults).forEach(key => {
                 if (corruptedKeys.includes(key)) {
                     db[key] = defaults[key];
                 }
             });
-            
+
             localStorage.setItem('appHubInvestDb', JSON.stringify(db));
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 message: `Reset ${corruptedKeys.length} corrupted settings`,
                 keys: corruptedKeys
             };
@@ -1486,19 +1461,19 @@ async function createEmergencyBackup() {
                 reason: 'storage_recovery'
             }
         };
-        
+
         // Create multiple backup formats
         const jsonBlob = new Blob([JSON.stringify(emergencyData, null, 2)], { type: 'application/json' });
         const csvBlob = new Blob([convertToCSV(db.investments)], { type: 'text/csv' });
-        
+
         // Download both formats
         downloadFile(jsonBlob, `TrackInvest_Emergency_Backup_${new Date().toISOString().split('T')[0]}.json`);
         setTimeout(() => {
             downloadFile(csvBlob, `TrackInvest_Emergency_Backup_${new Date().toISOString().split('T')[0]}.csv`);
         }, 500);
-        
-        return { 
-            success: true, 
+
+        return {
+            success: true,
             message: 'Emergency backup created (JSON + CSV)',
             formats: ['json', 'csv']
         };
@@ -1531,8 +1506,8 @@ function convertToCSV(investments) {
         inv.note || '',
         inv.tags || ''
     ]);
-    
-    return [headers, ...rows].map(row => 
+
+    return [headers, ...rows].map(row =>
         row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
     ).join('\n');
 }
@@ -1565,21 +1540,21 @@ function showManualRecoveryDialog() {
             </div>
         </div>
     `;
-    
+
     document.body.appendChild(modal);
 }
 
-window.exportManualBackup = function() {
+window.exportManualBackup = function () {
     createEmergencyBackup();
     closeRecoveryDialog();
 };
 
-window.showStorageInstructions = function() {
+window.showStorageInstructions = function () {
     showSnackbar('Check browser settings > Storage > Clear data', 'info');
     closeRecoveryDialog();
 };
 
-window.closeRecoveryDialog = function() {
+window.closeRecoveryDialog = function () {
     const modal = document.querySelector('.recovery-modal');
     if (modal) modal.remove();
 };
@@ -1592,7 +1567,7 @@ async function checkStorageQuota(sanitizedDb) {
             const storageData = JSON.stringify(sanitizedDb);
             const estimatedSize = new Blob([storageData]).size;
             const quota = await navigator.storage.estimate();
-            
+
             if (quota.usage && quota.quota) {
                 const usagePercentage = (estimatedSize / quota.quota) * 100;
                 if (usagePercentage > 90) {
@@ -1617,20 +1592,20 @@ async function autoBackupData() {
             data: db,
             checksum: await generateDataChecksum(db)
         };
-        
+
         // Create backup file
         const backupBlob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
         const backupUrl = URL.createObjectURL(backupBlob);
-        
+
         // Save to Downloads
         const a = document.createElement('a');
         a.href = backupUrl;
         a.download = `TrackInvest_AutoBackup_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
-        
+
         URL.revokeObjectURL(backupUrl);
         showSnackbar('Auto backup created', 'backup');
-        
+
     } catch (error) {
         console.error('Auto backup failed:', error);
         showSnackbar('Auto backup failed', 'error');
@@ -1642,7 +1617,7 @@ async function generateDataChecksum(data) {
     const dataString = JSON.stringify(data);
     const encoder = new TextEncoder();
     const dataBuffer = encoder.encode(dataString);
-    
+
     if ('crypto' in window && 'subtle' in window.crypto) {
         const hashBuffer = await window.crypto.subtle.digest('SHA-256', dataBuffer);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -1662,26 +1637,26 @@ async function generateDataChecksum(data) {
 // Data synchronization between devices
 async function syncDataWithCloud() {
     if (!db.cloudSyncEnabled) return;
-    
+
     try {
         showSnackbar('Syncing data...', 'cloud_sync');
-        
+
         const localData = {
             version: '1.0',
             timestamp: new Date().toISOString(),
             data: db,
             checksum: await generateDataChecksum(db)
         };
-        
+
         // Get last sync info
         const lastSync = localStorage.getItem('lastCloudSync');
         const lastSyncData = lastSync ? JSON.parse(lastSync) : null;
-        
+
         // Check if sync is needed
         if (!lastSyncData || lastSyncData.checksum !== localData.checksum) {
             // Upload to cloud (simulated - would integrate with actual cloud service)
             const syncResult = await uploadToCloud(localData);
-            
+
             if (syncResult.success) {
                 localStorage.setItem('lastCloudSync', JSON.stringify({
                     timestamp: new Date().toISOString(),
@@ -1694,7 +1669,7 @@ async function syncDataWithCloud() {
         } else {
             showSnackbar('Data already in sync', 'check_circle');
         }
-        
+
     } catch (error) {
         console.error('Cloud sync failed:', error);
         showSnackbar('Cloud sync failed', 'error');
@@ -1713,28 +1688,28 @@ async function recoverFromBackup(backupFile) {
     try {
         const backupText = await backupFile.text();
         const backupData = JSON.parse(backupText);
-        
+
         // Validate backup structure
         if (!backupData.version || !backupData.data || !backupData.checksum) {
             throw new Error('Invalid backup format');
         }
-        
+
         // Verify backup integrity
         const currentChecksum = await generateDataChecksum(backupData.data);
         if (currentChecksum !== backupData.checksum) {
             throw new Error('Backup integrity check failed');
         }
-        
+
         // Create backup of current data before restore
         await autoBackupData();
-        
+
         // Restore backup data
         db = backupData.data;
         saveData();
         renderAll();
-        
+
         showSnackbar('Data restored from backup', 'restore');
-        
+
     } catch (error) {
         console.error('Backup recovery failed:', error);
         showSnackbar('Backup recovery failed', 'error');
@@ -1743,7 +1718,7 @@ async function recoverFromBackup(backupFile) {
 
 function sanitizeDatabaseObject(dbObj) {
     const sanitized = JSON.parse(JSON.stringify(dbObj));
-    
+
     // Remove potentially dangerous content
     // Note: 'ai' is accepted for backward compatibility with chat history
     // saved before the role was normalized to 'assistant'. The renderer treats
@@ -1768,7 +1743,7 @@ function sanitizeDatabaseObject(dbObj) {
             }))
         }));
     }
-    
+
     // Sanitize user inputs
     if (sanitized.investments) {
         sanitized.investments = sanitized.investments.map(inv => ({
@@ -1777,14 +1752,14 @@ function sanitizeDatabaseObject(dbObj) {
             tags: sanitizeText(inv.tags || '')
         }));
     }
-    
+
     if (sanitized.goals) {
         sanitized.goals = sanitized.goals.map(goal => ({
             ...goal,
             name: sanitizeText(goal.name || '')
         }));
     }
-    
+
     return sanitized;
 }
 
@@ -1993,23 +1968,23 @@ document.addEventListener('touchstart', e => {
         canSwipeClose = false;
         return;
     }
-    
+
     // Prevent conflicts with AI bubble touch events
     if (e.target.closest('#ai-floating-bubble') || e.target.closest('.ai-bubble-popup')) {
         canSwipeClose = false;
         return;
     }
-    
+
     touchStartY = e.touches[0].clientY;
     touchStartX = e.touches[0].clientX;
-    
+
     // Only allow swipe-to-close if we are at very top of sheet content
     // and touch started on drag-handle or very top area (30px)
     const isAtTop = activeSheet.scrollTop <= 0;
     const rect = activeSheet.getBoundingClientRect();
     const isTopArea = (touchStartY - rect.top) < 30;
     const isDragHandle = e.target.classList.contains('drag-handle') || e.target.closest('.drag-handle');
-    
+
     canSwipeClose = isAtTop && (isTopArea || isDragHandle);
 }, { passive: true });
 
