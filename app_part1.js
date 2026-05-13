@@ -819,11 +819,6 @@ function closeOverlays(fromPopState = false) {
         sheets.forEach(sheet => {
             if (sheet) {
                 sheet.classList.remove('active');
-                // Reset any inline styles that might interfere
-                sheet.style.display = '';
-                sheet.style.visibility = '';
-                sheet.style.transform = '';
-                sheet.style.opacity = '';
             }
         });
     }
@@ -902,10 +897,6 @@ function openSheet(sheetId, fromRestore = false) {
         // Clear previous sub-sheets to prevent stacking
         document.querySelectorAll('.sheet.sub-sheet.active').forEach(el => {
             el.classList.remove('active');
-            el.classList.add('fade-out');
-            // Reset inline styles
-            el.style.display = '';
-            el.style.visibility = '';
         });
         
         // Ensure main scrim stays active and add sub-scrim
@@ -914,8 +905,7 @@ function openSheet(sheetId, fromRestore = false) {
         
         // Animate in new sub-sheet
         setTimeout(() => {
-            targetSheet.classList.remove('fade-out');
-            targetSheet.classList.add('active', 'slide-up');
+            targetSheet.classList.add('active');
         }, 50);
         
         activeSub = sheetId;
@@ -926,7 +916,6 @@ function openSheet(sheetId, fromRestore = false) {
         // Then open new main sheet with animation
         document.getElementById('scrim')?.classList.add('active');
         
-        targetSheet.classList.add('scale-in');
         setTimeout(() => {
             targetSheet.classList.add('active');
         }, 50);
@@ -936,10 +925,6 @@ function openSheet(sheetId, fromRestore = false) {
     }
     
     document.body.classList.add('lock-scroll');
-    
-    // Ensure proper display and visibility
-    targetSheet.style.display = '';
-    targetSheet.style.visibility = 'visible';
     
     sessionStorage.setItem('currentSheet', sheetId);
     

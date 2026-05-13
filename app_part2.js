@@ -2815,6 +2815,15 @@ function initAIFloatingBubble() {
         bubble.style.transform = 'scale(1)';
         bubble.style.opacity = '1';
 
+        // Detect tap vs drag: short duration + small movement = tap
+        const dragDuration = Date.now() - dragStartTime;
+        const touch = e.type === 'touchend' ? e.changedTouches[0] : e;
+        const dragDistance = Math.abs(touch.clientX - startX) + Math.abs(touch.clientY - startY);
+        if (dragDuration < 300 && dragDistance < 10) {
+            toggleAIPopup();
+            return;
+        }
+
         // Smart snapping to edges for better UX
         const currentBottom = parseInt(bubble.style.bottom);
         const currentRight = parseInt(bubble.style.right);
