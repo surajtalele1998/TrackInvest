@@ -372,11 +372,7 @@ function buildUnifiedItemHTML(inv) {
 
     return `
             <div class="swipe-wrapper" data-id="${inv.id}">
-                <div class="swipe-bg">
-                    <div class="left-action"><span class="material-symbols-rounded">edit</span></div>
-                    <div class="right-action"><span class="material-symbols-rounded">delete</span></div>
-                </div>
-                <div class="unified-item front" onclick="openInvestSheet(${inv.id})">
+                <div class="unified-item" onclick="openInvestSheet(${inv.id})">
                     <div class="unified-icon" style="background:${meta.color};"><span class="material-symbols-rounded">${meta.icon}</span></div>
                     <div class="unified-content">
                         <div class="unified-title">
@@ -591,7 +587,7 @@ function attachSwipeListeners(cE) {
         const wrapper = e.target.closest('.swipe-wrapper');
         if (!wrapper) return;
 
-        const frontElement = wrapper.querySelector('.front');
+        const frontElement = wrapper.querySelector('.unified-item');
         if (!frontElement) return;
 
         const touch = e.touches[0];
@@ -600,6 +596,7 @@ function attachSwipeListeners(cE) {
             startY: touch.clientY,
             currentX: touch.clientX,
             activeItem: frontElement,
+            wrapper: wrapper,
             touchId: touch.identifier,
             isSwiping: false,
             hapticTriggered: false
@@ -628,13 +625,12 @@ function attachSwipeListeners(cE) {
         }
 
         if (gestureState.isSwiping) {
-            const clampedDeltaX = Math.max(-100, Math.min(100, deltaX));
-            gestureState.currentX = touch.clientX;
-            gestureState.activeItem.style.transform = `translateX(${clampedDeltaX}px)`;
-
-            if (!gestureState.hapticTriggered && Math.abs(clampedDeltaX) > 50) {
-                haptic(15);
-                gestureState.hapticTriggered = true;
+            if (deltaX > 20) { // Swipe Right
+                gestureState.activeItem.style.transform = `translateX(${deltaX - 20}px)`;
+                gestureState.activeItem.style.opacity = Math.max(0.7, 1 - (deltaX / 400));
+            } else if (deltaX < -20) { // Swipe Left
+                gestureState.activeItem.style.transform = `translateX(${deltaX + 20}px)`;
+                gestureState.activeItem.style.opacity = Math.max(0.7, 1 - (Math.abs(deltaX) / 400));
             }
         }
     };
@@ -647,30 +643,39 @@ function attachSwipeListeners(cE) {
             return;
         }
 
-        const finalDeltaX = touch.clientX - gestureState.startX;
-        const wrapper = gestureState.activeItem.closest('.swipe-wrapper');
-        const id = parseFloat(wrapper.getAttribute('data-id'));
-
-        if (gestureState.isSwiping) {
-            if (finalDeltaX < -60) {
-                haptic(40);
-                gestureState.activeItem.style.transition = 'transform 0.3s ease-out';
-                gestureState.activeItem.style.transform = `translateX(-100%)`;
-                setTimeout(() => { editInvId = id; deleteInvestment(); }, 200);
-            } else if (finalDeltaX > 60) {
-                haptic(20);
-                gestureState.activeItem.style.transition = 'transform 0.2s ease-out';
-                gestureState.activeItem.style.transform = `translateX(0px)`;
-                setTimeout(() => { openInvestSheet(id); }, 100);
-            } else {
-                gestureState.activeItem.style.transition = 'transform 0.3s cubic-bezier(0.2, 0, 0, 1)';
-                gestureState.activeItem.style.transform = `translateX(0px)`;
-            }
+        const diffX = touch.clientX - gestureState.startX;
+        const threshold = 120;
+        
+        gestureState.activeItem.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        
+        if (diffX > threshold) {
+            // Edit Action
+            haptic(40);
+            gestureState.activeItem.style.transform = 'translateX(100%)';
+            gestureState.activeItem.style.opacity = '0';
+            setTimeout(() => {
+                const id = parseInt(gestureState.wrapper.dataset.id);
+                openInvestSheet(id);
+                renderAll(); // Restore item
+            }, 300);
+        } else if (diffX < -threshold) {
+            // Delete Action
+            haptic(60);
+            gestureState.activeItem.style.transform = 'translateX(-100%)';
+            gestureState.activeItem.style.opacity = '0';
+            setTimeout(() => {
+                const id = parseInt(gestureState.wrapper.dataset.id);
+                editInvId = id;
+                deleteInvestment();
+                renderAll(); // Restore item if cancelled
+            }, 300);
         } else {
-            gestureState.activeItem.style.transform = `translateX(0px)`;
+            gestureState.activeItem.style.transform = 'translateX(0px)';
+            gestureState.activeItem.style.opacity = '1';
         }
-
-        resetSwipeState();
+        
+        gestureState.activeItem = null;
+        gestureState.isSwiping = false;
     };
 
     const resetSwipeState = () => {
@@ -2548,41 +2553,44 @@ function initAIFloatingBubble() {
         #ai-bubble-icon { font-size: 30px; }
 
         #ai-chat-popup {
-            width: 340px;
-            max-width: 95vw;
-            height: 480px;
-            max-height: 80vh;
+            position: fixed;
+            bottom: 90px;
+            right: 24px;
+            width: 360px;
+            max-width: calc(100vw - 48px);
+            height: 520px;
+            max-height: 70vh;
             touch-action: pan-y;
             background: var(--md-surface);
             border-radius: 28px;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 24px 48px rgba(0,0,0,0.3);
+            box-shadow: 0 12px 48px rgba(0,0,0,0.25);
             border: 1px solid var(--md-outline-variant);
             opacity: 0;
             transform: translateY(20px) scale(0.95);
             pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             transform-origin: bottom right;
-            /* Dynamic positioning based on bubble location */
-            position: absolute;
-            bottom: 70px;
-            right: 0;
+            z-index: 10001;
         }
         
         /* Mobile-specific popup adjustments */
         @media (max-width: 480px) {
             #ai-chat-popup {
-                width: calc(100vw - 32px);
+                width: 100vw;
                 max-width: 100vw;
-                height: 80vh;
-                max-height: 85vh;
-                border-radius: 28px;
-                bottom: 80px;
-                right: 16px;
+                height: 100vh;
+                max-height: 100vh;
+                bottom: 0 !important;
+                right: 0 !important;
+                border-radius: 0;
                 transform-origin: bottom center;
-                box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+                z-index: 20000;
+            }
+            #ai-floating-bubble.popup-open #ai-bubble-button {
+                display: none;
             }
         }
         #ai-chat-popup.visible {
@@ -2897,16 +2905,12 @@ function initAIFloatingBubble() {
         const popupHeight = isMobile ? viewportHeight : 480;
 
         if (isMobile) {
-            // On mobile, popup takes full screen
+            // Handled by CSS Media Query but ensure consistency
             popup.style.bottom = '0';
             popup.style.right = '0';
-            popup.style.width = '100vw';
-            popup.style.height = '100vh';
-            popup.style.borderRadius = '0';
-            popup.style.transformOrigin = 'bottom center';
         } else {
             // On desktop, position popup intelligently based on bubble position
-            let popupBottom = bubbleBottom + 70; // Position above bubble
+            let popupBottom = bubbleBottom + 75; // Position above bubble
             let popupRight = bubbleRight;
             let transformOrigin = 'bottom right';
 
@@ -2961,12 +2965,18 @@ function toggleAIPopup(forceState, view = 'chat') {
 
     if (targetState) {
         popup.classList.remove('hidden');
+        document.getElementById('ai-floating-bubble')?.classList.add('popup-open');
         setTimeout(() => popup.classList.add('visible'), 10);
         haptic(40);
 
         // Update popup position when opening
         if (window.updateAIPopupPosition && db.aiBubblePosition) {
             window.updateAIPopupPosition(db.aiBubblePosition.bottom, db.aiBubblePosition.right, window.innerWidth, window.innerHeight);
+        }
+
+        // If it's a mobile device, lock scroll
+        if (window.innerWidth <= 480) {
+            document.body.classList.add('lock-scroll');
         }
 
         // If it's a fresh open and no session, start one
@@ -2977,7 +2987,11 @@ function toggleAIPopup(forceState, view = 'chat') {
         }
     } else {
         popup.classList.remove('visible');
+        document.getElementById('ai-floating-bubble')?.classList.remove('popup-open');
         setTimeout(() => popup.classList.add('hidden'), 400);
+        
+        // Unlock scroll if it was locked
+        document.body.classList.remove('lock-scroll');
 
         // Clear active chat session when closing popup
         if (window.activeChatSession) {

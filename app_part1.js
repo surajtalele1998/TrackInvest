@@ -386,7 +386,7 @@ style.textContent = `
     
     /* Touch-friendly targets */
     @media (hover: none) and (pointer: coarse) {
-        .swipe-wrapper .front {
+        .swipe-wrapper .unified-item {
             min-height: 60px;
             padding: 16px;
         }
@@ -836,6 +836,8 @@ function closeOverlays(fromPopState = false) {
             }
         });
     }
+
+    document.body.classList.remove('lock-scroll');
     
     // Also close AI bubble popup if open
     const aiPopup = document.getElementById('ai-chat-popup');
@@ -932,6 +934,8 @@ function openSheet(sheetId, fromRestore = false) {
         activeMain = sheetId;
         activeSub = null;
     }
+    
+    document.body.classList.add('lock-scroll');
     
     // Ensure proper display and visibility
     targetSheet.style.display = '';
