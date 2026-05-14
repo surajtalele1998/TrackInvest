@@ -3,7 +3,7 @@
   "name": "TrackInvest",
   "short_name": "TrackInvest",
   "description": "Offline-first wealth manager with AI-powered portfolio tracking, predictions, and financial planning.",
-  "start_url": "./index.html",
+  "start_url": "./index.html?source=pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -31,5 +31,6 @@
     }
   ],
   "screenshots": [],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "dir": "ltr"
 }

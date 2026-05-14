@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v72';
+const CACHE_NAME = 'invest-pro-v73';
 
 const CORE_ASSETS = [
     './',
@@ -29,10 +29,18 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
             console.log('[SW] Caching core assets');
-            await cache.addAll(CORE_ASSETS);
+            try {
+                await cache.addAll(CORE_ASSETS);
+            } catch (err) {
+                console.error('[SW] Failed to cache core assets:', err);
+            }
             // CDN assets — don't block install if one fails
             for (const url of CDN_ASSETS) {
-                try { await cache.add(url); } catch (e) { console.warn('[SW] Failed to cache CDN:', url); }
+                try { 
+                    await cache.add(url); 
+                } catch (e) { 
+                    console.warn('[SW] Failed to cache CDN:', url); 
+                }
             }
         })
     );
@@ -42,12 +50,13 @@ self.addEventListener('install', (event) => {
 // 2. Activate — purge old caches
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((names) =>
-            Promise.all(names.filter(n => n !== CACHE_NAME).map(n => {
+        caches.keys().then((names) => {
+            console.log('[SW] Activating, current cache:', CACHE_NAME);
+            return Promise.all(names.filter(n => n !== CACHE_NAME).map(n => {
                 console.log('[SW] Deleting old cache:', n);
                 return caches.delete(n);
-            }))
-        )
+            }));
+        })
     );
     self.clients.claim();
 });
@@ -73,13 +82,18 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             caches.match(event.request).then(cached =>
                 cached || fetch(event.request).then(resp => {
-                    if (resp.status === 200) {
+                    if (resp && resp.status === 200) {
                         const clone = resp.clone();
-                        caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+                        caches.open(CACHE_NAME).then(c => c.put(event.request, clone)).catch(err => {
+                            console.warn('[SW] Failed to cache response:', err);
+                        });
                     }
                     return resp;
+                }).catch(err => {
+                    console.warn('[SW] Fetch failed, falling back to cache or index:', err);
+                    return caches.match('./index.html');
                 })
-            ).catch(() => caches.match('./index.html'))
+            )
         );
         return;
     }
@@ -88,9 +102,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then(cached => {
             const networkFetch = fetch(event.request).then(resp => {
-                if (resp.status === 200) {
+                if (resp && resp.status === 200) {
                     const clone = resp.clone();
-                    caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+                    caches.open(CACHE_NAME).then(c => c.put(event.request, clone)).catch(err => {
+                        console.warn('[SW] Failed to cache CDN response:', err);
+                    });
                 }
                 return resp;
             }).catch(() => cached);
@@ -106,8 +122,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: data.body,
-            icon: './icons/icon-192.svg',
-            badge: './icons/icon-192.svg',
+            icon: './icons/icon-192.png',
+            badge: './icons/icon-192.png',
             vibrate: [200, 100, 200],
             data: { url: './index.html' }
         })

@@ -529,7 +529,6 @@ function installPWA() {
 // Initialize mobile optimizations and PWA features
 document.addEventListener('DOMContentLoaded', () => {
     optimizeForMobile();
-    registerServiceWorker();
     installPWA();
 });
 

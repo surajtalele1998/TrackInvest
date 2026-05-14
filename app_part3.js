@@ -1346,7 +1346,7 @@ if ('serviceWorker' in navigator) {
                 reg.addEventListener('updatefound', () => {
                     const newWorker = reg.installing;
                     newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             showSnackbar('App updated! Refresh for latest version.', 'system_update');
                         }
                     });
@@ -1362,8 +1362,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredInstallPrompt = e;
     console.log('[PWA] Install prompt captured');
     // Show install button
-    let installBtn = document.getElementById('pwa-install-btn');
-    if (installBtn) installBtn.style.display = 'flex';
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.setAttribute('aria-label', 'Install TrackInvest app');
+    }
 });
 
 // Handle app installed
@@ -1371,7 +1374,7 @@ window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
     console.log('[PWA] App installed');
     showSnackbar('App installed successfully! 🎉', 'install_mobile');
-    let installBtn = document.getElementById('pwa-install-btn');
+    const installBtn = document.getElementById('pwa-install-btn');
     if (installBtn) installBtn.style.display = 'none';
 });
 
@@ -1386,8 +1389,13 @@ function triggerPWAInstall() {
         console.log('[PWA] User choice:', result.outcome);
         if (result.outcome === 'accepted') {
             showSnackbar('Installing...', 'download');
+        } else {
+            console.log('[PWA] Install dismissed by user');
         }
         deferredInstallPrompt = null;
+    }).catch(err => {
+        console.error('[PWA] Install prompt error:', err);
+        showSnackbar('Installation failed', 'error');
     });
 }
 
