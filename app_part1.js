@@ -3073,8 +3073,9 @@ function openInvestSheet(id = null, presetAmt = null) {
     const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
-    if (id) {
-        let inv = db.investments.find(i => i.id == id); if (!inv) return;
+  if (id) {
+    let inv = db.investments.find(i => String(i.id) === String(id));
+    if (!inv) return;
         setInvestType(inv.type);
 
         safeSet('inv-date', inv.date);
