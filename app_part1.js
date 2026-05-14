@@ -506,9 +506,9 @@ function installPWA() {
     }
 
     window.installPWAApp = () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then(choiceResult => {
+        if (deferredInstallPrompt) {
+            deferredInstallPrompt.prompt();
+            deferredInstallPrompt.userChoice.then(choiceResult => {
                 if (choiceResult.outcome === 'accepted') {
                     showSnackbar('App installed successfully!', 'check_circle');
                 }
