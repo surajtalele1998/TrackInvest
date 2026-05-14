@@ -284,7 +284,7 @@ function saveInvestment() {
             interestRate: intRate
         });
     }
-    if (editInvId) { let idx = db.investments.findIndex(i => i.id === editInvId); if (idx > -1) db.investments[idx] = newEntry; } else { db.investments.push(newEntry); }
+if (editInvId) { let idx = db.investments.findIndex(i => String(i.id) === String(editInvId)); if (idx > -1) db.investments[idx] = newEntry; else db.investments.push(newEntry); } else { db.investments.push(newEntry); }
 
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
@@ -351,8 +351,9 @@ function showUndoSnackbar(message, undoCallback) {
 }
 
 function deleteInvestment() {
-    haptic(50); Swal.fire({ title: 'Delete Entry?', text: "This cannot be undone.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }).then((r) => { if (r.isConfirmed) { db.investments = db.investments.filter(i => i.id !== editInvId); saveData(); renderAll(); closeOverlays(); showSnackbar("Entry Deleted"); } });
+    haptic(50); Swal.fire({ title: 'Delete Entry?', text: "This cannot be undone.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }).then((r) => { if (r.isConfirmed) { db.investments = db.investments.filter(i => String(i.id) !== String(editInvId)); saveData(); renderAll(); closeOverlays(); showSnackbar("Entry Deleted"); } });
 }
+
 
 function executeQuickLog(idx) { haptic(40); let tpl = db.templates[idx]; db.investments.push({ id: generateUniqueId(), date: getLocalYYYYMMDD(new Date()), type: tpl.type, amount: tpl.amount, note: tpl.note, tags: tpl.tags, isDividend: false, account: tpl.account }); saveData(); renderAll(); showSnackbar(`Quick Logged ${formatMoney(tpl.amount)}`); }
 function deleteQuickLog(event, idx) { event.stopPropagation(); haptic(40); Swal.fire({ title: 'Delete Template?', showCancelButton: true }).then((res) => { if (res.isConfirmed) { db.templates.splice(idx, 1); saveData(); renderAll(); } }); }
@@ -372,7 +373,7 @@ function buildUnifiedItemHTML(inv) {
 
     return `
             <div class="swipe-wrapper" data-id="${inv.id}">
-                <div class="unified-item" onclick="openInvestSheet(${inv.id})">
+                <div class="unified-item" onclick="openInvestSheet('${inv.id}')">
                     <div class="unified-icon" style="background:${meta.color};"><span class="material-symbols-rounded">${meta.icon}</span></div>
                     <div class="unified-content">
                         <div class="unified-title">
@@ -654,7 +655,7 @@ function attachSwipeListeners(cE) {
             gestureState.activeItem.style.transform = 'translateX(100%)';
             gestureState.activeItem.style.opacity = '0';
             setTimeout(() => {
-                const id = parseInt(gestureState.wrapper.dataset.id);
+                const id = gestureState.wrapper.dataset.id;
                 openInvestSheet(id);
                 renderAll(); // Restore item
             }, 300);
@@ -664,7 +665,7 @@ function attachSwipeListeners(cE) {
             gestureState.activeItem.style.transform = 'translateX(-100%)';
             gestureState.activeItem.style.opacity = '0';
             setTimeout(() => {
-                const id = parseInt(gestureState.wrapper.dataset.id);
+                const id = gestureState.wrapper.dataset.id;
                 editInvId = id;
                 deleteInvestment();
                 renderAll(); // Restore item if cancelled
