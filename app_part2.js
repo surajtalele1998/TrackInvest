@@ -309,7 +309,8 @@ function saveInvestment() {
     }
 
     saveData(); renderAll(); closeOverlays(); clearFormDraft();
-
+    // Reset edit states
+    window.editInvId = null;
     // Show undo-capable toast for new entries
     if (!editInvId) {
         const lastEntryId = newEntry.id;
@@ -911,6 +912,7 @@ function saveGoal() {
     closeOverlays();
     renderAll();
     showSnackbar("Goal Saved!", "flag");
+    window.editGoalId = null;
 }
 function openFIRESheet() {
     haptic(30);
