@@ -284,16 +284,16 @@ function saveInvestment() {
             interestRate: intRate
         });
     }
-if (editInvId) {
-    let idx = db.investments.findIndex(i => String(i.id) === String(editInvId));
-    if (idx > -1) {
-        db.investments[idx] = newEntry;
+    if (editInvId) {
+        let idx = db.investments.findIndex(i => String(i.id) === String(editInvId));
+        if (idx > -1) {
+            db.investments[idx] = newEntry;
+        } else {
+            db.investments.push(newEntry);
+        }
     } else {
         db.investments.push(newEntry);
     }
-} else {
-    db.investments.push(newEntry);
-}
 
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
@@ -670,9 +670,9 @@ function attachSwipeListeners(cE) {
 
         const diffX = touch.clientX - gestureState.startX;
         const threshold = 120;
-        
+
         gestureState.activeItem.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        
+
         if (diffX > threshold) {
             // Edit Action
             haptic(40);
@@ -698,7 +698,7 @@ function attachSwipeListeners(cE) {
             gestureState.activeItem.style.transform = 'translateX(0px)';
             gestureState.activeItem.style.opacity = '1';
         }
-        
+
         gestureState.activeItem = null;
         gestureState.isSwiping = false;
     };
@@ -879,11 +879,13 @@ function openGoalSheet(id = null) {
         document.getElementById('goal-target').value = g.target;
         document.getElementById('goal-saved').value = g.saved;
         document.getElementById('goal-link').value = g.linkedCategory || '';
+        document.getElementById('del-goal-btn').style.display = 'block';
     } else {
         document.getElementById('goal-name').value = '';
         document.getElementById('goal-target').value = '';
         document.getElementById('goal-saved').value = '';
         document.getElementById('goal-link').value = '';
+        document.getElementById('del-goal-btn').style.display = 'none';
     }
     openSheet('goal-sheet');
 }
@@ -899,6 +901,8 @@ function saveGoal() {
         let idx = db.goals.findIndex(g => String(g.id) === String(editGoalId));
         if (idx > -1) {
             db.goals[idx] = newGoal;
+        } else {
+            db.goals.push(newGoal);
         }
     } else {
         db.goals.push(newGoal);
@@ -927,6 +931,7 @@ function deleteGoal(id) {
         if (r.isConfirmed) {
             db.goals = db.goals.filter(g => String(g.id) !== String(id));
             saveData();
+            closeOverlays();
             renderAll();
             showSnackbar("Goal Deleted");
         }
@@ -3061,7 +3066,7 @@ function toggleAIPopup(forceState, view = 'chat') {
         popup.classList.remove('visible');
         document.getElementById('ai-floating-bubble')?.classList.remove('popup-open');
         setTimeout(() => popup.classList.add('hidden'), 400);
-        
+
         // Unlock scroll if it was locked
         document.body.classList.remove('lock-scroll');
 

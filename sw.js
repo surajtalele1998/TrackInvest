@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v75';
+const CACHE_NAME = 'invest-pro-v76';
 
 const CORE_ASSETS = [
     './',
@@ -36,10 +36,10 @@ self.addEventListener('install', (event) => {
             }
             // CDN assets — don't block install if one fails
             for (const url of CDN_ASSETS) {
-                try { 
-                    await cache.add(url); 
-                } catch (e) { 
-                    console.warn('[SW] Failed to cache CDN:', url); 
+                try {
+                    await cache.add(url);
+                } catch (e) {
+                    console.warn('[SW] Failed to cache CDN:', url);
                 }
             }
         })
