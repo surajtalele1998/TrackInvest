@@ -102,17 +102,18 @@ function renderAIReportCharts(typeTotals) {
 }
 
 async function downloadAIReport() {
-    const element = document.getElementById('ai-sheet');
+    const element = document.getElementById('ai-report-content');
 
     // 1. Ensure the element exists
     if (!element) {
-        console.error("Target element 'ai-sheet' is missing.");
+        console.error("Target element 'ai-report-content' is missing.");
         showSnackbar("Report element not found", "error");
         return;
     }
 
-    // 2. Check if AI sheet is active and has content
-    if (!element.classList.contains('active')) {
+    // 2. Check if AI report sheet is active
+    const sheet = document.getElementById('ai-report-sheet');
+    if (!sheet || !sheet.classList.contains('active')) {
         showSnackbar("Please open AI report first", "error");
         return;
     }
@@ -126,7 +127,7 @@ async function downloadAIReport() {
         transform: element.style.transform,
         opacity: element.style.opacity
     };
-    
+
     // Make sure element is properly visible for capture
     element.style.display = 'block';
     element.style.position = 'relative';
@@ -134,7 +135,7 @@ async function downloadAIReport() {
     element.style.zIndex = '1000';
     element.style.transform = 'none';
     element.style.opacity = '1';
-    
+
     // Force layout calculation
     element.offsetHeight;
 
@@ -168,7 +169,7 @@ async function downloadAIReport() {
             windowHeight: Math.max(element.scrollHeight, element.clientHeight) + 200,
             onclone: function(clonedDoc) {
                 // Ensure all elements are visible in the cloned document
-                const clonedElement = clonedDoc.getElementById('ai-sheet');
+                const clonedElement = clonedDoc.getElementById('ai-report-content');
                 if (clonedElement) {
                     clonedElement.style.display = 'block';
                     clonedElement.style.visibility = 'visible';
@@ -187,13 +188,13 @@ async function downloadAIReport() {
 
     try {
         showSnackbar("Generating PDF...", "hourglass_empty");
-        
+
         // Ensure element is fully visible for capture
         element.style.visibility = 'visible';
-        
+
         // Generate PDF
         const pdf = await html2pdf().set(opt).from(element).toPdf().get('pdf');
-        
+
         // Add metadata
         pdf.setProperties({
             title: 'Wealth Strategic Report',
@@ -202,7 +203,7 @@ async function downloadAIReport() {
             keywords: 'finance, investment, portfolio',
             creator: 'TrackInvest AI'
         });
-        
+
         pdf.save(opt.filename);
         showSnackbar("PDF Downloaded!", "check_circle");
     } catch (error) {
@@ -213,13 +214,13 @@ async function downloadAIReport() {
         Object.keys(originalStyles).forEach(key => {
             element.style[key] = originalStyles[key];
         });
-        
+
         // If the sheet was closed while generating, ensure it stays closed
-        if (!element.classList.contains('active')) {
+        if (sheet && !sheet.classList.contains('active')) {
             element.style.display = 'none';
             element.style.visibility = 'hidden';
         }
-        
+
         console.log("PDF Generation Cleanup Complete");
     }
 }

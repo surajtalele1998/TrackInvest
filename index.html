@@ -1140,6 +1140,22 @@
 
     <!-- AI sub-sheets consolidated in bubble popup -->
 
+    <div class="sheet sub-sheet" id="ai-report-sheet" style="max-height:95vh; max-width:95vw; width:800px;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom: 16px; flex-shrink: 0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
+                    style="color:var(--md-primary);">auto_awesome</span> AI Wealth Report</div>
+            <div style="display:flex;gap:8px;">
+                <button class="icon-btn" onclick="downloadAIReport()" title="Download PDF">
+                    <span class="material-symbols-rounded">picture_as_pdf</span>
+                </button>
+                <button class="icon-btn" onclick="closeSubSheet()">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+        </div>
+        <div id="ai-report-content" class="scroll-y" style="flex:1; overflow-y:auto; padding:16px;"></div>
+    </div>
 
     <div class="sheet sub-sheet" id="dividend-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
         <div class="drag-handle"></div>

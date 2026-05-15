@@ -3062,6 +3062,16 @@ function toggleAIPopup(forceState, view = 'chat') {
         } else {
             renderAIPopupContent(view);
         }
+
+        // Add click-outside-to-close handler
+        if (!popup.dataset.clickOutsideHandler) {
+            popup.dataset.clickOutsideHandler = 'true';
+            document.addEventListener('click', function handleClickOutside(e) {
+                if (popup.classList.contains('visible') && !popup.contains(e.target) && !e.target.closest('#ai-floating-bubble')) {
+                    toggleAIPopup(false);
+                }
+            });
+        }
     } else {
         popup.classList.remove('visible');
         document.getElementById('ai-floating-bubble')?.classList.remove('popup-open');
@@ -3073,6 +3083,12 @@ function toggleAIPopup(forceState, view = 'chat') {
         // Clear active chat session when closing popup
         if (window.activeChatSession) {
             window.activeChatSession = null;
+        }
+
+        // Close any open AI report sheet when closing popup
+        const aiReportSheet = document.getElementById('ai-report-sheet');
+        if (aiReportSheet && aiReportSheet.classList.contains('active')) {
+            closeSubSheet();
         }
     }
 }
@@ -3099,14 +3115,29 @@ function renderAIPopupContent(view, data = null) {
         }
         container.innerHTML = html;
     } else if (view === 'report') {
-        footer.style.display = 'none';
-        container.innerHTML = data || '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data.</div>';
+        // Open the dedicated AI report sheet instead of showing in bubble
+        openAIReportSheet(data);
+        return;
     } else {
         footer.style.display = 'block';
         container.innerHTML = '<div id="ai-popup-messages" style="display:flex; flex-direction:column;"></div>';
         renderPopupMessages();
     }
 }
+
+function openAIReportSheet(reportData = null) {
+    const reportContent = document.getElementById('ai-report-content');
+    if (!reportContent) return;
+
+    if (reportData) {
+        reportContent.innerHTML = reportData;
+    } else {
+        reportContent.innerHTML = '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data available.</div>';
+    }
+
+    openSubSheet('ai-report-sheet');
+}
+window.openAIReportSheet = openAIReportSheet;
 
 function renderPopupMessages() {
     const msgContainer = document.getElementById('ai-popup-messages');
