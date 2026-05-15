@@ -37,7 +37,8 @@ function safeLocalStorageSet(key, value) {
 
 let db = safeLocalStorageGet('appHubInvestDb', {});
 
-if (!db.userProfile) db.userProfile = { salary: 0, regime: 'new', monthlyExpense: 0 };
+if (!db.userProfile) db.userProfile = { salary: 0, regime: 'new', monthlyExpense: 0, dob: '' };
+if (!db.userProfile.dob) db.userProfile.dob = '';
 if (!db.userProfile.monthlyExpense) db.userProfile.monthlyExpense = 0;
 if (!db.settingsTable) db.settingsTable = { lastResetMonth: '' };
 if (!db.investments) db.investments = [];
@@ -64,6 +65,9 @@ if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: Apr
 if (typeof db.firstTimeTipsShown === 'undefined') db.firstTimeTipsShown = false;
 if (typeof db.aiBubbleEnabled === 'undefined') db.aiBubbleEnabled = true;
 if (!db.aiBubblePosition) db.aiBubblePosition = { bottom: 24, right: 24 };
+
+// NEW: Default state for Monthly Planner visibility
+if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = true;
 
 // Extended user profile with smart defaults (all optional, progressive disclosure)
 if (!db.userProfileExtended) db.userProfileExtended = {

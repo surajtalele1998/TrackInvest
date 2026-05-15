@@ -114,7 +114,20 @@
             </div>
 
             <!-- Frequent Actions Quick Navigation -->
-            <div id="frequent-actions" style="margin-bottom:16px;"></div>
+          <div id="frequent-actions" style="margin-bottom:16px;"></div>
+
+<div class="md-card" id="monthly-planner-entry" style="display:none; align-items:center; justify-content:space-between; gap:16px; padding:20px; background:var(--md-surface-container-high);" onclick="window.location.href='monthly_plan.html'">
+    <div style="display:flex; align-items:center; gap:16px;">
+        <div style="width:48px; height:48px; border-radius:16px; background:var(--md-primary-container); color:var(--md-on-primary-container); display:flex; align-items:center; justify-content:center;">
+            <span class="material-symbols-rounded">account_balance_wallet</span>
+        </div>
+        <div>
+            <div style="font-weight:600; font-size:16px; color:var(--md-on-surface);">Monthly Planner</div>
+            <div style="font-size:13px; color:var(--md-on-surface-variant); margin-top:2px;">Budget your salary & cash flow</div>
+        </div>
+    </div>
+    <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+</div>
 
             <div id="maturity-section" style="display:none; margin-bottom:16px;">
                 <div class="section-title" style="margin-top:0;">⏰ Maturing Soon <span
@@ -724,6 +737,23 @@
                     <div class="input-container" style="flex:1"><label>Currency</label><input type="text"
                             id="settings-currency" class="md-input" value="₹"></div>
                 </div>
+                <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--md-surface-container-low); padding:12px 16px; border-radius:16px; border:1px solid var(--md-surface-container-highest);">
+                        <div>
+                            <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Date of Birth</div>
+                            <div style="font-size:12px; color:var(--md-on-surface-variant);" id="calculated-age-label">Age: Not set</div>
+                        </div>
+                        <input type="date" id="profile-dob" style="border:none; background:var(--md-surface-container-high); color:var(--md-on-surface); font-family:inherit; font-weight:600; padding:8px 12px; border-radius:12px; outline:none;" onchange="updateCalculatedAgeDisplay()">
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; background:var(--md-surface-container); border-radius:16px; margin-bottom:16px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Monthly Planner Tool</div>
+                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Show budgeting card on dashboard</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="settings-enable-planner"><span class="slider"></span></label>
+                </div>
+
                 <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span
                         class="material-symbols-rounded">save</span> Save Profile</button>
 

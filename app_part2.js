@@ -1040,6 +1040,38 @@ function saveCatSettings() {
     saveData(); renderAll(); showSnackbar("Settings Saved", "check_circle"); closeOverlays();
 }
 
+// Call this function when loading the settings UI tab panel
+function loadUserProfileSettings() {
+    if (db.userProfile) {
+        if(document.getElementById('profile-salary')) document.getElementById('profile-salary').value = db.userProfile.salary || '';
+        
+        const dobInput = document.getElementById('profile-dob');
+        if (dobInput) {
+            dobInput.value = db.userProfile.dob || '';
+            updateCalculatedAgeDisplay(); // Instantly show computed age metric
+        }
+    }
+}
+
+// Age calculation controller logic
+function updateCalculatedAgeDisplay() {
+    const dobValue = document.getElementById('profile-dob').value;
+    const label = document.getElementById('calculated-age-label');
+    if (!label) return;
+
+    if (!dobValue) {
+        label.innerText = "Age: Not set";
+        return;
+    }
+
+    const birthDate = new Date(dobValue);
+    const difference = Date.now() - birthDate.getTime();
+    const ageDate = new Date(difference); 
+    const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+
+    label.innerText = `Age: ${calculatedAge} years old`;
+}
+
 function saveProfileSettings() {
     haptic(40);
     db.userProfile.salary = parseFloat(document.getElementById('settings-salary').value) || 0;
@@ -1047,6 +1079,12 @@ function saveProfileSettings() {
     db.userProfile.monthlyExpense = parseFloat(document.getElementById('settings-expenses').value) || 0;
     db.fyStartMonth = parseInt(document.getElementById('settings-fy-start').value) || 3;
     db.currency = document.getElementById('settings-currency').value || '₹';
+    db.userProfile.dob = document.getElementById('profile-dob')?.value || '';
+    
+    // NEW: Save Planner visibility
+    const plannerEl = document.getElementById('settings-enable-planner');
+    if(plannerEl) db.enableMonthlyPlanner = plannerEl.checked;
+    
     saveData(); renderAll(); showSnackbar("Profile & Preferences Updated", "check_circle");
 }
 
@@ -1094,7 +1132,7 @@ function openSettings() {
             groqKey: db.groqKey || ''
         }
     };
-
+    loadUserProfileSettings();
     // Populate form fields
     const salaryEl = document.getElementById('settings-salary');
     const regimeEl = document.getElementById('settings-regime');
@@ -1105,6 +1143,7 @@ function openSettings() {
     const geminiEl = document.getElementById('gemini-api-key');
     const groqEl = document.getElementById('groq-api-key');
     const biometricEl = document.getElementById('use-biometric-toggle');
+    const plannerEl = document.getElementById('settings-enable-planner'); // NEW
 
     if (salaryEl) salaryEl.value = settingsData.profile.salary;
     if (regimeEl) regimeEl.value = settingsData.profile.regime;
@@ -1115,6 +1154,7 @@ function openSettings() {
     if (geminiEl) geminiEl.value = settingsData.ai.geminiKey;
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
+    if (plannerEl) plannerEl.checked = db.enableMonthlyPlanner; // NEW
 
     const bubbleToggle = document.getElementById('ai-bubble-toggle');
     if (bubbleToggle) bubbleToggle.checked = db.aiBubbleEnabled;

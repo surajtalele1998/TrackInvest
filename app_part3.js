@@ -714,9 +714,15 @@ function updatePortfolioCalculations() {
             attachSwipeListeners(dashboardList);
         }
     }
-
+    
     // Add Frequent Actions section for quick navigation
     renderFrequentActions();
+    
+    // NEW: Show/Hide Monthly Planner Entry Card
+    let plannerEntry = document.getElementById('monthly-planner-entry');
+    if (plannerEntry) {
+        plannerEntry.style.display = db.enableMonthlyPlanner ? 'flex' : 'none';
+    }
 
     renderHistory();
 
