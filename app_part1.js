@@ -129,7 +129,7 @@ const milestoneThresholds = [
     { val: 5000000, label: '₹50 Lakh' }, { val: 10000000, label: '₹1 Crore' }
 ];
 
-let editInvId = null, editGoalId = null, currentInvType = Object.keys(db.categories)[0] || 'Cash';
+window.editInvId = null, window.editGoalId = null, currentInvType = Object.keys(db.categories)[0] || 'Cash';
 // Default field configurations for standard categories if not exists
 const standardFieldConfigs = {
     'FD': { interest: true, payout: true, maturity: true, broker: true, subcat: true },
@@ -817,10 +817,6 @@ function closeOverlays(fromPopState = false) {
             window.activeChatSession = null;
         }
     }
-
-    // Reset edit states
-    editInvId = null;
-    editGoalId = null;
 
     // Clear session storage
     try {
@@ -3073,9 +3069,9 @@ function openInvestSheet(id = null, presetAmt = null) {
     const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
     const safeCheck = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
 
-  if (id) {
-    let inv = db.investments.find(i => String(i.id) === String(id));
-    if (!inv) return;
+    if (id) {
+        let inv = db.investments.find(i => String(i.id) === String(id));
+        if (!inv) return;
         setInvestType(inv.type);
 
         safeSet('inv-date', inv.date);
