@@ -230,7 +230,7 @@ async function generateAITags() {
     if (!db.geminiKey && !db.groqKey) return showSnackbar("Please add API Key in Settings.", "key");
     let note = document.getElementById('inv-note').value; if (!note) return showSnackbar("Enter an Asset Note first.", "edit");
     let tagInput = document.getElementById('inv-tags'); tagInput.value = "Generating...";
-    let prompt = `Provide exactly 3 comma‑separated short tags (no hashtags) for a financial asset of type '${currentInvType}' with note '${note}'. Examples: tax, equity, longterm.`;
+    let prompt = `Provide exactly 3 comma‑separated short tags (no hashtags) for a financial asset of type '${window.currentInvType}' with note '${note}'. Examples: tax, equity, longterm.`;
     try { let tags = await callAIApi(prompt, "You return comma-separated lists of tags only."); tagInput.value = tags; haptic([30, 50]); } catch (e) { tagInput.value = ""; showSnackbar("AI Tag generation failed.", "error"); }
 }
 
@@ -278,8 +278,8 @@ function updateDividendTotals() {
 }
 
 function updateAccountFilter() {
-    activeAccountFilter = document.getElementById('account-filter').value;
-    document.getElementById('active-acc-label').innerText = activeAccountFilter;
+    window.activeAccountFilter = document.getElementById('account-filter').value;
+    document.getElementById('active-acc-label').innerText = window.activeAccountFilter;
 }
 
 function updatePortfolioCalculations() {
@@ -300,7 +300,7 @@ function updatePortfolioCalculations() {
 
     Object.keys(db.categories).forEach(type => {
         try {
-            let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
+            let filteredInvs = db.investments.filter(inv => inv.type === type && (window.activeAccountFilter === 'All' || inv.account === window.activeAccountFilter));
 
             // Data integrity checks
             filteredInvs.forEach(inv => {
@@ -380,7 +380,7 @@ function updatePortfolioCalculations() {
 
     // Month Totals & Maturities Loop
     db.investments.forEach(inv => {
-        if (activeAccountFilter !== 'All' && inv.account !== activeAccountFilter) return;
+        if (window.activeAccountFilter !== 'All' && inv.account !== window.activeAccountFilter) return;
         let d = parseDate(inv.date);
         if (inv.maturityDate) { let mDate = new Date(inv.maturityDate); let diffDays = Math.ceil((mDate - now) / (1000 * 60 * 60 * 24)); if (diffDays >= 0 && diffDays <= 90) { maturities.push({ ...inv, days: diffDays, dateObj: mDate }); } }
         if (!inv.isDividend) {
@@ -526,7 +526,7 @@ function updatePortfolioCalculations() {
                     let targetPerc = db.allocTargets[t];
 
                     // Estimate tax implication (simplified)
-                    let invs = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
+                    let invs = db.investments.filter(i => i.type === t && !i.isDividend && (window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter));
                     let stcg = 0, ltcg = 0;
                     let now = new Date();
                     invs.forEach(i => {
@@ -631,7 +631,7 @@ function updatePortfolioCalculations() {
             let savedAmt = g.saved, isLinked = false; let monthlyContrib = 0;
             if (g.linkedCategory) {
                 // Calculate invested principal (excluding appreciation) for linked category
-                let investedPrincipal = db.investments.filter(i => i.type === g.linkedCategory && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[g.linkedCategory]?.initialBal || 0);
+                let investedPrincipal = db.investments.filter(i => i.type === g.linkedCategory && !i.isDividend && (window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[g.linkedCategory]?.initialBal || 0);
                 savedAmt = investedPrincipal;
                 isLinked = true;
                 monthlyContrib = db.recurring.filter(r => r.type === g.linkedCategory).reduce((s, r) => s + r.amount, 0);
@@ -704,7 +704,7 @@ function updatePortfolioCalculations() {
     }
 
     // Recent activity with context-aware empty state
-    let sInv = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 5);
+    let sInv = db.investments.filter(i => window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter).sort((a, b) => parseDate(b.date) - parseDate(a.date)).slice(0, 5);
     let dashboardList = document.getElementById('dashboard-history-list');
     if (dashboardList) {
         if (sInv.length === 0) {
@@ -1420,13 +1420,13 @@ function calculatePortfolioHealth() {
 
     let recentInvestments = db.investments.filter(i =>
         !i.isDividend &&
-        (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
+        (window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter) &&
         new Date(i.date) >= lastMonth
     ).reduce((s, i) => s + i.amount, 0);
 
     let previousInvestments = db.investments.filter(i =>
         !i.isDividend &&
-        (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
+        (window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter) &&
         new Date(i.date) >= threeMonthsAgo &&
         new Date(i.date) < lastMonth
     ).reduce((s, i) => s + i.amount, 0);

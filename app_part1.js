@@ -129,7 +129,7 @@ const milestoneThresholds = [
     { val: 5000000, label: '₹50 Lakh' }, { val: 10000000, label: '₹1 Crore' }
 ];
 
-window.editInvId = null, window.editGoalId = null, currentInvType = Object.keys(db.categories)[0] || 'Cash';
+window.editInvId = null, window.editGoalId = null, window.editRecurringId = null, window.currentInvType = Object.keys(db.categories)[0] || 'Cash';
 // Default field configurations for standard categories if not exists
 const standardFieldConfigs = {
     'FD': { interest: true, payout: true, maturity: true, broker: true, subcat: true },
@@ -148,7 +148,7 @@ Object.keys(db.categories).forEach(cat => {
         db.categoryDetails[cat].fields = standardFieldConfigs[cat];
     }
 });
-let activeCategory = null, activeAccountFilter = 'All';
+window.activeCategory = null, window.activeAccountFilter = 'All';
 // Tracks which sheet (and sub-sheet) is currently open so closeSubSheet can
 // restore the underlying main sheet to sessionStorage. Previously these were
 // implicit globals, which (a) tripped strict mode and (b) meant that early
@@ -641,9 +641,9 @@ function generateChartCacheKey(type) {
     } else if (type === 'rolling') {
         let now = new Date();
         let currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
-        return `${activeAccountFilter}|${currentMonthKey}|${db.privacyMode}|${db.investments.length}`;
+        return `${window.activeAccountFilter}|${currentMonthKey}|${db.privacyMode}|${db.investments.length}`;
     } else if (type === 'category') {
-        return `${activeCategory}|${db.investments.filter(i => i.type === activeCategory).length}|${db.privacyMode}`;
+        return `${window.activeCategory}|${db.investments.filter(i => i.type === window.activeCategory).length}|${db.privacyMode}`;
     }
     return Date.now().toString();
 }
@@ -994,7 +994,7 @@ function renderRecurringSheet() {
                         <div class="sip-item-meta">${r.type} · Next: ${next} · ${r.account || 'Default'}</div>
                     </div>
                     <div class="sip-item-amt">${formatMoney(r.amount)}</div>
-                    <button class="icon-btn" onclick="deleteRecurring(${idx})" style="width:36px;height:36px;color:var(--md-error);"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>
+                    <button class="icon-btn" onclick="deleteRecurring('${r.id}')" style="width:36px;height:36px;color:var(--md-error);"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>
                 </div>`;
     }).join('');
 }
@@ -1005,10 +1005,26 @@ function openRecurringSheet() {
     openSheet('recurring-sheet');
 }
 window.openRecurringSheet = openRecurringSheet;
-function deleteRecurring(idx) {
+function deleteRecurring(id) {
     haptic(30);
-    Swal.fire({ title: 'Delete SIP?', text: `Remove "${db.recurring[idx].note || db.recurring[idx].type}"?`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete', customClass: { popup: 'swal2-popup', confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' } }).then(r => {
-        if (r.isConfirmed) { db.recurring.splice(idx, 1); saveData(); renderRecurringSheet(); showSnackbar('SIP removed', 'check_circle'); }
+    Swal.fire({
+        title: 'Delete SIP?',
+        text: 'This will permanently remove this recurring SIP.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: 'var(--md-error)',
+        confirmButtonText: 'Yes, delete it',
+        customClass: { popup: 'swal2-popup', confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' }
+    }).then(r => {
+        if (r.isConfirmed) {
+            db.recurring = db.recurring.filter(r => String(r.id) !== String(id));
+            saveData();
+            renderRecurringSheet();
+            showSnackbar('SIP removed', 'check_circle');
+            window.editRecurringId = null;
+        } else {
+            window.editRecurringId = null;
+        }
     });
 }
 
@@ -1133,7 +1149,7 @@ function getSmartDefaults() {
     const currentHour = now.getHours();
 
     // Time-based investment type suggestions
-    let suggestedType = currentInvType;
+    let suggestedType = window.currentInvType;
     if (currentHour >= 9 && currentHour <= 11) {
         suggestedType = 'SIP'; // Morning - SIP time
     } else if (currentHour >= 18 && currentHour <= 20) {
@@ -1928,7 +1944,7 @@ function initUI() {
         chips.innerHTML += `<div class="quick-chip" onclick="setInvestType('${safeC}')">${safeC}</div>`;
         if (filterType) filterType.innerHTML += `<option value="${safeC}">${safeC}</option>`;
     });
-    currentInvType = Object.keys(db.categories)[0];
+    window.currentInvType = Object.keys(db.categories)[0];
 
     let gl = document.getElementById('goal-link'); gl.innerHTML = `<option value="">None (Manual Tracking)</option>`;
     Object.keys(db.categories).forEach(c => { gl.innerHTML += `<option value="${escapeHtml(c)}">Link to ${escapeHtml(c)}</option>`; });
@@ -2529,7 +2545,7 @@ function getSmartDefault(key, fallback = '') {
 }
 
 function setInvestType(type) {
-    haptic(20); currentInvType = type;
+    haptic(20); window.currentInvType = type;
     document.querySelectorAll('#type-chips .quick-chip').forEach(el => {
         if (el.innerText === type) el.classList.add('active');
         else el.classList.remove('active');
@@ -2624,7 +2640,7 @@ function updateSmartPreview() {
     const amt = parseFloat(document.getElementById('inv-amt').value) || 0;
     const dateValue = document.getElementById('inv-date').value;
     const date = new Date(dateValue);
-    const type = currentInvType;
+    const type = window.currentInvType;
 
     if (amt <= 0 || isNaN(date.getTime())) {
         preview.style.display = 'none';
@@ -2941,9 +2957,9 @@ function nextMonthlyRun(startDate) {
 const FORM_DRAFT_KEY = 'investFormDraft';
 
 function saveFormDraft() {
-    if (editInvId) return; // Don't save drafts when editing
+    if (window.editInvId) return; // Don't save drafts when editing
     const draft = {
-        type: currentInvType,
+        type: window.currentInvType,
         date: document.getElementById('inv-date')?.value,
         amount: document.getElementById('inv-amt')?.value,
         note: document.getElementById('inv-note')?.value,
@@ -3027,7 +3043,7 @@ function openInvestSheet(id = null, presetAmt = null) {
             const draftRestored = loadFormDraft();
             if (!draftRestored) {
                 // New entry - smart focus based on category type
-                let type = currentInvType;
+                let type = window.currentInvType;
                 let focusField = 'inv-amt'; // default
 
                 // For SIP/Stocks with MF search enabled, focus the search first
@@ -3118,7 +3134,7 @@ function openInvestSheet(id = null, presetAmt = null) {
         let tplCheck = document.getElementById('tpl-switch-wrap'); if (tplCheck) tplCheck.style.display = 'flex';
         let tplToggle = document.getElementById('inv-template'); if (tplToggle) tplToggle.checked = false;
         let recCheck = document.getElementById('inv-recurring'); if (recCheck) recCheck.checked = false;
-        if (activeCategory) { setInvestType(activeCategory); } else { setInvestType(Object.keys(db.categories)[0]); }
+        if (window.activeCategory) { setInvestType(window.activeCategory); } else { setInvestType(Object.keys(db.categories)[0]); }
     }
     openSheet('invest-sheet');
 }

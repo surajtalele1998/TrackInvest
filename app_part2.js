@@ -131,36 +131,36 @@ function saveInvestment() {
         'Crypto': { min: 100, max: 1000000, warning: 100000 }
     };
 
-    const limits = investmentLimits[currentInvType] || { min: 1, max: 10000000, warning: 1000000 };
+    const limits = investmentLimits[window.currentInvType] || { min: 1, max: 10000000, warning: 1000000 };
 
     if (amt < limits.min) {
-        validationErrors.push(`${currentInvType} minimum amount is ${formatMoney(limits.min)}`);
+        validationErrors.push(`${window.currentInvType} minimum amount is ${formatMoney(limits.min)}`);
         errorFields.push('inv-amt');
     } else if (amt > limits.max) {
-        validationErrors.push(`${currentInvType} maximum amount is ${formatMoney(limits.max)}`);
+        validationErrors.push(`${window.currentInvType} maximum amount is ${formatMoney(limits.max)}`);
         errorFields.push('inv-amt');
     } else if (amt > limits.warning) {
-        validationErrors.push(`Large amount warning: ${formatMoney(limits.warning)} is typical for ${currentInvType}`);
+        validationErrors.push(`Large amount warning: ${formatMoney(limits.warning)} is typical for ${window.currentInvType}`);
         errorFields.push('inv-amt');
     }
 
     // Business logic validation for investment types
-    if (currentInvType === 'SIP' && !sipDay) {
+    if (window.currentInvType === 'SIP' && !sipDay) {
         validationErrors.push("SIP day is required for SIP investments");
         errorFields.push('inv-sip-day');
     }
 
-    if ((currentInvType === 'FD' || currentInvType === 'RD') && !intRate) {
+    if ((window.currentInvType === 'FD' || window.currentInvType === 'RD') && !intRate) {
         validationErrors.push("Interest rate is required for Fixed/RD deposits");
         errorFields.push('inv-interest');
     }
 
-    if (currentInvType === 'Stocks' && !units) {
+    if (window.currentInvType === 'Stocks' && !units) {
         validationErrors.push("Units are required for stock investments");
         errorFields.push('inv-qty');
     }
 
-    if (currentInvType === 'Mutual Funds' && !mfCode) {
+    if (window.currentInvType === 'Mutual Funds' && !mfCode) {
         validationErrors.push("MF code is required for mutual fund investments");
         errorFields.push('inv-mf-code');
     }
@@ -239,7 +239,7 @@ function saveInvestment() {
     if (!editInvId) {
         let recentDuplicate = db.investments.find(i =>
             i.date === date &&
-            i.type === currentInvType &&
+            i.type === window.currentInvType &&
             i.amount === amt
         );
         if (recentDuplicate) {
@@ -249,8 +249,8 @@ function saveInvestment() {
     let newEntry = {
         id: editInvId || generateUniqueId(),
         date,
-        type: currentInvType,
-        amount: amt,
+        type: window.currentInvType,
+        amount,
         note,
         tags,
         subCategory: subCat,
@@ -273,7 +273,7 @@ function saveInvestment() {
         db.investments.push({
             id: generateUniqueId(),
             date,
-            type: currentInvType,
+            type: window.currentInvType,
             amount: initialPayment,
             note: (note ? note + ' ' : '') + 'Initial Balance',
             tags,
@@ -296,16 +296,16 @@ function saveInvestment() {
     }
 
     if (!editInvId) {
-        if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
-        if (isRecurring) { let nextDate = nextMonthlyRun(new Date(date)); db.recurring.push({ type: currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
+        if (isTemplate) { db.templates.push({ type: window.currentInvType, amount: amt, note: note || window.currentInvType, tags: tags, account: acc }); }
+        if (isRecurring) { let nextDate = nextMonthlyRun(new Date(date)); db.recurring.push({ type: window.currentInvType, amount: amt, note, tags, account: acc, nextRun: getLocalYYYYMMDD(nextDate) }); }
 
         // Save smart defaults for next time
         saveSmartDefault('account_last', acc);
-        saveSmartDefault(`account_${currentInvType}`, acc);
+        saveSmartDefault(`account_${window.currentInvType}`, acc);
         saveSmartDefault('broker_last', broker);
-        saveSmartDefault(`broker_${currentInvType}`, broker);
+        saveSmartDefault(`broker_${window.currentInvType}`, broker);
         saveSmartDefault('subcat_last', subCat);
-        saveSmartDefault(`subcat_${currentInvType}`, subCat);
+        saveSmartDefault(`subcat_${window.currentInvType}`, subCat);
     }
 
     saveData(); renderAll(); closeOverlays(); clearFormDraft();
@@ -370,11 +370,13 @@ function deleteInvestment() {
         confirmButtonText: 'Delete'
     }).then((r) => {
         if (r.isConfirmed) {
-            db.investments = db.investments.filter(i => String(i.id) !== String(editInvId));
+            db.investments = db.investments.filter(i => String(i.id) !== String(window.editInvId));
             saveData();
             renderAll();
             closeOverlays();
             showSnackbar("Entry Deleted");
+            window.editInvId = null;
+        } else {
             window.editInvId = null;
         }
     });
@@ -692,7 +694,7 @@ function attachSwipeListeners(cE) {
             gestureState.activeItem.style.opacity = '0';
             setTimeout(() => {
                 const id = gestureState.wrapper.dataset.id;
-                editInvId = id;
+                window.editInvId = id;
                 deleteInvestment();
                 renderAll(); // Restore item if cancelled
             }, 300);
@@ -873,7 +875,7 @@ function showPullRefreshIndicator() {
 // ==========================================
 function openGoalSheet(id = null) {
     haptic(30);
-    editGoalId = id;
+    window.editGoalId = id;
     if (id) {
         let g = db.goals.find(g => String(g.id) === String(id));
         if (!g) return;
@@ -923,7 +925,7 @@ function openFIRESheet() {
 function saveFIRE() { haptic(40); db.fireTargetMonthly = parseFloat(document.getElementById('fire-expenses').value) || 0; saveData(); closeOverlays(); renderAll(); showSnackbar("FIRE Target Updated"); }
 
 function deleteGoal() {
-    if (!editGoalId) return;
+    if (!window.editGoalId) return;
     haptic(40);
     Swal.fire({
         title: 'Delete Goal?',
@@ -935,11 +937,13 @@ function deleteGoal() {
         customClass: { popup: 'swal2-popup', confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' }
     }).then(r => {
         if (r.isConfirmed) {
-            db.goals = db.goals.filter(g => String(g.id) !== String(editGoalId));
+            db.goals = db.goals.filter(g => String(g.id) !== String(window.editGoalId));
             saveData();
             closeOverlays();
             renderAll();
             showSnackbar('Goal deleted');
+            window.editGoalId = null;
+        } else {
             window.editGoalId = null;
         }
     });
@@ -971,11 +975,11 @@ function openDividendSheet() {
 }
 
 function openCategoryDetails(type) {
-    haptic(30); activeCategory = type; let meta = db.categories[type] || { icon: 'savings', color: '#8D6E63' };
+    haptic(30); window.activeCategory = type; let meta = db.categories[type] || { icon: 'savings', color: '#8D6E63' };
     document.getElementById('cat-sheet-title').innerHTML = `<span class="material-symbols-rounded" style="color:${escapeHtml(meta.color)};">${escapeHtml(meta.icon)}</span> ${escapeHtml(type)} Portfolio`;
     document.getElementById('cat-target-alloc').value = db.allocTargets[type] || ''; document.getElementById('cat-cmv-input').value = db.currentMarketValues[type] || ''; document.getElementById('cat-initial-bal').value = db.categoryDetails[type]?.initialBal || ''; document.getElementById('cat-interest-rate').value = db.categoryDetails[type]?.interestRate || '';
 
-    let filtered = db.investments.filter(i => i.type === type && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
+    let filtered = db.investments.filter(i => i.type === type && (window.activeAccountFilter === 'All' || i.account === window.activeAccountFilter));
     let now = new Date(); let stcgTotal = 0, ltcgTotal = 0, assets = {}, totalInvested = 0;
 
     if (db.categoryDetails[type]?.initialBal) { totalInvested += db.categoryDetails[type].initialBal; ltcgTotal += db.categoryDetails[type].initialBal; assets["Earlier Balance (Initial)"] = db.categoryDetails[type].initialBal; }
@@ -1017,12 +1021,12 @@ function saveCatSettings() {
     let initialBal = parseFloat(document.getElementById('cat-initial-bal').value);
     let intRate = parseFloat(document.getElementById('cat-interest-rate').value);
 
-    if (!db.categoryDetails[activeCategory]) db.categoryDetails[activeCategory] = {};
-    if (!isNaN(cmv)) db.currentMarketValues[activeCategory] = cmv; else delete db.currentMarketValues[activeCategory];
-    if (!isNaN(alloc)) db.allocTargets[activeCategory] = alloc; else delete db.allocTargets[activeCategory];
+    if (!db.categoryDetails[window.activeCategory]) db.categoryDetails[window.activeCategory] = {};
+    if (!isNaN(cmv)) db.currentMarketValues[window.activeCategory] = cmv; else delete db.currentMarketValues[window.activeCategory];
+    if (!isNaN(alloc)) db.allocTargets[window.activeCategory] = alloc; else delete db.allocTargets[window.activeCategory];
 
-    db.categoryDetails[activeCategory].initialBal = !isNaN(initialBal) ? initialBal : 0;
-    db.categoryDetails[activeCategory].interestRate = !isNaN(intRate) ? intRate : 0;
+    db.categoryDetails[window.activeCategory].initialBal = !isNaN(initialBal) ? initialBal : 0;
+    db.categoryDetails[window.activeCategory].interestRate = !isNaN(intRate) ? intRate : 0;
 
     // Save field configurations - preserve all fields including those not in UI yet
     const fields = {};
@@ -1031,7 +1035,7 @@ function saveCatSettings() {
         const el = document.getElementById('cfg-' + fid);
         if (el) fields[fid] = el.checked;
     });
-    db.categoryDetails[activeCategory].fields = fields;
+    db.categoryDetails[window.activeCategory].fields = fields;
 
     saveData(); renderAll(); showSnackbar("Settings Saved", "check_circle"); closeOverlays();
 }
@@ -1066,13 +1070,18 @@ function openMonthDetails(offset) {
 
 function openSettings() {
     haptic(30);
+    closeOverlays();
+    // Hide AI bubble when settings are open
+    const bubble = document.getElementById('ai-floating-bubble');
+    if (bubble) {
+        bubble.style.display = 'none';
+    }
 
-    // Group settings into organized sections
     const settingsData = {
         profile: {
-            salary: db.userProfile.salary || '',
+            salary: db.userProfile.salary || 0,
             regime: db.userProfile.regime || 'new',
-            expenses: db.userProfile.monthlyExpense || '',
+            expenses: db.userProfile.monthlyExpense || 0,
             fyStart: db.fyStartMonth || 3,
             currency: db.currency || '₹'
         },
@@ -3137,7 +3146,9 @@ function openAIReportSheet(reportData = null) {
     if (!reportContent) return;
 
     if (reportData) {
-        reportContent.innerHTML = reportData;
+        // Clean markdown code blocks if present
+        let cleanedData = reportData.replace(/```(html|markdown)?|```/gi, '').trim();
+        reportContent.innerHTML = cleanedData;
     } else {
         reportContent.innerHTML = '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data available.</div>';
     }
@@ -3357,6 +3368,11 @@ async function generateAIForecast() {
 
 async function openWealthBlueprint() {
     closeOverlays();
+    // Reset any existing report sheet state
+    const aiReportSheet = document.getElementById('ai-report-sheet');
+    if (aiReportSheet && aiReportSheet.classList.contains('active')) {
+        closeSubSheet();
+    }
     window.activeChatSession = { id: 'report_' + Date.now(), title: 'Wealth Blueprint', messages: [], type: 'report' };
     toggleAIPopup(true, 'report');
     generateWealthBlueprint();
