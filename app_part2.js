@@ -284,9 +284,16 @@ function saveInvestment() {
             interestRate: intRate
         });
     }
-if (editInvId) { // Find the logic where idx is defined and replace with:
-let idx = db.investments.findIndex(i => String(i.id) === String(editInvId));
- if (idx > -1) db.investments[idx] = newEntry; else db.investments.push(newEntry); } else { db.investments.push(newEntry); }
+if (editInvId) {
+    let idx = db.investments.findIndex(i => String(i.id) === String(editInvId));
+    if (idx > -1) {
+        db.investments[idx] = newEntry;
+    } else {
+        db.investments.push(newEntry);
+    }
+} else {
+    db.investments.push(newEntry);
+}
 
     if (!editInvId) {
         if (isTemplate) { db.templates.push({ type: currentInvType, amount: amt, note: note || currentInvType, tags: tags, account: acc }); }
@@ -353,9 +360,22 @@ function showUndoSnackbar(message, undoCallback) {
 }
 
 function deleteInvestment() {
-    haptic(50); Swal.fire({ title: 'Delete Entry?', text: "This cannot be undone.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Delete' }).then((r) => { if (r.isConfirmed) { db.investments = // Find the filter line and replace with:
-db.investments = db.investments.filter(i => String(i.id) !== String(editInvId));
- saveData(); renderAll(); closeOverlays(); showSnackbar("Entry Deleted"); } });
+    haptic(50);
+    Swal.fire({
+        title: 'Delete Entry?',
+        text: "This cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete'
+    }).then((r) => {
+        if (r.isConfirmed) {
+            db.investments = db.investments.filter(i => String(i.id) !== String(editInvId));
+            saveData();
+            renderAll();
+            closeOverlays();
+            showSnackbar("Entry Deleted");
+        }
+    });
 }
 
 
@@ -853,9 +873,7 @@ function openGoalSheet(id = null) {
     haptic(30);
     editGoalId = id;
     if (id) {
-        // Replace the .find line with:
-let g = db.goals.find(g => String(g.id) === String(id));
-
+        let g = db.goals.find(g => String(g.id) === String(id));
         if (!g) return;
         document.getElementById('goal-name').value = g.name;
         document.getElementById('goal-target').value = g.target;
@@ -869,16 +887,51 @@ let g = db.goals.find(g => String(g.id) === String(id));
     }
     openSheet('goal-sheet');
 }
-function saveGoal() { haptic(40); let name = document.getElementById('goal-name').value; let target = parseFloat(document.getElementById('goal-target').value); let saved = parseFloat(document.getElementById('goal-saved').value) || 0; let link = document.getElementById('goal-link').value; if (!name || isNaN(target)) return showSnackbar("Name and Target required", "error"); let newGoal = { id: editGoalId || Date.now(), name, target, saved, linkedCategory: link }; if (editGoalId) { // Replace the findIndex line with:
-let idx = db.goals.findIndex(g => String(g.id) === String(editGoalId));
- if (idx > -1) db.goals[idx] = newGoal; } else { db.goals.push(newGoal); }
- saveData(); closeOverlays(); renderAll(); showSnackbar("Goal Saved!", "flag"); }
+function saveGoal() {
+    haptic(40);
+    let name = document.getElementById('goal-name').value;
+    let target = parseFloat(document.getElementById('goal-target').value);
+    let saved = parseFloat(document.getElementById('goal-saved').value) || 0;
+    let link = document.getElementById('goal-link').value;
+    if (!name || isNaN(target)) return showSnackbar("Name and Target required", "error");
+    let newGoal = { id: editGoalId || Date.now(), name, target, saved, linkedCategory: link };
+    if (editGoalId) {
+        let idx = db.goals.findIndex(g => String(g.id) === String(editGoalId));
+        if (idx > -1) {
+            db.goals[idx] = newGoal;
+        }
+    } else {
+        db.goals.push(newGoal);
+    }
+    saveData();
+    closeOverlays();
+    renderAll();
+    showSnackbar("Goal Saved!", "flag");
+}
 function openFIRESheet() {
     haptic(30);
     document.getElementById('fire-expenses').value = db.fireTargetMonthly || '';
     openSheet('fire-sheet');
 }
 function saveFIRE() { haptic(40); db.fireTargetMonthly = parseFloat(document.getElementById('fire-expenses').value) || 0; saveData(); closeOverlays(); renderAll(); showSnackbar("FIRE Target Updated"); }
+
+function deleteGoal(id) {
+    haptic(50);
+    Swal.fire({
+        title: 'Delete Goal?',
+        text: "This cannot be undone.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Delete'
+    }).then((r) => {
+        if (r.isConfirmed) {
+            db.goals = db.goals.filter(g => String(g.id) !== String(id));
+            saveData();
+            renderAll();
+            showSnackbar("Goal Deleted");
+        }
+    });
+}
 
 function openDividendSheet() {
     haptic(30);
