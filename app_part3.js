@@ -4,7 +4,7 @@ function renderAIReportCharts(typeTotals) {
         console.error('Invalid typeTotals parameter:', typeTotals);
         return;
     }
-    
+
     const pieCtx = document.getElementById('aiChartPie');
     const barCtx = document.getElementById('aiChartBar');
     if (!pieCtx || !barCtx) {
@@ -88,7 +88,7 @@ function renderAIReportCharts(typeTotals) {
     } catch (error) {
         console.error('Failed to render AI charts:', error);
         showSnackbar('Chart rendering failed', 'error');
-        
+
         // Cleanup on error
         if (window.aiCharts.pie) {
             try { window.aiCharts.pie.destroy(); } catch (e) { console.warn('Cleanup failed:', e); }
@@ -167,7 +167,7 @@ async function downloadAIReport() {
             logging: false,
             windowWidth: 800,
             windowHeight: Math.max(element.scrollHeight, element.clientHeight) + 200,
-            onclone: function(clonedDoc) {
+            onclone: function (clonedDoc) {
                 // Ensure all elements are visible in the cloned document
                 const clonedElement = clonedDoc.getElementById('ai-report-content');
                 if (clonedElement) {
@@ -256,9 +256,9 @@ function processRecurring() {
             console.warn(`Recurring ${rec.note}: processed ${missedMonths} missed months`);
         }
     });
-    if (updated) { 
-        saveData(); 
-        showSnackbar(`Auto‑SIPs Processed: ${processedCount} entries`, 'check_circle'); 
+    if (updated) {
+        saveData();
+        showSnackbar(`Auto‑SIPs Processed: ${processedCount} entries`, 'check_circle');
     }
 }
 
@@ -271,9 +271,9 @@ function processRecurring() {
 
 function updateDividendTotals() {
     let dividendTotal = db.investments.filter(i => i.isDividend && !(db.categories[i.type]?.excludeDividend)).reduce((s, i) => s + i.amount, 0);
-    let dtEl = document.getElementById('dashboard-dividend-total'); 
+    let dtEl = document.getElementById('dashboard-dividend-total');
     if (dtEl) dtEl.innerText = formatMoney(dividendTotal);
-    let dsEl = document.getElementById('dividend-sheet-total'); 
+    let dsEl = document.getElementById('dividend-sheet-total');
     if (dsEl) dsEl.innerText = formatMoney(dividendTotal);
 }
 
@@ -297,11 +297,11 @@ function updatePortfolioCalculations() {
     // ENHANCED VALUATION LOGIC WITH DATA INTEGRITY
     let totalInterestEarnedAll = 0;
     let valuationErrors = [];
-    
+
     Object.keys(db.categories).forEach(type => {
         try {
             let filteredInvs = db.investments.filter(inv => inv.type === type && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
-            
+
             // Data integrity checks
             filteredInvs.forEach(inv => {
                 if (!inv.amount || inv.amount <= 0) {
@@ -314,46 +314,46 @@ function updatePortfolioCalculations() {
                     valuationErrors.push(`Invalid maturity date for ${type} investment: ${inv.maturityDate}`);
                 }
             });
-            
+
             // Filter out invalid investments
-            let validInvs = filteredInvs.filter(inv => 
-                inv.amount && inv.amount > 0 && 
+            let validInvs = filteredInvs.filter(inv =>
+                inv.amount && inv.amount > 0 &&
                 inv.date && parseDate(inv.date)
             );
-            
+
             let invested = validInvs.filter(i => !i.isDividend).reduce((sum, inv) => {
                 const amount = parseFloat(inv.amount) || 0;
                 return sum + amount;
             }, 0) + (db.categoryDetails[type]?.initialBal || 0);
-            
+
             totalInvestedAll += invested;
 
             // Enhanced valuation with error handling
             let valResult;
             try {
                 valResult = calculateStrictValuation(type, invested, validInvs);
-                
+
                 // Validate valuation result
                 if (!valResult || typeof valResult.total !== 'number' || isNaN(valResult.total)) {
                     throw new Error(`Invalid valuation result for ${type}`);
                 }
-                
+
                 if (valResult.total < 0) {
                     valuationErrors.push(`Negative valuation for ${type}: ${valResult.total}`);
                 }
-                
+
             } catch (error) {
                 console.error(`Valuation error for ${type}:`, error);
                 valuationErrors.push(`Calculation error for ${type}: ${error.message}`);
                 // Fallback to invested amount
                 valResult = { total: invested, interest: 0 };
             }
-            
+
             typeTotals[type] = Math.max(0, valResult.total); // Ensure non-negative
             totalMarketValue += Math.max(0, valResult.total);
             totalInterestEarnedAll += Math.max(0, valResult.interest || 0);
             totalNW += Math.max(0, invested);
-            
+
         } catch (error) {
             console.error(`Critical error processing ${type}:`, error);
             valuationErrors.push(`Critical error in ${type}: ${error.message}`);
@@ -361,7 +361,7 @@ function updatePortfolioCalculations() {
             typeTotals[type] = 0;
         }
     });
-    
+
     // Report valuation errors if any
     if (valuationErrors.length > 0) {
         console.warn('Data integrity issues found:', valuationErrors);
@@ -427,15 +427,15 @@ function updatePortfolioCalculations() {
     let badgeEl = document.getElementById('ledger-entry-badge');
     if (badgeEl) { let cnt = db.investments.length; badgeEl.style.display = cnt > 0 ? 'block' : 'none'; badgeEl.textContent = cnt > 99 ? '99+' : cnt; }
 
-    let tplHtml = ""; db.templates.forEach((tpl, idx) => { 
-        let meta = db.categories[tpl.type] || { icon: 'bolt' }; 
+    let tplHtml = ""; db.templates.forEach((tpl, idx) => {
+        let meta = db.categories[tpl.type] || { icon: 'bolt' };
         let safeNote = escapeHtml(tpl.note);
         let safeIcon = escapeHtml(meta.icon);
         tplHtml += `<div class="quick-template-card" onclick="executeQuickLog(${idx})">
             <span class="material-symbols-rounded qt-icon">${safeIcon}</span>
             <div class="qt-text">${safeNote} ${formatMoney(tpl.amount)}</div>
             <span class="material-symbols-rounded" style="font-size:16px;opacity:0.5;margin-left:4px;" onclick="deleteQuickLog(event,${idx})">close</span>
-        </div>`; 
+        </div>`;
     });
     let qtWrapper = document.getElementById('quick-templates-list'); if (qtWrapper) { qtWrapper.innerHTML = tplHtml; qtWrapper.style.display = tplHtml ? 'flex' : 'none'; }
 
@@ -524,7 +524,7 @@ function updatePortfolioCalculations() {
                     let excess = overAllocated[t];
                     let curPerc = ((typeTotals[t] / totalMarketValue) * 100).toFixed(0);
                     let targetPerc = db.allocTargets[t];
-                    
+
                     // Estimate tax implication (simplified)
                     let invs = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter));
                     let stcg = 0, ltcg = 0;
@@ -534,9 +534,9 @@ function updatePortfolioCalculations() {
                         if (days <= 365) stcg += i.amount;
                         else ltcg += i.amount;
                     });
-                    let taxHint = stcg > 0 ? `<span style="color:var(--md-error); font-size:9px;">(${formatMoney(stcg)} STCG taxable)</span>` : 
-                                  ltcg > 0 ? `<span style="color:var(--md-success); font-size:9px;">(LTCG - check exemption)</span>` : '';
-                    
+                    let taxHint = stcg > 0 ? `<span style="color:var(--md-error); font-size:9px;">(${formatMoney(stcg)} STCG taxable)</span>` :
+                        ltcg > 0 ? `<span style="color:var(--md-success); font-size:9px;">(LTCG - check exemption)</span>` : '';
+
                     rebalanceHtml += `<div class="reb-item" style="display:flex; flex-direction:column; margin-bottom:10px; padding:8px; background:var(--md-error-container); border-radius:8px;">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <span><span class="alloc-dot" style="background:${db.categories[t]?.color || '#ccc'}; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px;"></span>${t}</span>
@@ -640,7 +640,7 @@ function updatePortfolioCalculations() {
             let linkTag = isLinked ? `<span class="goal-linked-tag" style="font-size:10px; background:var(--md-surface-container-highest); padding:2px 6px; border-radius:4px; margin-left:6px;">Linked: ${escapeHtml(g.linkedCategory)}</span>` : '';
             let forecastHtml = '';
             let shortfall = g.target - savedAmt;
-            
+
             if (shortfall > 0) {
                 if (monthlyContrib > 0) {
                     // Enhanced forecast with growth consideration
@@ -650,7 +650,7 @@ function updatePortfolioCalculations() {
                         const catGrowthRates = { 'SIP': 0.12, 'Stocks': 0.12, 'PPF': 0.071, 'PF': 0.0815, 'FD': 0.07, 'Cash': 0, 'Liquid': 0.06 };
                         growthRate = catGrowthRates[g.linkedCategory] || 0.08;
                     }
-                    
+
                     // Calculate months needed considering growth
                     let monthsLeft;
                     if (growthRate > 0 && savedAmt > 0) {
@@ -661,18 +661,18 @@ function updatePortfolioCalculations() {
                     } else {
                         monthsLeft = Math.ceil(shortfall / monthlyContrib);
                     }
-                    
+
                     if (monthsLeft <= 600 && monthsLeft > 0) {
                         let fDate = new Date();
                         fDate.setMonth(fDate.getMonth() + monthsLeft);
                         let fDateStr = `${fDate.toLocaleString('default', { month: 'short' })} ${fDate.getFullYear()}`;
-                        
+
                         // Confidence range (±20% variation in returns)
                         let pessimisticMonths = growthRate > 0 ? Math.ceil(monthsLeft * 1.3) : monthsLeft;
                         let optimisticMonths = growthRate > 0 ? Math.ceil(monthsLeft * 0.8) : monthsLeft;
                         let pDate = new Date(); pDate.setMonth(pDate.getMonth() + pessimisticMonths);
                         let oDate = new Date(); oDate.setMonth(oDate.getMonth() + optimisticMonths);
-                        
+
                         forecastHtml = `<div style="font-size:11px;color:var(--md-primary);margin-top:8px;font-weight:500;">🎯 ${fDateStr}`;
                         if (growthRate > 0) {
                             forecastHtml += ` <span style="opacity:0.7;">(${oDate.toLocaleString('default', { month: 'short' })}-${pDate.toLocaleString('default', { month: 'short' })})</span>`;
@@ -686,7 +686,7 @@ function updatePortfolioCalculations() {
                     let growthRate = 0.08; // Default 8%
                     const catGrowthRates = { 'SIP': 0.12, 'Stocks': 0.12, 'PPF': 0.071, 'PF': 0.0815, 'FD': 0.07 };
                     growthRate = catGrowthRates[g.linkedCategory] || 0.08;
-                    
+
                     let yearsToTarget = Math.log(g.target / savedAmt) / Math.log(1 + growthRate);
                     if (yearsToTarget > 0 && yearsToTarget <= 50) {
                         let fDate = new Date();
@@ -699,7 +699,7 @@ function updatePortfolioCalculations() {
             } else {
                 forecastHtml = `<div style="font-size:11px;color:var(--md-success);margin-top:8px;font-weight:500;">✅ Goal Achieved!</div>`;
             }
-            return `<div class="goal-card" onclick="openGoalSheet('${g.id}')"><div class="goal-header"><div class="goal-title">${escapeHtml(g.name)} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div><button onclick="event.stopPropagation(); deleteGoal('${g.id}')" style="background:none;border:none;color:var(--md-error);cursor:pointer;padding:4px;margin-left:auto;"><span class="material-symbols-rounded" style="font-size:18px;">delete</span></button></div>`;
+            return `<div class="goal-card" onclick="openGoalSheet('${g.id}')"><div class="goal-header"><div class="goal-title">${escapeHtml(g.name)} ${linkTag}</div><div class="goal-amt" style="font-size:14px;">${formatMoney(savedAmt)} / ${formatMoney(g.target)}</div></div><div class="goal-track"><div class="goal-fill" style="width:${perc}%;"></div></div><div class="goal-footer" style="font-size:12px; color:var(--md-on-surface-variant);"><span>${perc.toFixed(1)}% Achieved</span>${forecastHtml}</div></div>`;
         }).join('');
     }
 
@@ -749,29 +749,29 @@ function shouldShowSmartPrompt() {
     const ext = db.userProfileExtended;
     const lastPrompt = ext.lastProfilePrompt;
     const now = Date.now();
-    
+
     // Don't prompt more than once per session, and max once per day
     if (lastPrompt && (now - lastPrompt) < 24 * 60 * 60 * 1000) return false;
     if (sessionStorage.getItem('promptShownThisSession')) return false;
-    
+
     return true;
 }
 
 function checkAndShowSmartPrompt() {
     if (!shouldShowSmartPrompt()) return;
-    
+
     const ext = db.userProfileExtended;
     const prompt = getNextSmartPrompt();
-    
+
     if (!prompt) return; // Nothing to ask
-    
+
     showSmartPromptModal(prompt);
 }
 
 function getNextSmartPrompt() {
     const ext = db.userProfileExtended;
     const investments = db.investments.length;
-    
+
     // Priority 1: Basic demographics (ask once, easy to answer)
     if (!ext.ageGroup) {
         return {
@@ -789,7 +789,7 @@ function getNextSmartPrompt() {
             save: (val) => { ext.ageGroup = val; }
         };
     }
-    
+
     // Priority 2: Risk profile (ask after first equity investment)
     const hasEquity = db.investments.some(i => i.type === 'SIP' || i.type === 'Stocks');
     if (hasEquity && !ext.riskTolerance) {
@@ -806,7 +806,7 @@ function getNextSmartPrompt() {
             save: (val) => { ext.riskTolerance = val; }
         };
     }
-    
+
     // Priority 3: Goal timeline (ask when goal looks underfunded)
     const underfundedGoal = db.goals.find(g => (g.saved || 0) < g.target * 0.2);
     if (underfundedGoal && !ext.investmentHorizon) {
@@ -820,23 +820,23 @@ function getNextSmartPrompt() {
                 { value: 'medium', label: '3-7 years', icon: 'date_range' },
                 { value: 'long', label: '7+ years', icon: 'event' }
             ],
-            save: (val) => { 
+            save: (val) => {
                 ext.investmentHorizon = val;
                 // Auto-suggest monthly SIP amount based on horizon
                 suggestGoalMonthlySIP(underfundedGoal, val);
             }
         };
     }
-    
+
     // Priority 4: Emergency fund check (ask after 3+ months of tracking)
     const monthsOfData = getMonthsOfData();
     const cashAndLiquid = (currentTypeTotals['Cash'] || 0) + (currentTypeTotals['Liquid'] || 0);
     const monthlyExp = db.userProfile.monthlyExpense || 30000;
-    
+
     if (monthsOfData >= 3 && !ext.emergencyFundMonths && cashAndLiquid > 0) {
         const months = Math.floor(cashAndLiquid / monthlyExp);
         ext.emergencyFundMonths = months;
-        
+
         if (months < 3) {
             return {
                 id: 'emergencyFund',
@@ -849,7 +849,7 @@ function getNextSmartPrompt() {
             };
         }
     }
-    
+
     // Priority 5: Financial health check invitation (only after 10+ investments)
     if (investments >= 10 && ext.profileCompleteness < 50) {
         return {
@@ -862,7 +862,7 @@ function getNextSmartPrompt() {
             dismiss: 'Not now'
         };
     }
-    
+
     return null;
 }
 
@@ -870,9 +870,9 @@ function showSmartPromptModal(prompt) {
     sessionStorage.setItem('promptShownThisSession', 'true');
     db.userProfileExtended.lastProfilePrompt = Date.now();
     saveData();
-    
+
     let contentHtml = '';
-    
+
     if (prompt.type === 'chips') {
         contentHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px;">
             ${prompt.options.map(opt => `
@@ -913,7 +913,7 @@ function showSmartPromptModal(prompt) {
                 ${prompt.dismiss || 'Maybe later'}
             </button>`;
     }
-    
+
     Swal.fire({
         title: prompt.question,
         html: `
@@ -927,14 +927,14 @@ function showSmartPromptModal(prompt) {
     });
 }
 
-window.saveSmartPromptAnswer = function(promptId, value) {
+window.saveSmartPromptAnswer = function (promptId, value) {
     const prompt = getNextSmartPrompt();
     if (prompt && prompt.id === promptId) {
         prompt.save(value);
         saveData();
         Swal.close();
         showSnackbar('Thanks! Your insights help us help you better.', 'check_circle');
-        
+
         // Check if another prompt should show
         setTimeout(() => {
             const nextPrompt = getNextSmartPrompt();
@@ -945,7 +945,7 @@ window.saveSmartPromptAnswer = function(promptId, value) {
     }
 };
 
-window.executeSmartPromptAction = function(promptId) {
+window.executeSmartPromptAction = function (promptId) {
     const prompt = getNextSmartPrompt();
     if (prompt && prompt.id === promptId && prompt.action) {
         Swal.close();
@@ -953,7 +953,7 @@ window.executeSmartPromptAction = function(promptId) {
     }
 };
 
-window.dismissSmartPrompt = function(promptId) {
+window.dismissSmartPrompt = function (promptId) {
     Swal.close();
 };
 
@@ -969,21 +969,21 @@ function suggestGoalMonthlySIP(goal, horizon) {
     // Calculate required monthly contribution
     const shortfall = goal.target - (goal.saved || 0);
     let months;
-    switch(horizon) {
+    switch (horizon) {
         case 'short': months = 36; break;
         case 'medium': months = 60; break;
         case 'long': months = 120; break;
         default: months = 60;
     }
     const monthlyNeeded = Math.ceil(shortfall / months);
-    
+
     Swal.fire({
         title: 'Suggested Monthly SIP',
         html: `
             <div style="text-align:center;">
                 <div style="font-size:32px;font-weight:700;color:var(--md-primary);margin:16px 0;">₹${formatInr(monthlyNeeded)}</div>
                 <div style="font-size:14px;color:var(--md-on-surface-variant);">
-                    Monthly for ${months/12} years to reach ${formatMoney(goal.target)}
+                    Monthly for ${months / 12} years to reach ${formatMoney(goal.target)}
                 </div>
                 <div style="margin-top:16px;font-size:12px;color:var(--md-outline);">
                     Based on assumed 12% annual returns
@@ -1006,7 +1006,7 @@ function suggestGoalMonthlySIP(goal, horizon) {
 function createEmergencyFundGoal() {
     const monthlyExp = db.userProfile.monthlyExpense || 30000;
     const target = monthlyExp * 6;
-    
+
     const newGoal = {
         id: Date.now(),
         name: 'Emergency Fund',
@@ -1029,10 +1029,10 @@ function openFinancialHealthCheck() {
         { id: 'lifeInsurance', question: 'Life insurance coverage?', options: ['None', 'Some', 'Adequate'] },
         { id: 'creditScore', question: 'How\'s your credit score?', options: ['Excellent', 'Good', 'Fair', 'Poor/Unknown'] }
     ];
-    
+
     let currentQ = 0;
     const answers = {};
-    
+
     function showQ(index) {
         const q = questions[index];
         Swal.fire({
@@ -1053,8 +1053,8 @@ function openFinancialHealthCheck() {
             width: '340px'
         });
     }
-    
-    window.handleHealthCheckAnswer = function(qIdx, answer) {
+
+    window.handleHealthCheckAnswer = function (qIdx, answer) {
         answers[questions[qIdx].id] = answer;
         if (qIdx < questions.length - 1) {
             Swal.close();
@@ -1064,7 +1064,7 @@ function openFinancialHealthCheck() {
             saveHealthCheckResults(answers);
         }
     };
-    
+
     showQ(0);
 }
 
@@ -1077,7 +1077,7 @@ function saveHealthCheckResults(answers) {
     ext.creditScoreRange = answers.creditScore?.toLowerCase();
     ext.profileCompleteness = 60;
     saveData();
-    
+
     Swal.fire({
         title: 'Profile Updated! 🎉',
         html: `
@@ -1105,42 +1105,42 @@ document.addEventListener('DOMContentLoaded', () => {
 function renderFrequentActions() {
     let container = document.getElementById('frequent-actions');
     if (!container) return;
-    
+
     // Determine most relevant actions based on user state
     let actions = [];
     let totalInvestments = db.investments.length;
     let hasGoals = db.goals.length > 0;
     let hasRecurring = db.recurring.length > 0;
     let categoriesUsed = Object.keys(currentTypeTotals).filter(k => currentTypeTotals[k] > 0);
-    
+
     // Always show Add Investment
     actions.push({ icon: 'add_circle', label: 'Invest', action: 'openInvestSheet()', color: 'var(--md-primary)' });
-    
+
     // Show Set Goal for new users or if no goals
     if (!hasGoals || totalInvestments < 5) {
         actions.push({ icon: 'flag', label: 'Set Goal', action: 'openGoalSheet()', color: 'var(--md-success)' });
     }
-    
+
     // Show Add SIP if user has investments but no recurring
     if (totalInvestments > 0 && !hasRecurring) {
         actions.push({ icon: 'autorenew', label: 'Auto-SIP', action: 'openRecurringSheet()', color: 'var(--md-tertiary)' });
     }
-    
+
     // Show most used category for quick add
     if (categoriesUsed.length > 0) {
         let topCategory = categoriesUsed.sort((a, b) => currentTypeTotals[b] - currentTypeTotals[a])[0];
         let catMeta = db.categories[topCategory] || { icon: 'savings', color: '#8D6E63' };
-        actions.push({ 
-            icon: catMeta.icon, 
-            label: topCategory, 
-            action: `openInvestSheet(null, 1000); setInvestType('${topCategory}')`, 
-            color: catMeta.color 
+        actions.push({
+            icon: catMeta.icon,
+            label: topCategory,
+            action: `openInvestSheet(null, 1000); setInvestType('${topCategory}')`,
+            color: catMeta.color
         });
     }
-    
+
     // Show Settings for configuration
     actions.push({ icon: 'settings', label: 'Settings', action: 'openSettings()', color: 'var(--md-outline)' });
-    
+
     // Build HTML
     let html = `<div style="display:flex; gap:12px; overflow-x:auto; padding: 4px 0; scrollbar-width:none;">`;
     actions.forEach(a => {
@@ -1150,7 +1150,7 @@ function renderFrequentActions() {
         </button>`;
     });
     html += `</div>`;
-    
+
     container.innerHTML = html;
 }
 
@@ -1174,7 +1174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const lastSheet = sessionStorage.getItem('currentSheet');
         if (lastSheet) openSheet(lastSheet, true);
     }
-    
+
     // Show first-time tips for new users (after a short delay)
     setTimeout(() => {
         if (!db.firstTimeTipsShown && db.investments.length === 0) {
@@ -1417,20 +1417,20 @@ function calculatePortfolioHealth() {
     let now = new Date();
     let lastMonth = new Date(); lastMonth.setMonth(lastMonth.getMonth() - 1);
     let threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-    
-    let recentInvestments = db.investments.filter(i => 
-        !i.isDividend && 
+
+    let recentInvestments = db.investments.filter(i =>
+        !i.isDividend &&
         (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
         new Date(i.date) >= lastMonth
     ).reduce((s, i) => s + i.amount, 0);
-    
-    let previousInvestments = db.investments.filter(i => 
-        !i.isDividend && 
+
+    let previousInvestments = db.investments.filter(i =>
+        !i.isDividend &&
         (activeAccountFilter === 'All' || i.account === activeAccountFilter) &&
         new Date(i.date) >= threeMonthsAgo &&
         new Date(i.date) < lastMonth
     ).reduce((s, i) => s + i.amount, 0);
-    
+
     if (recentInvestments > previousInvestments * 1.2) {
         trend = 'improving';
     } else if (recentInvestments < previousInvestments * 0.8) {
@@ -1489,7 +1489,7 @@ function calculatePortfolioHealth() {
         if (g.linkedCategory && currentTypeTotals[g.linkedCategory]) saved += currentTypeTotals[g.linkedCategory];
         return saved < (g.target * 0.1);
     });
-    
+
     if (db.goals.length > 0 && underfundedGoals.length > 0) {
         score -= 10;
         issues.push("Goals underfunded");
@@ -1512,7 +1512,7 @@ function calculatePortfolioHealth() {
     let equity = (currentTypeTotals['SIP'] || 0) + (currentTypeTotals['Stocks'] || 0);
     let safe = (currentTypeTotals['FD'] || 0) + (currentTypeTotals['PPF'] || 0) + (currentTypeTotals['PF'] || 0) + cash;
     let total = equity + safe;
-    
+
     if (equity > safe * 2 && total > 0) {
         issues.push("Aggressive equity exposure");
         let rebalanceAmt = Math.floor((equity - safe * 2) / 3);
@@ -1580,7 +1580,7 @@ function updateAdvisorWidget() {
     }
 
     advisorCard.style.display = 'block';
-    
+
     let html = `<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
         <div style="font-weight:600; color:var(--md-primary); display:flex; align-items:center; gap:8px;">
             <span class="material-symbols-rounded" style="font-size:18px;">health_and_safety</span>
@@ -1594,16 +1594,16 @@ function updateAdvisorWidget() {
             <div style="font-size:24px; font-weight:700; color:${health.statusColor};">${health.score}</div>
         </div>
     </div>`;
-    
+
     // Status badge
     html += `<div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
         <span style="font-size:11px; padding:4px 12px; border-radius:12px; background:${health.statusColor}20; color:${health.statusColor}; font-weight:500;">${health.status}</span>`;
-    
+
     if (health.issues.length > 0) {
         html += `<span style="font-size:11px; padding:4px 12px; border-radius:12px; background:var(--md-error-container); color:var(--md-error);">${health.issues.length} issue${health.issues.length > 1 ? 's' : ''}</span>`;
     }
     html += `</div>`;
-    
+
     // Quick Wins section (actionable items)
     if (health.quickWins.length > 0) {
         html += `<div style="margin-bottom:16px;">
@@ -1624,13 +1624,13 @@ function updateAdvisorWidget() {
         });
         html += `</div></div>`;
     }
-    
+
     // Priority suggestions
     if (health.suggestions.length > 0) {
         html += `<div>
             <div style="font-size:12px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Recommendations</div>
             <div style="display:flex; flex-direction:column; gap:6px;">`;
-        
+
         health.suggestions.filter(s => s.impact !== 'positive').slice(0, 3).forEach(s => {
             let icon = s.impact === 'high' ? 'priority_high' : s.impact === 'medium' ? 'flag' : 'info';
             let color = s.impact === 'high' ? 'var(--md-error)' : s.impact === 'medium' ? 'var(--md-warning)' : 'var(--md-primary)';
@@ -1641,7 +1641,7 @@ function updateAdvisorWidget() {
         });
         html += `</div></div>`;
     }
-    
+
     advisorText.innerHTML = html;
 }
 

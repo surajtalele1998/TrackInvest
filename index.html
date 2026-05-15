@@ -654,7 +654,12 @@
         </div>
         <div class="input-container"><label>Auto-Link Asset Class</label><select id="goal-link"
                 class="md-input"></select></div>
-        <button class="btn-primary" onclick="saveGoal()">Save Goal</button>
+        <div style="display:flex;gap:12px;margin-top:16px;">
+            <button class="btn-primary" style="flex:2;" onclick="saveGoal()">Save Goal</button>
+            <button class="btn-secondary"
+                style="flex:1;background:var(--md-error-container);color:var(--md-on-error-container);"
+                id="del-goal-btn" onclick="deleteGoal()">Delete</button>
+        </div>
     </div>
 
     <div class="sheet" id="fire-sheet">

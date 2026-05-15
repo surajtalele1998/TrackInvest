@@ -375,6 +375,7 @@ function deleteInvestment() {
             renderAll();
             closeOverlays();
             showSnackbar("Entry Deleted");
+            window.editInvId = null;
         }
     });
 }
@@ -921,21 +922,25 @@ function openFIRESheet() {
 }
 function saveFIRE() { haptic(40); db.fireTargetMonthly = parseFloat(document.getElementById('fire-expenses').value) || 0; saveData(); closeOverlays(); renderAll(); showSnackbar("FIRE Target Updated"); }
 
-function deleteGoal(id) {
-    haptic(50);
+function deleteGoal() {
+    if (!editGoalId) return;
+    haptic(40);
     Swal.fire({
         title: 'Delete Goal?',
-        text: "This cannot be undone.",
+        text: 'This will permanently remove your goal and progress tracking.',
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Delete'
-    }).then((r) => {
+        confirmButtonColor: 'var(--md-error)',
+        confirmButtonText: 'Yes, delete it',
+        customClass: { popup: 'swal2-popup', confirmButton: 'swal2-confirm', cancelButton: 'swal2-cancel' }
+    }).then(r => {
         if (r.isConfirmed) {
-            db.goals = db.goals.filter(g => String(g.id) !== String(id));
+            db.goals = db.goals.filter(g => String(g.id) !== String(editGoalId));
             saveData();
             closeOverlays();
             renderAll();
-            showSnackbar("Goal Deleted");
+            showSnackbar('Goal deleted');
+            window.editGoalId = null;
         }
     });
 }
