@@ -81,13 +81,33 @@ async function askOpenAI(prompt, systemKey = 'general', history = []) {
   return resp.choices[0].message.content;
 }
 
+async function askGroq(prompt, systemKey = 'general', history = []) {
+  const groq = new OpenAI({
+    apiKey: config.ai.groqKey,
+    baseURL: 'https://api.groq.com/openai/v1',
+  });
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPTS_MAP[systemKey] || SYSTEM_PROMPTS.general },
+    ...history.map(m => ({ role: m.role, content: m.text })),
+    { role: 'user', content: prompt },
+  ];
+  const resp = await groq.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages,
+    temperature: 0.7,
+    max_tokens: 4096,
+  });
+  return resp.choices[0].message.content;
+}
+
 async function generateChat(prompt, history = []) {
   const provider = config.ai.provider;
-  if (!provider) throw Object.assign(new Error('No AI provider configured. Set GEMINI_API_KEY or OPENAI_API_KEY.'), { status: 503, expose: true });
+  if (!provider) throw Object.assign(new Error('No AI provider configured. Set GEMINI_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY.'), { status: 503, expose: true });
 
   logger.info(`AI chat [${provider}] — ${prompt.slice(0, 60)}...`);
-  const text = provider === 'gemini' ? await askGemini(prompt, 'general', history) : await askOpenAI(prompt, 'general', history);
-  return text;
+  if (provider === 'gemini') return askGemini(prompt, 'general', history);
+  if (provider === 'groq') return askGroq(prompt, 'general', history);
+  return askOpenAI(prompt, 'general', history);
 }
 
 async function generateReport(type, portfolioData) {
@@ -98,8 +118,9 @@ async function generateReport(type, portfolioData) {
   const prompt = `Here is the user's portfolio data:\n\`\`\`json\n${dataStr}\n\`\`\`\n\nGenerate the ${type.replace('_', ' ')} report as instructed.`;
 
   logger.info(`AI report [${provider}] — ${type}`);
-  const text = provider === 'gemini' ? await askGemini(prompt, type) : await askOpenAI(prompt, type);
-  return text;
+  if (provider === 'gemini') return askGemini(prompt, type);
+  if (provider === 'groq') return askGroq(prompt, type);
+  return askOpenAI(prompt, type);
 }
 
 module.exports = { generateChat, generateReport };

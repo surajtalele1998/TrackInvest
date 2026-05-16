@@ -199,8 +199,9 @@ curl https://your-api.onrender.com/api/v1/sync/backups \
 |----------|----------|-------------|
 | `PORT` | No | Default: 3000 |
 | `API_KEYS` | **Yes** | Comma-separated API keys for auth |
-| `GEMINI_API_KEY` | One of | Google Gemini API key for AI features |
-| `OPENAI_API_KEY` | One of | OpenAI API key (alternative to Gemini) |
+| `GEMINI_API_KEY` | One of | Google Gemini API key (free, 60 req/min) |
+| `GROQ_API_KEY` | One of | Groq API key (free, Llama/Mixtral, 30 req/min) |
+| `OPENAI_API_KEY` | One of | OpenAI API key (paid) |
 | `ALPHA_VANTAGE_API_KEY` | No | Enhanced market data |
 | `VAPID_PUBLIC_KEY` | For push | Web Push public key |
 | `VAPID_PRIVATE_KEY` | For push | Web Push private key |

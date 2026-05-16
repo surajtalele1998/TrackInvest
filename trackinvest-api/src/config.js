@@ -11,8 +11,9 @@ const config = {
 
   ai: {
     geminiKey: process.env.GEMINI_API_KEY || '',
+    groqKey: process.env.GROQ_API_KEY || '',
     openaiKey: process.env.OPENAI_API_KEY || '',
-    provider: process.env.GEMINI_API_KEY ? 'gemini' : (process.env.OPENAI_API_KEY ? 'openai' : null),
+    provider: process.env.GEMINI_API_KEY ? 'gemini' : (process.env.GROQ_API_KEY ? 'groq' : (process.env.OPENAI_API_KEY ? 'openai' : null)),
   },
 
   market: {
