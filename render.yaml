@@ -1,13 +1,39 @@
 services:
   - type: web
-    name: track-invest
-    env: static
-    # No build command needed since we are using raw HTML/JS
-    buildCommand: ""
-    # Serves the current root directory
-    staticPublishPath: .
-    # Rewrites all traffic to your main file (Standard PWA behavior)
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    name: trackinvest-api
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: trackinvest-api
+    buildCommand: npm install --ignore-scripts
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: API_KEYS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: BROWSER_DISABLE
+        value: "true"

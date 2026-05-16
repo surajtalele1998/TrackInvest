@@ -153,20 +153,18 @@ x-api-key: sk-your-api-key-here
 
 ## Deployment — Render (Free Tier)
 
-1. Push this folder to GitHub
-2. On Render.com, create a **New Web Service**
-3. Connect your repo, set root directory to `trackinvest-api`
-4. Render will auto-detect `render.yaml` — or manually configure:
+A `render.yaml` is at the **repo root** (`../render.yaml`) for auto-deploy. It has `rootDir: trackinvest-api` so Render runs all commands inside this folder.
+
+1. Push the repo to GitHub
+2. On Render.com, create a **New Web Service** and connect your repo
+3. Render auto-detects `render.yaml` — or manually configure:
+   - **Root Directory**: `trackinvest-api`
    - **Runtime**: Node
    - **Plan**: Free
-   - **Build Command**: `npm install --ignore-scripts` (skips heavy chromium download)
+   - **Build Command**: `npm install --ignore-scripts`
    - **Start Command**: `npm start`
    - **Health Check Path**: `/api/v1/health`
-5. Set all sensitive env vars in Render dashboard
-
-### render.yaml (auto-deploy)
-
-A `render.yaml` is included for blueprint-based deployment.
+4. Set all sensitive env vars in Render dashboard
 
 ### ⚠ Free Tier Limitations
 
