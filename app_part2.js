@@ -309,6 +309,7 @@ function saveInvestment() {
     }
 
     saveData(); renderAll(); closeOverlays(); clearFormDraft();
+    cloudScheduleSync('invest'); cloudScheduleSync('finave');
     // Reset edit states
     const wasEdit = !!window.editInvId;
     window.editInvId = null;
@@ -376,6 +377,7 @@ function deleteInvestment() {
             saveData();
             renderAll();
             closeOverlays();
+            cloudScheduleSync('invest'); cloudScheduleSync('finave');
             showSnackbar("Entry Deleted");
             window.editInvId = null;
         } else {
@@ -892,6 +894,7 @@ function saveGoal() {
         db.goals.push(newGoal);
     }
     saveData();
+    cloudScheduleSync('goal');
     closeOverlays();
     renderAll();
     showSnackbar("Goal Saved!", "flag");
@@ -919,6 +922,7 @@ function deleteGoal() {
         if (r.isConfirmed) {
             db.goals = db.goals.filter(g => String(g.id) !== String(window.editGoalId));
             saveData();
+            cloudScheduleSync('goal');
             closeOverlays();
             renderAll();
             showSnackbar('Goal deleted');
@@ -1365,6 +1369,439 @@ function updateCategorySetting(cat, key, val) {
 }
 
 function saveApiKeys() { db.geminiKey = document.getElementById('gemini-api-key').value.trim(); db.groqKey = document.getElementById('groq-api-key').value.trim(); db.openrouterKey = document.getElementById('openrouter-api-key').value.trim(); db.cerebrasKey = document.getElementById('cerebras-api-key').value.trim(); db.githubKey = document.getElementById('github-api-key').value.trim(); saveData(); showSnackbar("API Keys Saved", "key"); }
+
+// ── Cloud API Settings ──
+function updateCloudStatusText() {
+  const el = document.getElementById('cloud-api-status-text');
+  if (db.apiConfig?.enabled) {
+    el.textContent = 'On — syncing with cloud';
+  } else {
+    el.textContent = 'Off — uses local storage';
+  }
+}
+
+function toggleCloudApi(checked) {
+  db.apiConfig = db.apiConfig || {};
+  db.apiConfig.enabled = !!checked;
+  if (!checked) db.apiConfig.jwtToken = '';
+  if (checked) {
+    document.getElementById('cloud-api-config').style.display = 'block';
+    document.getElementById('cloud-api-url').value = db.apiConfig.baseUrl || '';
+    document.getElementById('cloud-api-key').value = db.apiConfig.apiKey || '';
+  } else {
+    document.getElementById('cloud-api-config').style.display = 'none';
+  }
+  saveData();
+  updateCloudStatusText();
+  updateCloudStatusIndicators();
+  TrackInvestAPI.refreshConfig();
+  showSnackbar(checked ? 'Cloud API Enabled' : 'Cloud API Disabled', 'cloud');
+}
+
+function updateCloudStatusIndicators() {
+  const on = TrackInvestAPI && TrackInvestAPI.isReady();
+  const color = on ? 'var(--md-primary)' : 'var(--md-outline)';
+  const dot = document.getElementById('cloud-dot-header');
+  if (dot) {
+    dot.textContent = on ? 'cloud' : 'cloud_off';
+    dot.style.color = on ? 'var(--md-primary)' : 'var(--md-outline)';
+    dot.title = on ? 'Cloud API Connected' : 'Cloud API Off';
+  }
+  ['finave', 'invest', 'spend', 'plan'].forEach(key => {
+    const el = document.getElementById('cloud-status-' + key);
+    if (el) el.style.color = color;
+  });
+}
+
+function saveCloudApiConfig() {
+  const url = document.getElementById('cloud-api-url').value.trim();
+  const key = document.getElementById('cloud-api-key').value.trim();
+  if (!url || !key) { showSnackbar('Enter both URL and API Key', 'error'); return; }
+  db.apiConfig = db.apiConfig || {};
+  db.apiConfig.baseUrl = url.replace(/\/+$/, '');
+  db.apiConfig.apiKey = key;
+  if (!db.apiConfig.enabled) db.apiConfig.enabled = true;
+  document.getElementById('cloud-api-toggle').checked = true;
+  document.getElementById('cloud-api-config').style.display = 'block';
+  saveData();
+  TrackInvestAPI.refreshConfig();
+  updateCloudStatusIndicators();
+  showSnackbar('Cloud API configured', 'cloud');
+  // Auto-test
+  setTimeout(testCloudConnection, 500);
+}
+
+async function testCloudConnection() {
+  const btn = document.querySelector('button[onclick="testCloudConnection()"]');
+  const prev = btn.innerHTML;
+  btn.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;">hourglass_top</span> Testing...';
+  btn.disabled = true;
+  const resultEl = document.getElementById('cloud-api-test-result');
+  resultEl.style.display = 'block';
+  try {
+    const h = await TrackInvestAPI.health();
+    resultEl.innerHTML = '<span style="color:var(--md-primary);">✓ Connected — ' + (h.message || h.service || 'API running') + '</span>';
+    resultEl.style.color = 'var(--md-primary)';
+  } catch (e) {
+    resultEl.innerHTML = '<span style="color:#B3261E;">✗ ' + e.message + '</span>';
+    resultEl.style.color = '#B3261E';
+  }
+  btn.innerHTML = prev;
+  btn.disabled = false;
+}
+
+function showCloudLogin() {
+  Swal.fire({
+    title: 'Cloud Login',
+    html:
+      '<input id="swal-cloud-email" class="swal2-input" placeholder="Email" type="email">' +
+      '<input id="swal-cloud-pass" class="swal2-input" placeholder="Password" type="password">',
+    confirmButtonText: 'Login',
+    showCancelButton: true,
+    preConfirm: async () => {
+      const email = document.getElementById('swal-cloud-email').value;
+      const pass = document.getElementById('swal-cloud-pass').value;
+      if (!email || !pass) { Swal.showValidationMessage('Enter email and password'); return; }
+      try {
+        await TrackInvestAPI.loginUser(email, pass);
+        document.getElementById('cloud-auth-status').textContent = 'Logged in as ' + email;
+        return true;
+      } catch (e) {
+        Swal.showValidationMessage(e.message);
+      }
+    }
+  });
+}
+
+function showCloudRegister() {
+  Swal.fire({
+    title: 'Register',
+    html:
+      '<input id="swal-reg-name" class="swal2-input" placeholder="Name">' +
+      '<input id="swal-reg-email" class="swal2-input" placeholder="Email" type="email">' +
+      '<input id="swal-reg-pass" class="swal2-input" placeholder="Password" type="password">',
+    confirmButtonText: 'Register',
+    showCancelButton: true,
+    preConfirm: async () => {
+      const name = document.getElementById('swal-reg-name').value;
+      const email = document.getElementById('swal-reg-email').value;
+      const pass = document.getElementById('swal-reg-pass').value;
+      if (!name || !email || !pass) { Swal.showValidationMessage('Fill all fields'); return; }
+      try {
+        await TrackInvestAPI.registerUser(email, pass, name);
+        document.getElementById('cloud-auth-status').textContent = 'Registered & logged in as ' + email;
+        return true;
+      } catch (e) {
+        Swal.showValidationMessage(e.message);
+      }
+    }
+  });
+}
+
+async function cloudFullSync() {
+  const el = document.getElementById('cloud-sync-result');
+  el.textContent = 'Syncing...';
+  try {
+    const result = await TrackInvestAPI.fullSync();
+    el.textContent = '✓ Synced at ' + new Date().toLocaleTimeString();
+    showSnackbar('Cloud sync complete', 'sync');
+  } catch (e) {
+    el.textContent = '✗ ' + e.message;
+    showSnackbar('Sync failed: ' + e.message, 'error');
+  }
+}
+
+async function cloudListBackups() {
+  try {
+    const backups = await TrackInvestAPI.sync.list(1, 20);
+    if (!backups?.backups?.length) {
+      Swal.fire('Backups', 'No backups found', 'info');
+      return;
+    }
+    const html = backups.backups.map((b, i) =>
+      `<div style="padding:8px;border-bottom:1px solid var(--md-outline-variant);display:flex;justify-content:space-between;align-items:center;">
+        <div><strong>#${i + 1}</strong> ${b.label || 'Unnamed'}<br><span style="font-size:11px;color:var(--md-outline);">${new Date(b.createdAt).toLocaleString()}</span></div>
+        <button class="btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="TrackInvestAPI.restoreFromBackup('${b._id || b.id}').then(()=>Swal.close())">Restore</button>
+      </div>`
+    ).join('');
+    Swal.fire({ title: 'Cloud Backups', html, width: 480, confirmButtonText: 'Close' });
+  } catch (e) {
+    showSnackbar('Failed to list backups: ' + e.message, 'error');
+  }
+}
+
+// ── Cloud Dev Portal ──
+function openCloudDevPortal() {
+  const loggedIn = document.getElementById('cloud-dev-logged-in');
+  const loggedOut = document.getElementById('cloud-dev-logged-out');
+  if (!TrackInvestAPI.isReady()) {
+    loggedIn.style.display = 'none';
+    loggedOut.style.display = 'block';
+  } else {
+    loggedIn.style.display = 'block';
+    loggedOut.style.display = 'none';
+    document.getElementById('cloud-dev-url').textContent = db.apiConfig?.baseUrl || '-';
+    document.getElementById('cloud-dev-account').textContent = db.apiConfig?.userEmail || 'Not logged in';
+    cloudDevRefresh();
+  }
+  openSubSheet('cloud-dev-sheet');
+}
+
+async function cloudDevRefresh() {
+  const statusEl = document.getElementById('cloud-dev-status');
+  statusEl.textContent = 'Checking...';
+  try {
+    const h = await TrackInvestAPI.health();
+    statusEl.textContent = '✓ ' + (h.message || h.service || h.status || 'Connected');
+  } catch (e) {
+    statusEl.textContent = '✗ ' + e.message;
+  }
+}
+
+function cloudDevCopyKey() {
+  const key = db.apiConfig?.apiKey;
+  if (key) {
+    navigator.clipboard.writeText(key).then(() => showSnackbar('API Key copied', 'key'));
+  }
+}
+
+async function cloudDevGenerateKey() {
+  try {
+    const result = await TrackInvestAPI.generateApiKey();
+    if (result?.key) {
+      db.apiConfig.apiKey = result.key;
+      saveData();
+      TrackInvestAPI.refreshConfig();
+      document.getElementById('cloud-api-key').value = result.key;
+      showSnackbar('New API key generated', 'vpn_key');
+    }
+  } catch (e) {
+    showSnackbar('Failed: ' + e.message, 'error');
+  }
+}
+
+// ── Cloud Backups Sheet ──
+function openCloudBackupsSheet() {
+  openSubSheet('cloud-backups-sheet');
+  cloudBackupsRefresh();
+}
+
+async function cloudBackupNow() {
+  const listEl = document.getElementById('cloud-backups-list');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--md-outline);"><span class="material-symbols-rounded">hourglass_top</span><br>Backing up...</div>';
+  try {
+    await TrackInvestAPI.backupLocalDb('manual-' + new Date().toISOString().slice(0, 10));
+    showSnackbar('Backup created', 'cloud_upload');
+    cloudBackupsRefresh();
+  } catch (e) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#B3261E;">✗ ' + e.message + '</div>';
+  }
+}
+
+async function cloudBackupsRefresh() {
+  const listEl = document.getElementById('cloud-backups-list');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--md-outline);"><span class="material-symbols-rounded">hourglass_top</span><br>Loading...</div>';
+  try {
+    const backups = await TrackInvestAPI.sync.list(1, 50);
+    if (!backups?.backups?.length) {
+      listEl.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--md-outline);"><span class="material-symbols-rounded" style="font-size:48px;">cloud_off</span><p style="margin-top:8px;">No backups yet</p></div>';
+      return;
+    }
+    listEl.innerHTML = backups.backups.map((b, i) =>
+      `<div style="padding:10px 12px;border-bottom:1px solid var(--md-outline-variant);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-weight:500;font-size:13px;">${b.label || 'Backup #' + (i + 1)}</div>
+          <div style="font-size:11px;color:var(--md-outline);">${new Date(b.createdAt).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="restoreCloudBackup('${b._id || b.id}')">Restore</button>
+          <button class="btn-secondary" style="padding:4px 10px;font-size:12px;" onclick="deleteCloudBackup('${b._id || b.id}')">Del</button>
+        </div>
+      </div>`
+    ).join('');
+  } catch (e) {
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:#B3261E;">✗ ' + e.message + '</div>';
+  }
+}
+
+async function restoreCloudBackup(id) {
+  const confirm = await Swal.fire({ title: 'Restore backup?', text: 'Current data will be replaced', showCancelButton: true });
+  if (!confirm.isConfirmed) return;
+  try {
+    await TrackInvestAPI.restoreFromBackup(id);
+  } catch (e) {
+    showSnackbar('Restore failed: ' + e.message, 'error');
+  }
+}
+
+async function deleteCloudBackup(id) {
+  const confirm = await Swal.fire({ title: 'Delete backup?', showCancelButton: true });
+  if (!confirm.isConfirmed) return;
+  try {
+    await TrackInvestAPI.sync.delete(id);
+    showSnackbar('Backup deleted', 'delete');
+    cloudBackupsRefresh();
+  } catch (e) {
+    showSnackbar('Delete failed: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  CLOUD DOMAIN SERVICES — FinAve / Invest / Spend / Plan
+// ═══════════════════════════════════════════════════
+
+const CloudService = {
+  // ── helper: check if cloud is ready ──
+  ready() { return TrackInvestAPI && TrackInvestAPI.isReady(); },
+
+  // ── helper: silent push, never throw ──
+  async _try(fn) {
+    if (!this.ready()) return;
+    try { await fn(); } catch (e) { console.warn('[Cloud]', e.message); }
+  },
+
+  // ── Invest: push/delete investment entries ──
+  async investSync(investments) {
+    await this._try(() => TrackInvestAPI.sync.syncNow({
+      type: 'invest',
+      investments: investments || db.investments,
+      recurring: db.recurring,
+      templates: db.templates,
+      accounts: db.accounts,
+    }));
+  },
+
+  // ── Invest: get XIRR from cloud ──
+  async investXirr(transactions) {
+    if (!this.ready()) return null;
+    try {
+      const result = await TrackInvestAPI.portfolio.xirr(transactions);
+      return result?.xirr ?? null;
+    } catch { return null; }
+  },
+
+  // ── Invest: analyze portfolio ──
+  async investAnalyze(holdings) {
+    if (!this.ready()) return null;
+    try {
+      return await TrackInvestAPI.portfolio.analyze(holdings);
+    } catch { return null; }
+  },
+
+  // ── Goals: full sync ──
+  async goalsSync(goals) {
+    await this._try(() => TrackInvestAPI.sync.syncNow({
+      type: 'goals',
+      goals: goals || db.goals,
+    }));
+  },
+
+  // ── Goals: push single goal create/update ──
+  async goalSave(goal) {
+    await this._try(async () => {
+      if (goal.id && goal.id < 1000000000000) {
+        await TrackInvestAPI.goals.update(String(goal.id), goal);
+      } else {
+        await TrackInvestAPI.goals.create(goal);
+      }
+    });
+  },
+
+  // ── Goals: delete ──
+  async goalDelete(id) {
+    await this._try(() => TrackInvestAPI.goals.delete(String(id)));
+  },
+
+  // ── Spend: push entries ──
+  async spendSync(entries) {
+    await this._try(() => TrackInvestAPI.sync.syncNow({
+      type: 'spend',
+      entries: entries || (db.spendTracker?.entries || []),
+    }));
+  },
+
+  // ── Planner: push monthly plan data ──
+  async plannerSync(data) {
+    await this._try(() => TrackInvestAPI.sync.syncNow({
+      type: 'planner',
+      plannerData: data || {},
+    }));
+  },
+
+  // ── FinAve: push net-worth snapshot ──
+  async finAveSnapshot(netWorth, breakdown) {
+    await this._try(() => TrackInvestAPI.sync.syncNow({
+      type: 'finave',
+      netWorth,
+      breakdown,
+      timestamp: new Date().toISOString(),
+    }));
+  },
+
+  // ── Calculator: SIP via cloud ──
+  async calcSIP(monthly, rate, years) {
+    if (!this.ready()) return null;
+    try { return await TrackInvestAPI.calculator.sip({ monthly, rate, years }); }
+    catch { return null; }
+  },
+
+  // ── Calculator: Retirement via cloud ──
+  async calcRetirement(currentAge, retirementAge, monthlyExpense, inflation, returns) {
+    if (!this.ready()) return null;
+    try {
+      return await TrackInvestAPI.calculator.retirement({
+        currentAge, retirementAge, monthlyExpense, inflation, returns,
+      });
+    } catch { return null; }
+  },
+
+  // ── Calculator: Goal projection via cloud ──
+  async calcGoal(target, monthly, rate, years, currentSavings) {
+    if (!this.ready()) return null;
+    try {
+      return await TrackInvestAPI.calculator.goal({
+        target, monthly, rate, years, currentSavings: currentSavings || 0,
+      });
+    } catch { return null; }
+  },
+};
+
+// ── Quick cloud sync triggers (call from save hooks) ──
+let _cloudDebounce = null;
+function cloudScheduleSync(type) {
+  if (_cloudDebounce) clearTimeout(_cloudDebounce);
+  _cloudDebounce = setTimeout(() => {
+    _cloudDebounce = null;
+    switch (type) {
+      case 'invest': CloudService.investSync(); break;
+      case 'goal': CloudService.goalsSync(); break;
+      case 'spend': CloudService.spendSync(); break;
+      case 'finave': CloudService.finAveSnapshot(currentTotalNW, currentTypeTotals); break;
+      default: CloudService.investSync(); CloudService.goalsSync();
+    }
+  }, 2000);
+}
+
+// ── FinAve snapshot sync (called from app_part3 render cycle) ──
+let _cloudFinAveTimer = null;
+function cloudScheduleFinAve() {
+  if (_cloudFinAveTimer) clearTimeout(_cloudFinAveTimer);
+  _cloudFinAveTimer = setTimeout(() => {
+    _cloudFinAveTimer = null;
+    if (TrackInvestAPI && TrackInvestAPI.isReady()) {
+      CloudService.finAveSnapshot(currentTotalNW, currentTypeTotals);
+    }
+  }, 5000);
+}
+
+// ── Periodic full sync tick (every 10 min when cloud enabled) ──
+setInterval(() => {
+  if (TrackInvestAPI && TrackInvestAPI.isReady()) {
+    CloudService.investSync();
+    CloudService.goalsSync();
+  }
+}, 600000);
+
 function addAccount() { haptic(40); let name = document.getElementById('new-acc-name').value.trim(); if (name && !db.accounts.includes(name)) { db.accounts.push(name); document.getElementById('new-acc-name').value = ''; saveData(); initUI(); openSettings(); showSnackbar("Account Added"); } }
 function deleteAccount(name) { haptic(40); Swal.fire({ title: `Delete Account '${name}'?`, text: "Entries will remain but lose association.", showCancelButton: true }).then(r => { if (r.isConfirmed) { db.accounts = db.accounts.filter(a => a !== name); saveData(); initUI(); openSettings(); renderAll(); } }); }
 function addCustomCategory() {

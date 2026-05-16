@@ -15,6 +15,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="./version.js"></script>
+    <script src="./apiClient.js"></script>
     <style>
         :root { --cat-food:#E3724A; --cat-transport:#415F91; --cat-bills:#186D33; --cat-entertainment:#9C27B0; --cat-health:#D96200; --cat-shopping:#E91E63; --cat-groceries:#388E3C; --cat-rent:#5C6BC0; --cat-travel:#00ACC1; --cat-education:#7B1FA2; --cat-investment:#F57C00; --cat-income:#2E7D32; --cat-other:#8E9099; }
 
@@ -325,6 +326,7 @@
             updateCommentSuggestions();
             renderAll();
             haptic(30);
+            cloudSpendSync();
         }
 
         function deleteSpendEntry() {
@@ -335,8 +337,25 @@
                     saveDB();
                     closeSpendSheet();
                     renderAll();
+                    cloudSpendSync();
                 }
             });
+        }
+
+        // ── Cloud sync for spend data ──
+        function cloudSpendSync() {
+            if (typeof TrackInvestAPI === 'undefined' || !TrackInvestAPI.isReady()) return;
+            db = loadDB();
+            const data = { type: 'spend', entries: db.spendTracker?.entries || [] };
+            fetch((db.apiConfig?.baseUrl || '').replace(/\/+$/, '') + '/api/v1/sync/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': db.apiConfig?.apiKey || '',
+                    'Authorization': db.apiConfig?.jwtToken ? 'Bearer ' + db.apiConfig.jwtToken : '',
+                },
+                body: JSON.stringify(data),
+            }).catch(() => {});
         }
 
         function updateCommentSuggestions() {
@@ -366,7 +385,13 @@
             });
             updateCommentSuggestions();
             renderAll();
+            if (typeof TrackInvestAPI !== 'undefined') TrackInvestAPI.loadConfig();
         });
+
+        // ── Periodic cloud sync (every 5 min) ──
+        setInterval(() => {
+            if (typeof TrackInvestAPI !== 'undefined' && TrackInvestAPI.isReady()) cloudSpendSync();
+        }, 300000);
 
         // ── IMPORT SHEET ──
         function openImportSheet() { document.getElementById('import-sheet').classList.add('open'); document.getElementById('import-scrim').classList.add('open'); }
@@ -492,7 +517,7 @@
                 }
                 saveDB(); e.target.value='';
                 Swal.fire({icon:'success',title:'Imported',text:`${added} added${skipped?', '+skipped+' skipped':''}`,timer:2000,showConfirmButton:false});
-                closeImportSheet(); renderAll();
+                closeImportSheet(); renderAll(); cloudSpendSync();
             };
             reader.readAsText(file);
         }
@@ -515,7 +540,7 @@
                 });
                 saveDB(); e.target.value='';
                 Swal.fire({icon:'success',title:'Imported',text:`${added} added`,timer:2000,showConfirmButton:false});
-                closeImportSheet(); renderAll();
+                closeImportSheet(); renderAll(); cloudSpendSync();
             };
             reader.readAsArrayBuffer(file);
         }
@@ -530,7 +555,7 @@
                     const parts=line.split(/\t|,/);
                     if(parts.length>=2) { const amt=parseFloat(parts[0].replace(/[₹$,]/g,'')); if(!isNaN(amt)&&amt>0){const d=new Date(); db.spendTracker.entries.push({id:Date.now()+'_p'+i,amount:amt,comment:DOMPurify.sanitize(parts.slice(1).join(' '),{ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),date:d.toISOString(),category:'Uncategorized'}); added++; } }
                 });
-                if(added>0){saveDB();Swal.fire({icon:'success',title:'Imported',text:`${added} added`,timer:2000,showConfirmButton:false});closeImportSheet();renderAll();}
+                if(added>0){saveDB();Swal.fire({icon:'success',title:'Imported',text:`${added} added`,timer:2000,showConfirmButton:false});closeImportSheet();renderAll();cloudSpendSync();}
                 else Swal.fire('Info','No data could be parsed. Try CSV/XLSX instead.','info');
                 e.target.value='';
             };
@@ -656,9 +681,9 @@
             Swal.fire({title:'Category',input:'select',inputOptions:cats.reduce((o,c)=>{o[c]=c;return o},{}),inputValue:e.category==='Uncategorized'?cats[0]:e.category,showCancelButton:true,preConfirm:v=>{e.category=v;saveDB();renderAll();}});
         }
 
-        function deleteEntry(id) { Swal.fire({title:'Delete?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.id!==id);saveDB();renderAll();}}); }
-        function deleteAllUncategorized() { Swal.fire({title:'Delete uncategorized?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.category&&x.category!=='Uncategorized');saveDB();renderAll();}}); }
-        function deleteAllEntries() { Swal.fire({title:'Delete ALL this month?',text:'Cannot be undone',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){const ids=new Set(getMonthEntries().map(x=>x.id));db.spendTracker.entries=db.spendTracker.entries.filter(x=>!ids.has(x.id));saveDB();renderAll();}}); }
+        function deleteEntry(id) { Swal.fire({title:'Delete?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.id!==id);saveDB();renderAll();cloudSpendSync();}}); }
+        function deleteAllUncategorized() { Swal.fire({title:'Delete uncategorized?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.category&&x.category!=='Uncategorized');saveDB();renderAll();cloudSpendSync();}}); }
+        function deleteAllEntries() { Swal.fire({title:'Delete ALL this month?',text:'Cannot be undone',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){const ids=new Set(getMonthEntries().map(x=>x.id));db.spendTracker.entries=db.spendTracker.entries.filter(x=>!ids.has(x.id));saveDB();renderAll();cloudSpendSync();}}); }
 
         // ── FILTER ──
         function setFilter(f,btn) { currentFilter=f; document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); renderSpendList(); }

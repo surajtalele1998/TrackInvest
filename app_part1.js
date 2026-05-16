@@ -2130,6 +2130,9 @@ function initUI() {
             }
         }, 100);
     }
+
+    // Initialize cloud status indicator
+    if (typeof updateCloudStatusIndicators === 'function') updateCloudStatusIndicators();
 }
 
 // getThemeColor defined above (removed duplicate)

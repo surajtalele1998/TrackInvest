@@ -15,7 +15,7 @@
         script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
         font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-        connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.cerebras.ai https://models.github.ai https://mfapi.in https://api.exchangerate.host https://query1.finance.yahoo.com https://mintedmetal.com https://ibja-api.vercel.app https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.codetabs.com;
+        connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.cerebras.ai https://models.github.ai https://mfapi.in https://api.exchangerate.host https://query1.finance.yahoo.com https://mintedmetal.com https://ibja-api.vercel.app https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://api.codetabs.com https://*.onrender.com https://*.supabase.co wss://*.supabase.co https://api.github.com https://newsapi.org https://v6.exchangerate-api.com https://api.telegram.org https://ntfy.sh;
         img-src 'self' data:;
         manifest-src 'self';
     ">
@@ -41,6 +41,7 @@
 
     <link rel="stylesheet" href="./style.css">
     <script src="./version.js"></script>
+    <script src="./apiClient.js"></script>
 </head>
 
 <body>
@@ -60,6 +61,7 @@
         <div class="app-title"><span class="material-symbols-rounded"
                 style="color:var(--md-primary);">account_balance</span> TrackInvest</div>
         <div style="display:flex; gap:8px; align-items:center;">
+            <span id="cloud-dot-header" class="material-symbols-rounded" style="font-size:18px;color:var(--md-outline);cursor:pointer;" onclick="openCloudDevPortal()" title="Cloud API">cloud_off</span>
             <select class="account-selector" id="account-filter" onchange="renderAll()"></select>
             <button class="icon-btn" onclick="togglePrivacy()" aria-label="Toggle Privacy"><span
                     class="material-symbols-rounded" id="privacy-icon">visibility</span></button>
@@ -423,6 +425,85 @@
 
             <div class="list" id="ledger-history-list"></div>
         </div>
+
+        <!-- ── Cloud Tab ── -->
+        <div id="tab-cloud" class="tab-content">
+            <div id="cloud-dashboard">
+                <div class="hero-card" style="background:linear-gradient(135deg,var(--md-primary-container),var(--md-surface));">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <div>
+                            <div class="hero-subtitle">Cloud Services</div>
+                            <div class="hero-title" style="font-size:20px;">TrackInvest Backend</div>
+                        </div>
+                        <span class="material-symbols-rounded" style="font-size:40px;color:var(--md-primary);opacity:0.6;">cloud</span>
+                    </div>
+                    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+                        <span class="badge-pill" id="cloud-status-badge" style="background:var(--md-error-container);color:var(--md-on-error-container);">Not Connected</span>
+                        <span class="badge-pill" id="cloud-sync-badge" style="background:var(--md-surface-container-high);color:var(--md-on-surface-variant);">Sync: —</span>
+                    </div>
+                </div>
+
+                <div class="section-title">Smart Tools <span style="font-size:12px;opacity:0.5;font-weight:400;">powered by Cloud API</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="summary-card" onclick="openCloudSheet('goals', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">trackpad_target</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Goals</div>
+                        <div style="font-size:11px;opacity:0.6;">Track & project</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('watchlist', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">visibility</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Watchlist</div>
+                        <div style="font-size:11px;opacity:0.6;">Live prices</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('alerts', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">notifications_active</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Price Alerts</div>
+                        <div style="font-size:11px;opacity:0.6;">Telegram & push</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('calculators', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">calculate</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Calculators</div>
+                        <div style="font-size:11px;opacity:0.6;">SIP, EMI, Retirement</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('tax', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">account_balance</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Tax Harvesting</div>
+                        <div style="font-size:11px;opacity:0.6;">Gain/loss analysis</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('dividends', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">payments</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Dividends</div>
+                        <div style="font-size:11px;opacity:0.6;">Passive income</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('import', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">upload_file</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Import Data</div>
+                        <div style="font-size:11px;opacity:0.6;">CSV / JSON upload</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('backup', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">backup</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Cloud Backup</div>
+                        <div style="font-size:11px;opacity:0.6;">Sync & restore</div>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top:20px;">Market Intelligence</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="summary-card" onclick="openCloudSheet('news', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">newspaper</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Financial News</div>
+                        <div style="font-size:11px;opacity:0.6;">NewsAPI powered</div>
+                    </div>
+                    <div class="summary-card" onclick="openCloudSheet('exchange', this)" style="cursor:pointer;">
+                        <span class="material-symbols-rounded" style="font-size:28px;color:var(--md-primary);">currency_exchange</span>
+                        <div style="font-weight:600;font-size:14px;margin:4px 0 2px;">Exchange Rates</div>
+                        <div style="font-size:11px;opacity:0.6;">INR / USD / global</div>
+                    </div>
+                </div>
+
+                <div id="cloud-extra-features" style="margin-top:20px;"></div>
+            </div>
+        </div>
     </main>
 
     <nav class="bottom-nav">
@@ -437,6 +518,10 @@
         <div class="nav-item" id="nav-ledger" onclick="switchTab('ledger')">
             <div class="nav-icon-wrap"><span class="material-symbols-rounded">list_alt</span><span class="nav-badge"
                     id="ledger-entry-badge" style="display:none;"></span></div><span class="nav-label">Ledger</span>
+        </div>
+        <div class="nav-item" id="nav-cloud" onclick="switchTab('cloud')">
+            <div class="nav-icon-wrap"><span class="material-symbols-rounded">cloud</span></div><span
+                class="nav-label">Cloud</span>
         </div>
     </nav>
     <div style="position:fixed;right:4px;bottom:4px;cursor:default;opacity:0.25;user-select:none;z-index:101;pointer-events:none;"
@@ -943,6 +1028,55 @@
 
                 <div
                     style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Cloud Services (Backend API)</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable Cloud API</div>
+                        <div style="font-size:11px; color:var(--md-outline); margin-top:2px;" id="cloud-api-status-text">Off — uses local storage</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="cloud-api-toggle" onchange="toggleCloudApi(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="cloud-api-config" style="display:none;">
+                    <div class="input-container"><label>Server URL</label><input type="url" id="cloud-api-url" class="md-input" placeholder="https://your-api.onrender.com" oninput="updateCloudStatusText()"></div>
+                    <div class="input-container"><label>API Key</label><input type="password" id="cloud-api-key" class="md-input" placeholder="sk-..." oninput="updateCloudStatusText()"></div>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button class="btn-primary" style="flex:1;" onclick="saveCloudApiConfig()"><span class="material-symbols-rounded">cloud</span> Connect</button>
+                        <button class="btn-secondary" style="flex:1;" onclick="testCloudConnection()"><span class="material-symbols-rounded">network_check</span> Test</button>
+                    </div>
+                    <div id="cloud-api-test-result" style="font-size:12px; margin-top:8px; display:none;"></div>
+
+                    <div style="margin-top:16px; padding:12px 16px; background:var(--md-surface-container-highest); border-radius:12px;">
+                        <div style="font-weight:500; font-size:13px; margin-bottom:6px;">Cloud Account</div>
+                        <div style="display:flex; gap:8px;">
+                            <button class="btn-secondary" style="flex:1;padding:6px;" onclick="showCloudLogin()"><span class="material-symbols-rounded" style="font-size:16px;">login</span> Login</button>
+                            <button class="btn-secondary" style="flex:1;padding:6px;" onclick="showCloudRegister()"><span class="material-symbols-rounded" style="font-size:16px;">person_add</span> Register</button>
+                        </div>
+                        <div id="cloud-auth-status" style="font-size:11px;color:var(--md-outline);margin-top:6px;"></div>
+                    </div>
+
+                    <div style="margin-top:12px; display:flex; gap:8px;">
+                        <button class="btn-secondary" style="flex:1;padding:6px;" onclick="cloudFullSync()"><span class="material-symbols-rounded" style="font-size:16px;">sync</span> Full Sync</button>
+                        <button class="btn-secondary" style="flex:1;padding:6px;" onclick="openCloudDevPortal()"><span class="material-symbols-rounded" style="font-size:16px;">developer_mode</span> Dev Portal</button>
+                    </div>
+                    <div style="margin-top:8px; display:flex; gap:8px;">
+                        <button class="btn-secondary" style="flex:1;padding:6px;" onclick="openCloudBackupsSheet()"><span class="material-symbols-rounded" style="font-size:16px;">backup</span> Backups</button>
+                        <button class="btn-secondary" style="flex:1;padding:6px;" onclick="cloudListBackups()"><span class="material-symbols-rounded" style="font-size:16px;">list</span> List Backups</button>
+                    </div>
+                    <div id="cloud-sync-result" style="font-size:11px; color:var(--md-outline); margin-top:6px;"></div>
+
+                    <div style="margin-top:16px; padding:12px; background:var(--md-surface-container); border-radius:14px;">
+                        <div style="font-weight:500;font-size:12px;margin-bottom:8px;">Sync Status</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;">
+                            <div style="display:flex;align-items:center;gap:6px;"><span id="cloud-status-finave" class="material-symbols-rounded" style="font-size:14px;color:var(--md-outline);">circle</span> FinAve</div>
+                            <div style="display:flex;align-items:center;gap:6px;"><span id="cloud-status-invest" class="material-symbols-rounded" style="font-size:14px;color:var(--md-outline);">circle</span> Invest</div>
+                            <div style="display:flex;align-items:center;gap:6px;"><span id="cloud-status-spend" class="material-symbols-rounded" style="font-size:14px;color:var(--md-outline);">circle</span> Spend</div>
+                            <div style="display:flex;align-items:center;gap:6px;"><span id="cloud-status-plan" class="material-symbols-rounded" style="font-size:14px;color:var(--md-outline);">circle</span> Plan</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
                     Notifications</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--md-surface-container);border-radius:14px;margin-bottom:4px;">
                     <div>
@@ -1365,6 +1499,60 @@
             <div style="font-size:36px;font-weight:400;margin-top:4px;" id="dividend-sheet-total">₹0</div>
         </div>
         <div id="dividend-list" class="list" style="overflow-y:auto; flex:1; padding-bottom:20px;"></div>
+    </div>
+
+    <!-- Cloud Dev Portal Sheet -->
+    <div class="sheet sub-sheet" id="cloud-dev-sheet" style="max-height:85vh; display:flex; flex-direction:column;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom:16px; flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="color:var(--md-primary);">developer_mode</span> Dev Portal</div>
+            <button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div id="cloud-dev-content" style="overflow-y:auto; flex:1; padding-bottom:20px;">
+            <div id="cloud-dev-logged-out" style="display:none;">
+                <div style="text-align:center;padding:32px 16px;color:var(--md-outline);">
+                    <span class="material-symbols-rounded" style="font-size:48px;">cloud_off</span>
+                    <p style="margin-top:12px;">Not connected to cloud API.<br>Go to Settings → Cloud Services to connect.</p>
+                </div>
+            </div>
+            <div id="cloud-dev-logged-in" style="display:none;">
+                <div style="background:var(--md-primary-container);border-radius:20px;padding:20px;margin-bottom:16px;text-align:center;">
+                    <div style="font-size:14px;opacity:0.8;font-weight:500;">API Status</div>
+                    <div style="font-size:20px;font-weight:500;margin-top:4px;" id="cloud-dev-status">Checking...</div>
+                </div>
+                <div style="padding:12px 16px;background:var(--md-surface-container);border-radius:14px;margin-bottom:12px;">
+                    <div style="font-weight:500;font-size:13px;margin-bottom:4px;">Server URL</div>
+                    <div style="font-size:12px;color:var(--md-outline);word-break:break-all;" id="cloud-dev-url">-</div>
+                </div>
+                <div style="padding:12px 16px;background:var(--md-surface-container);border-radius:14px;margin-bottom:12px;">
+                    <div style="font-weight:500;font-size:13px;margin-bottom:4px;">Account</div>
+                    <div style="font-size:12px;color:var(--md-outline);" id="cloud-dev-account">Not logged in</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-secondary" style="flex:1;" onclick="cloudDevCopyKey()"><span class="material-symbols-rounded" style="font-size:16px;">key</span> Copy API Key</button>
+                    <button class="btn-secondary" style="flex:1;" onclick="cloudDevRefresh()"><span class="material-symbols-rounded" style="font-size:16px;">refresh</span> Refresh</button>
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="btn-secondary" style="width:100%;" onclick="cloudDevGenerateKey()"><span class="material-symbols-rounded" style="font-size:16px;">vpn_key</span> Generate New API Key</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cloud Backups Sheet -->
+    <div class="sheet sub-sheet" id="cloud-backups-sheet" style="max-height:85vh; display:flex; flex-direction:column;">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom:16px; flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="color:var(--md-primary);">backup</span> Cloud Backups</div>
+            <button class="icon-btn" onclick="closeSubSheet()"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div id="cloud-backups-content" style="overflow-y:auto; flex:1; padding-bottom:20px;">
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <button class="btn-primary" style="flex:1;" onclick="cloudBackupNow()"><span class="material-symbols-rounded" style="font-size:16px;">cloud_upload</span> Backup Now</button>
+                <button class="btn-secondary" style="flex:1;" onclick="cloudBackupsRefresh()"><span class="material-symbols-rounded" style="font-size:16px;">refresh</span> Refresh</button>
+            </div>
+            <div id="cloud-backups-list"></div>
+        </div>
     </div>
 
     <div id="snackbar" class="snackbar"></div>

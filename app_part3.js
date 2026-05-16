@@ -274,6 +274,9 @@ function updatePortfolioCalculations() {
     currentTypeTotals = typeTotals;
     currentAvgMonthly = (currentM + 1) > 0 ? (yearTotal / (currentM + 1)) : 0;
 
+    // Push FinAve snapshot to cloud if enabled
+    if (typeof cloudScheduleFinAve !== 'undefined') cloudScheduleFinAve();
+
     // checkMilestones handles confetti internally — no separate trigger needed
     checkMilestones(currentTotalNW);
 
