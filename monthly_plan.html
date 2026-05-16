@@ -135,8 +135,10 @@
 
         .del-btn {
             background:transparent; border:none; color:var(--md-outline);
-            cursor:pointer; padding:6px; border-radius:50%; flex-shrink:0;
-            display:flex; align-items:center; transition:color 0.2s, background 0.2s;
+            cursor:pointer; padding:10px; min-width:44px; min-height:44px;
+            border-radius:50%; flex-shrink:0;
+            display:flex; align-items:center; justify-content:center;
+            transition:color 0.2s, background 0.2s;
         }
         .del-btn:hover { color:var(--md-error); background:var(--md-error-container); }
 
@@ -232,7 +234,7 @@
         .spin { animation:spin 1s linear infinite; display:inline-block; }
 
         .horizon-input {
-            width: 52px; text-align:center; font-size:13px; font-weight:600;
+            width: 52px; text-align:center; font-size:16px; font-weight:600;
             color: var(--md-primary); background: var(--md-surface-container);
             border: 1.5px solid var(--md-outline-variant); border-radius: 8px;
             padding: 3px 6px; outline:none; font-family:inherit;

@@ -142,7 +142,6 @@ body {
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: var(--md-outline-variant) transparent;
-    -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     touch-action: pan-y;
 }
@@ -150,7 +149,7 @@ body {
 body.lock-scroll {
     overflow: hidden !important;
     touch-action: none;
-    -webkit-overflow-scrolling: none;
+    padding-right: var(--scrollbar-width, 0px);
 }
 
 .scroll-y::-webkit-scrollbar {
@@ -229,7 +228,7 @@ body.lock-scroll {
     display: flex;
     justify-content: space-evenly;
     padding: 12px 8px calc(12px + env(safe-area-inset-bottom)) 8px;
-    z-index: 10;
+    z-index: 100;
     border-top: 1px solid var(--md-surface-container-highest);
 }
 
@@ -853,6 +852,7 @@ input[type=range]::-webkit-slider-runnable-track {
     scrollbar-width: none;
     scroll-snap-type: x mandatory;
     margin-bottom: 8px;
+    overscroll-behavior: contain;
 }
 
 .widget-carousel::-webkit-scrollbar {
@@ -1222,6 +1222,7 @@ input[type=range]::-webkit-slider-runnable-track {
     padding-bottom: 4px;
     scrollbar-width: none;
     padding-right: 16px;
+    overscroll-behavior: contain;
 }
 
 .quick-chips::-webkit-scrollbar,
@@ -1451,7 +1452,7 @@ input[type=range]::-webkit-slider-runnable-track {
     grid-template-columns: repeat(7, 1fr);
     gap: 4px;
     text-align: center;
-    font-size: 10px;
+    font-size: 12px;
     color: var(--md-on-surface-variant);
     font-weight: 500;
 }
@@ -1518,10 +1519,11 @@ input[type=range]::-webkit-slider-runnable-track {
     align-items: center;
     gap: 12px;
     box-shadow: 0 4px 8px 3px rgba(0, 0, 0, 0.15);
-    z-index: 10;
+    z-index: 200;
     border: none;
     font-family: inherit;
-    transition: 0.2s;
+    will-change: transform;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .fab:active {
@@ -1587,8 +1589,10 @@ input[type=range]::-webkit-slider-runnable-track {
     background: var(--md-surface-container-low);
     border-radius: 28px 28px 0 0;
     padding: 24px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     z-index: 1000;
     transform: translateY(100%);
+    will-change: transform;
     transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1), visibility 0s 0.4s;
     max-height: 92vh;
     overflow-y: auto;
@@ -2147,7 +2151,7 @@ input:checked+.slider:before {
     border-radius: 16px;
     background: var(--md-surface-container-low);
     margin: 16px 0;
-    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 .ai-report-table {
@@ -2247,11 +2251,11 @@ input:checked+.slider:before {
 .table-wrapper {
     width: 100%;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     margin: 16px 0;
     border-radius: 16px;
     border: 1px solid var(--md-outline-variant);
     background: var(--md-surface-container-low);
+    overscroll-behavior: contain;
 }
 
 .ai-report-body table {

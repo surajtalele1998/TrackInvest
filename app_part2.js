@@ -2637,6 +2637,7 @@ function initAIFloatingBubble() {
             z-index: 10000;
             touch-action: auto;
             user-select: none;
+            will-change: transform;
             display: flex;
             flex-direction: column;
             align-items: flex-end;
@@ -3110,27 +3111,23 @@ function toggleAIPopup(forceState, view = 'chat') {
             renderAIPopupContent(view);
         }
 
-        // Add click-outside-to-close handler
         if (!popup.dataset.clickOutsideHandler) {
             popup.dataset.clickOutsideHandler = 'true';
-            document.addEventListener('click', function handleClickOutside(e) {
+            const handlerName = '_aiClickOutside_' + Date.now();
+            window[handlerName] = function(e) {
                 if (popup.classList.contains('visible') && !popup.contains(e.target) && !e.target.closest('#ai-floating-bubble')) {
                     toggleAIPopup(false);
                 }
-            });
+            };
+            document.addEventListener('click', window[handlerName]);
+            popup.dataset.handlerName = handlerName;
         }
     } else {
         popup.classList.remove('visible');
         document.getElementById('ai-floating-bubble')?.classList.remove('popup-open');
         setTimeout(() => popup.classList.add('hidden'), 400);
 
-        // Unlock scroll if it was locked
         document.body.classList.remove('lock-scroll');
-
-        // Clear active chat session when closing popup
-        if (window.activeChatSession) {
-            window.activeChatSession = null;
-        }
 
         // Close any open AI report sheet when closing popup
         const aiReportSheet = document.getElementById('ai-report-sheet');

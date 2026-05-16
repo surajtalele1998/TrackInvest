@@ -1156,6 +1156,15 @@ function renderFrequentActions() {
 // ==========================================
 // 10. EVENT LISTENERS
 // ==========================================
+// Patch inputmode on all number inputs for mobile keyboard
+(function() {
+    document.querySelectorAll('input[type="number"]').forEach(el => {
+        if (!el.getAttribute('inputmode')) {
+            el.setAttribute('inputmode', 'decimal');
+        }
+    });
+})();
+
 document.addEventListener("DOMContentLoaded", async () => {
     const isUnlocked = await checkAppLock();
     initUI();

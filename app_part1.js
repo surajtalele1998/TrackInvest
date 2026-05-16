@@ -698,6 +698,16 @@ document.addEventListener('mousedown', () => window.userInteracted = true, { onc
 document.addEventListener('touchstart', () => window.userInteracted = true, { once: true });
 
 // ── UNIQUE ID GENERATOR ────────────────────────
+// Measure scrollbar width to prevent layout shift when lock-scroll is applied
+(function() {
+    const el = document.createElement('div');
+    el.style.cssText = 'width:50px;height:50px;overflow-y:scroll;visibility:hidden;position:absolute;top:-9999px';
+    document.body.appendChild(el);
+    const sw = el.offsetWidth - el.clientWidth;
+    document.body.removeChild(el);
+    document.documentElement.style.setProperty('--scrollbar-width', sw + 'px');
+})();
+
 let _idCounter = 0;
 function generateUniqueId() {
     const ts = Date.now();
@@ -713,7 +723,6 @@ function pushSheetState(sheetId) {
 
 function handlePopState(event) {
     const state = event.state;
-    // Specifically target sub-sheets vs main sheets
     const activeSub = document.querySelector('.sheet.sub-sheet.active');
     const activeMain = document.querySelector('.sheet.active:not(.sub-sheet)');
 
@@ -723,8 +732,7 @@ function handlePopState(event) {
         closeOverlays(true);
     } else if (state && state.tabId) {
         performTabSwitch(state.tabId, true);
-    } else if (!state) {
-        // If we hit a null state (e.g. back to start), ensure everything is closed
+    } else {
         closeOverlays(true);
     }
 }
@@ -831,60 +839,59 @@ function showSnackbar(msg, icon = "info", type = "info") {
  * Closes all overlays and resets edit states
  * @param {boolean} fromPopState - Whether called from popstate event
  */
+let _overlayBusy = false;
+
 function closeOverlays(fromPopState = false) {
-    // Close all sheets and scrims with proper cleanup and null checks
-    const sheets = document.querySelectorAll('.sheet.active');
-    if (sheets) {
-        sheets.forEach(sheet => {
-            if (sheet) {
-                sheet.classList.remove('active');
-            }
-        });
-    }
+    if (_overlayBusy) return;
+    _overlayBusy = true;
+    setTimeout(() => { _overlayBusy = false; }, 350);
 
-    const scrims = document.querySelectorAll('.scrim.active, .scrim-sub.active');
-    if (scrims) {
-        scrims.forEach(scrim => {
-            if (scrim) {
-                scrim.classList.remove('active');
-            }
-        });
-    }
+    if (fromPopState) {
+        // History back: close only the topmost sheet
+        const subSheet = document.querySelector('.sheet.sub-sheet.active');
+        const mainSheet = document.querySelector('.sheet.active:not(.sub-sheet)');
+        const target = subSheet || mainSheet;
+        if (target) target.classList.remove('active');
 
-    document.body.classList.remove('lock-scroll');
-
-    // Also close AI bubble popup if open
-    const aiPopup = document.getElementById('ai-chat-popup');
-    if (aiPopup && aiPopup.classList.contains('visible')) {
-        aiPopup.classList.remove('visible');
-        setTimeout(() => aiPopup.classList.add('hidden'), 400);
-        if (window.activeChatSession) {
-            window.activeChatSession = null;
+        const subScrim = document.getElementById('scrim-sub');
+        if (subScrim && subScrim.classList.contains('active')) {
+            subScrim.classList.remove('active');
         }
-    }
-
-    // Clear session storage
-    try {
-        sessionStorage.removeItem('currentSheet');
-    } catch (e) {
-        console.warn('Failed to clear sessionStorage:', e);
-    }
-
-    // Handle history navigation
-    if (!fromPopState && history && history.state && history.state.sheetId) {
-        try {
-            history.back();
-        } catch (e) {
-            console.warn('History navigation failed:', e);
+        if (!subSheet) {
+            const mainScrim = document.getElementById('scrim');
+            if (mainScrim && mainScrim.classList.contains('active')) {
+                mainScrim.classList.remove('active');
+            }
+            document.body.classList.remove('lock-scroll');
         }
-    }
 
-    // Reset sheet-state tracking. Standalone callers (saveInvestment, saveGoal,
-    // exportData, handlePopState, popstate, etc.) close all sheets but don't reopen one
-    // afterwards; without this, closeSubSheet would later persist a stale
-    // activeMain to sessionStorage and reopen a closed sheet on next load.
-    activeSub = null;
-    activeMain = null;
+        activeSub = null;
+        if (!subSheet) activeMain = null;
+    } else {
+        // Save/close: close ALL sheets and scrims
+        document.querySelectorAll('.sheet.active').forEach(el => el.classList.remove('active'));
+        const mainScrim = document.getElementById('scrim');
+        if (mainScrim && mainScrim.classList.contains('active')) mainScrim.classList.remove('active');
+        const subScrim = document.getElementById('scrim-sub');
+        if (subScrim && subScrim.classList.contains('active')) subScrim.classList.remove('active');
+        document.body.classList.remove('lock-scroll');
+
+        // Close AI bubble popup if visible (preserve chat session, not destroy it)
+        const aiPopup = document.getElementById('ai-chat-popup');
+        if (aiPopup && aiPopup.classList.contains('visible')) {
+            aiPopup.classList.remove('visible');
+            setTimeout(() => aiPopup.classList.add('hidden'), 400);
+        }
+
+        try { sessionStorage.removeItem('currentSheet'); } catch (e) {}
+
+        if (!fromPopState && history && history.state && history.state.sheetId) {
+            try { history.back(); } catch (e) {}
+        }
+
+        activeSub = null;
+        activeMain = null;
+    }
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
@@ -898,37 +905,51 @@ function openSubSheet(sheetId) {
 }
 window.openSubSheet = openSubSheet;
 
+let _sheetOpening = false;
+
 function openSheet(sheetId, fromRestore = false) {
+    if (_sheetOpening) return;
+    _sheetOpening = true;
+    setTimeout(() => { _sheetOpening = false; }, 400);
+
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);
     const targetSheet = document.getElementById(sheetId);
 
     if (!targetSheet) {
         console.warn(`Sheet with ID "${sheetId}" not found`);
+        _sheetOpening = false;
+        return;
+    }
+
+    // Guard: if already open, do nothing
+    if (targetSheet.classList.contains('active')) {
+        _sheetOpening = false;
         return;
     }
 
     if (isSubSheet) {
-        // Clear previous sub-sheets to prevent stacking
         document.querySelectorAll('.sheet.sub-sheet.active').forEach(el => {
             el.classList.remove('active');
         });
 
-        // Ensure main scrim stays active and add sub-scrim
         document.getElementById('scrim')?.classList.add('active');
         document.getElementById('scrim-sub')?.classList.add('active');
 
-        // Animate in new sub-sheet
         setTimeout(() => {
             targetSheet.classList.add('active');
         }, 50);
 
         activeSub = sheetId;
     } else {
-        // If opening a main sheet, close EVERYTHING first (including sub-sheets)
-        closeOverlays(true); // Close without triggering history back
+        // Close any existing sheet without race
+        const existingSheets = document.querySelectorAll('.sheet.active');
+        existingSheets.forEach(el => el.classList.remove('active'));
+        const mainScrim = document.getElementById('scrim');
+        if (mainScrim) mainScrim.classList.remove('active');
+        const subScrim = document.getElementById('scrim-sub');
+        if (subScrim) subScrim.classList.remove('active');
 
-        // Then open new main sheet with animation
         document.getElementById('scrim')?.classList.add('active');
 
         setTimeout(() => {
@@ -943,17 +964,25 @@ function openSheet(sheetId, fromRestore = false) {
 
     sessionStorage.setItem('currentSheet', sheetId);
 
-    // Initialize sheet-specific content
     if (sheetId === 'history-sync-sheet') populateSyncDropdown();
 
     if (!fromRestore) pushSheetState(sheetId);
 }
 
 function closeSubSheet(fromPopState = false) {
-    document.getElementById('scrim-sub').classList.remove('active');
+    // Save main sheet scroll position before closing sub-sheet
+    const mainSheetEl = activeMain ? document.getElementById(activeMain) : null;
+    const savedScrollTop = mainSheetEl ? mainSheetEl.scrollTop : 0;
+
+    document.getElementById('scrim-sub')?.classList.remove('active');
     document.querySelectorAll('.sheet.sub-sheet').forEach(el => el.classList.remove('active'));
     activeSub = null;
-    // Restore parent sheet in storage if any
+
+    // Restore parent sheet scroll position
+    if (mainSheetEl) {
+        requestAnimationFrame(() => { mainSheetEl.scrollTop = savedScrollTop; });
+    }
+
     if (activeMain) sessionStorage.setItem('currentSheet', activeMain);
     else sessionStorage.removeItem('currentSheet');
 
@@ -1956,6 +1985,13 @@ function performTabSwitch(tabId, fromPopState = false) {
     renderAll();
     if (tabId === 'portfolio') renderDonutChart(currentTypeTotals, currentTotalNW);
     if (tabId === 'dashboard') renderRollingChart();
+    if (tabId !== 'portfolio') {
+        const catChartCanvas = document.getElementById('categoryHistoryChart');
+        if (catChartCanvas && categoryChartInstance) {
+            categoryChartInstance.destroy();
+            categoryChartInstance = null;
+        }
+    }
 }
 
 function togglePrivacy() {
