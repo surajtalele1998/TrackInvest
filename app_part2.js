@@ -3509,13 +3509,23 @@ async function askAIEngine(context) {
     if (context === 'allocation') loadingLabel = "Analyzing Asset Distribution & Risk...";
     if (context === 'ledger') loadingLabel = "Auditing Behavioral Spending Habits...";
 
-    toggleAIPopup(true, 'report');
-    renderAIPopupContent('report', `
-        <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
-            <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
-            <div style="margin-top:16px; font-weight:500; font-family:'Google Sans';">${loadingLabel}</div>
-            <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
-        </div>`);
+    // For full_report, open the sheet directly instead of the bubble popup
+    if (context === 'full_report') {
+        openAIReportSheet(`
+            <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
+                <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
+                <div style="margin-top:16px; font-weight:500; font-family:'Google Sans';">${loadingLabel}</div>
+                <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
+            </div>`);
+    } else {
+        toggleAIPopup(true, 'report');
+        renderAIPopupContent('report', `
+            <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
+                <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
+                <div style="margin-top:16px; font-weight:500; font-family:'Google Sans';">${loadingLabel}</div>
+                <div style="font-size:12px; opacity:0.7; margin-top:8px;">Deep-diving into your financial telemetry.</div>
+            </div>`);
+    }
 
     // 1. DATA PREP (Shared Context)
     const now = new Date();
@@ -3628,10 +3638,20 @@ async function askAIEngine(context) {
 
     try {
         const response = await callAIApi(promptBase, "You are a top-tier Financial AI. Your responses are deep, informative, and strategically superior.");
-        renderAIPopupContent('report', formatAIResponse(response));
+        if (context === 'full_report') {
+            // For full_report, don't escape HTML - the AI returns formatted HTML
+            let cleanedResponse = response.replace(/```(html|markdown)?|```/gi, '').trim();
+            openAIReportSheet(cleanedResponse);
+        } else {
+            renderAIPopupContent('report', formatAIResponse(response));
+        }
         haptic([30, 50]);
     } catch (e) {
         console.error("AI Engine Error:", e);
-        renderAIPopupContent('report', `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`);
+        if (context === 'full_report') {
+            openAIReportSheet(`<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`);
+        } else {
+            renderAIPopupContent('report', `<div style="color:var(--md-error); padding:20px;">Analysis failed. Check your connection or API keys.</div>`);
+        }
     }
 }

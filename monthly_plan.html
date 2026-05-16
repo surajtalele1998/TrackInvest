@@ -382,6 +382,28 @@
             </div>
         </div>
 
+        <!-- CUSTOM INVESTMENTS CARD -->
+        <div class="planner-card">
+            <div class="card-title">
+                <span class="material-symbols-rounded" style="color:var(--cat-invest);">add_circle</span> Custom Investments
+                <span class="card-badge"><span class="material-symbols-rounded" style="font-size:12px;">edit</span> Manual Entry</span>
+            </div>
+
+            <div id="custom-invest-container"></div>
+            <button class="add-row-btn" onclick="addCustomInvestment()">
+                <span class="material-symbols-rounded" style="font-size:18px;">add</span> Add Custom Investment
+            </button>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <button class="btn-secondary" style="flex:1; padding:10px; font-size:13px;" onclick="syncCustomInvestments()">
+                    <span class="material-symbols-rounded" style="font-size:16px;">sync</span> Sync to Ledger
+                </button>
+            </div>
+            <div class="total-row" style="margin-top:14px;">
+                <span>Custom Investments Total</span>
+                <strong id="custom-invest-total">₹0</strong>
+            </div>
+        </div>
+
         <!-- FIXED NEEDS CARD -->
         <div class="planner-card">
             <div class="card-title">
@@ -457,7 +479,8 @@ let plan = {
         { name: 'Dining & Restaurants',  amount: 0 },
         { name: 'Shopping & Lifestyle',  amount: 0 },
         { name: 'Entertainment',         amount: 0 }
-    ]
+    ],
+    customInvestments: []
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -501,6 +524,7 @@ window.onload = function () {
             : [{ name: 'Take-home Salary', amount: parseFloat(saved.income) || 0 }];
         plan.needs = Array.isArray(saved.needs) ? saved.needs : plan.needs;
         plan.wants = Array.isArray(saved.wants) ? saved.wants : plan.wants;
+        plan.customInvestments = Array.isArray(saved.customInvestments) ? saved.customInvestments : [];
         if (saved.goalHorizon) document.getElementById('goal-horizon').value = saved.goalHorizon;
     } else {
         const monthlySalary = db.userProfile?.salary ? Math.round(db.userProfile.salary / 12) : 0;
@@ -510,6 +534,7 @@ window.onload = function () {
 
     extractSIPsAndGoals();
     loadActuals();
+    renderCustomInvestments();
     renderAll();
 };
 
@@ -773,6 +798,112 @@ function removeIncomeRow(index) {
     recalc();
 }
 
+// ──────────────────────────────────────────────────────────────
+// CUSTOM INVESTMENTS
+// ──────────────────────────────────────────────────────────────
+function renderCustomInvestments() {
+    const container = document.getElementById('custom-invest-container');
+    if (!container) return;
+    if (!Array.isArray(plan.customInvestments)) plan.customInvestments = [];
+    container.innerHTML = '';
+    plan.customInvestments.forEach((item, i) => container.appendChild(makeCustomInvestRow(item, i)));
+    updateCustomInvestTotal();
+}
+
+function makeCustomInvestRow(item, index) {
+    const wrap = document.createElement('div');
+    wrap.className = 'plan-row';
+    wrap.innerHTML = `
+        <div class="plan-row-label" style="flex:1; min-width:0;">
+            <input type="text" class="name" value="${escapeHtml(item.name || '')}"
+                onchange="updateCustomInvestName(${index},this.value)" placeholder="Investment name">
+            <div class="hint">${escapeHtml(item.category || 'SIP')}</div>
+        </div>
+        <div class="plan-input-box">
+            <span>₹</span>
+            <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
+                oninput="updateCustomInvestAmount(${index},this.value)">
+        </div>
+        <button class="del-btn" onclick="removeCustomInvestment(${index})" title="Remove">
+            <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
+        </button>`;
+    return wrap;
+}
+
+function addCustomInvestment() {
+    plan.customInvestments.push({ name: 'Custom Investment', category: 'SIP', amount: 0 });
+    renderCustomInvestments();
+    recalc();
+    const rows = document.querySelectorAll('#custom-invest-container .plan-row');
+    const last = rows[rows.length - 1];
+    if (last) { const ni = last.querySelector('.name'); if (ni) { ni.select(); ni.focus(); } }
+}
+
+function removeCustomInvestment(index) {
+    plan.customInvestments.splice(index, 1);
+    renderCustomInvestments();
+    recalc();
+}
+
+function updateCustomInvestAmount(index, val) {
+    plan.customInvestments[index].amount = parseFloat(val) || 0;
+    recalc();
+    updateCustomInvestTotal();
+}
+
+function updateCustomInvestName(index, val) {
+    if (val.trim()) plan.customInvestments[index].name = val.trim();
+}
+
+function updateCustomInvestTotal() {
+    const total = plan.customInvestments.reduce((s, i) => s + (i.amount || 0), 0);
+    document.getElementById('custom-invest-total').textContent = '₹' + Math.round(total).toLocaleString('en-IN');
+}
+
+function syncCustomInvestments() {
+    if (plan.customInvestments.length === 0) {
+        snack('No custom investments to sync.', 'info');
+        return;
+    }
+
+    const viewDate = getViewDate();
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    
+    let syncedCount = 0;
+    
+    plan.customInvestments.forEach(inv => {
+        if (inv.amount > 0) {
+            const newEntry = {
+                id: Date.now() + Math.random().toString(36).substr(2, 9),
+                date: `${year}-${String(month + 1).padStart(2, '0')}-01`,
+                type: inv.category || 'SIP',
+                amount: inv.amount,
+                note: inv.name || 'Custom Investment',
+                tags: 'monthly-plan',
+                isDividend: false,
+                account: db.accounts?.[0] || 'Main Portfolio'
+            };
+            
+            db.investments.push(newEntry);
+            syncedCount++;
+        }
+    });
+
+    if (syncedCount > 0) {
+        localStorage.setItem('appHubInvestDb', JSON.stringify(db));
+        snack(`Synced ${syncedCount} investment(s) to ledger!`, 'check_circle');
+        
+        // Clear synced investments from planner
+        plan.customInvestments = [];
+        renderCustomInvestments();
+        recalc();
+        savePlanner();
+    } else {
+        snack('No investments with amount > 0 to sync.', 'info');
+    }
+}
+
 function autoFillWants() {
     const income      = plan.income.reduce((s, i) => s + i.amount, 0);
     const totalNeeds  = plan.needs.reduce((s, i) => s + i.amount, 0);
@@ -796,7 +927,8 @@ function recalc() {
     const income      = plan.income.reduce((s, i) => s + i.amount, 0);
     const totalNeeds  = plan.needs.reduce((s, i) => s + i.amount, 0);
     const totalWants  = plan.wants.reduce((s, i) => s + i.amount, 0);
-    const totalInvest = extractedSIPTotal + extractedGoalTotal;
+    const customInvestTotal = plan.customInvestments.reduce((s, i) => s + (i.amount || 0), 0);
+    const totalInvest = extractedSIPTotal + extractedGoalTotal + customInvestTotal;
     const totalOut    = totalNeeds + totalWants + totalInvest;
     const balance     = income - totalOut;
 
@@ -893,6 +1025,7 @@ function savePlanner() {
             income:      plan.income,
             needs:       plan.needs,
             wants:       plan.wants,
+            customInvestments: plan.customInvestments,
             goalHorizon: parseInt(document.getElementById('goal-horizon').value) || 24
         };
         if (!db.userProfile) db.userProfile = {};
@@ -910,10 +1043,12 @@ function resetPlanner() {
     plan = {
         income: [{ name: 'Take-home Salary', amount: db.userProfile?.salary ? Math.round(db.userProfile.salary / 12) : 0 }],
         needs:  [{ name:'Rent & Housing',amount:0},{name:'Groceries & Household',amount:0},{name:'Utilities & Bills',amount:0},{name:'Transport & Fuel',amount:0}],
-        wants:  [{ name:'Dining & Restaurants',amount:0},{name:'Shopping & Lifestyle',amount:0},{name:'Entertainment',amount:0}]
+        wants:  [{ name:'Dining & Restaurants',amount:0},{name:'Shopping & Lifestyle',amount:0},{name:'Entertainment',amount:0}],
+        customInvestments: []
     };
     document.getElementById('goal-horizon').value = 24;
     renderAll();
+    renderCustomInvestments();
     updatePVABars();
     snack('Plan reset.', 'refresh');
 }
