@@ -1288,6 +1288,49 @@ input[type=range]::-webkit-slider-runnable-track {
     border: none;
 }
 
+.ai-hub-tab {
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    padding:10px; border-radius:14px; border:none; font-size:13px; font-weight:500;
+    background:var(--md-surface-container-high); color:var(--md-on-surface-variant);
+    cursor:pointer; transition:all 0.2s;
+}
+.ai-hub-tab.active {
+    background:var(--md-primary-container); color:var(--md-on-primary-container);
+}
+
+.ai-hub-report-btn {
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    min-width:100px; padding:10px 12px; border-radius:14px; border:none;
+    font-size:12px; font-weight:500; cursor:pointer;
+    background:var(--md-surface-container-high); color:var(--md-on-surface-variant);
+    transition:all 0.2s;
+}
+.ai-hub-report-btn:hover {
+    background:var(--md-primary-container); color:var(--md-on-primary-container);
+}
+
+.ai-hub-history-item {
+    padding:12px; border-radius:14px; background:var(--md-surface-container-low);
+    margin-bottom:6px; cursor:pointer; border:1px solid transparent;
+    transition:all 0.2s;
+}
+.ai-hub-history-item:hover {
+    background:var(--md-surface-container-high); border-color:var(--md-outline-variant);
+}
+
+.ai-hub-chat-msg {
+    margin-bottom:10px; padding:10px 14px; border-radius:18px;
+    max-width:85%; font-size:13.5px; line-height:1.5; word-wrap:break-word;
+}
+.ai-hub-chat-msg.user {
+    background:var(--md-primary-container); color:var(--md-on-primary-container);
+    align-self:flex-end; margin-left:auto; border-bottom-right-radius:4px;
+}
+.ai-hub-chat-msg.bot {
+    background:var(--md-surface-container-high); color:var(--md-on-surface);
+    align-self:flex-start; border-bottom-left-radius:4px;
+}
+
 /* =========================================
            LISTS, SWIPE ACTIONS & THE SQUISH FIX
         ========================================= */

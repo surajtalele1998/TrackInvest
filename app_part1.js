@@ -78,8 +78,7 @@ if (!db.lastBackupPrompt) db.lastBackupPrompt = '';
 if (!db.navCache) db.navCache = {};
 if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: April (month index 3) for India FY
 if (typeof db.firstTimeTipsShown === 'undefined') db.firstTimeTipsShown = false;
-if (typeof db.aiBubbleEnabled === 'undefined') db.aiBubbleEnabled = true;
-if (!db.aiBubblePosition) db.aiBubblePosition = { bottom: 24, right: 24 };
+
 
 // NEW: Default state for Monthly Planner visibility
 if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = true;
@@ -906,7 +905,7 @@ function closeOverlays(fromPopState = false) {
 }
 
 // Sub-sheets open ON TOP of an existing sheet (e.g. calculators from Settings)
-const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet', 'wealth-blueprint-sheet', 'ai-sheet', 'ai-report-sheet', 'maturity-calendar-sheet', 'ai-chat-sheet', 'monthly-target-sheet', 'projection-sheet', 'month-sheet'];
+const SUB_SHEET_IDS = ['xirr-sheet', 'sip-calc-sheet', 'emi-calc-sheet', 'inflation-sheet', 'ai-predict-sheet', 'history-sync-sheet', 'webrtc-sync-sheet', 'chat-history-sheet', 'dividend-sheet', 'wealth-blueprint-sheet', 'ai-sheet', 'maturity-calendar-sheet', 'ai-chat-sheet', 'monthly-target-sheet', 'projection-sheet', 'month-sheet'];
 
 function openSubSheet(sheetId) {
     if (!SUB_SHEET_IDS.includes(sheetId)) {
@@ -1187,7 +1186,7 @@ document.addEventListener('keydown', e => {
         's|S': { action: () => openSettings(), desc: 'Settings' },
         'g|G': { action: () => { if (db.goals.length > 0) openGoalSheet(db.goals[0].id); }, desc: 'Edit First Goal' },
         'r|R': { action: () => { renderAll(); showSnackbar('Refreshed', 'refresh'); }, desc: 'Refresh Data' },
-        'a|A': { action: () => toggleAIBubble(), desc: 'AI Chat' }
+        'a|A': { action: () => openAIHub(), desc: 'AI Hub' }
     };
 
     // Check which shortcut matches

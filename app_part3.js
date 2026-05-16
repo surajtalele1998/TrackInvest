@@ -101,130 +101,6 @@ function renderAIReportCharts(typeTotals) {
     }
 }
 
-async function downloadAIReport() {
-    const element = document.getElementById('ai-report-content');
-
-    // 1. Ensure the element exists
-    if (!element) {
-        console.error("Target element 'ai-report-content' is missing.");
-        showSnackbar("Report element not found", "error");
-        return;
-    }
-
-    // 2. Check if AI report sheet is active
-    const sheet = document.getElementById('ai-report-sheet');
-    if (!sheet || !sheet.classList.contains('active')) {
-        showSnackbar("Please open AI report first", "error");
-        return;
-    }
-
-    // 3. Temporarily make element visible for capture
-    const originalStyles = {
-        display: element.style.display,
-        position: element.style.position,
-        visibility: element.style.visibility,
-        zIndex: element.style.zIndex,
-        transform: element.style.transform,
-        opacity: element.style.opacity
-    };
-
-    // Make sure element is properly visible for capture
-    element.style.display = 'block';
-    element.style.position = 'relative';
-    element.style.visibility = 'visible';
-    element.style.zIndex = '1000';
-    element.style.transform = 'none';
-    element.style.opacity = '1';
-
-    // Force layout calculation
-    element.offsetHeight;
-
-    // 4. Wait for charts to render properly
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    // Check dimensions and content
-    if (element.clientHeight === 0 || element.clientWidth === 0) {
-        console.error("Target element has 0 dimensions.", {
-            height: element.clientHeight,
-            width: element.clientWidth,
-            scrollHeight: element.scrollHeight
-        });
-        // Restore styles
-        Object.assign(element.style, originalStyles);
-        showSnackbar("Report content not ready", "error");
-        return;
-    }
-
-    const opt = {
-        margin: [0.5, 0.5, 0.5, 0.5],
-        filename: `Wealth_Report_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98, compression: 'FAST' },
-        html2canvas: {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            letterRendering: true,
-            logging: false,
-            windowWidth: 800,
-            windowHeight: Math.max(element.scrollHeight, element.clientHeight) + 200,
-            onclone: function (clonedDoc) {
-                // Ensure all elements are visible in the cloned document
-                const clonedElement = clonedDoc.getElementById('ai-report-content');
-                if (clonedElement) {
-                    clonedElement.style.display = 'block';
-                    clonedElement.style.visibility = 'visible';
-                    clonedElement.style.opacity = '1';
-                    // Force chart rendering in clone
-                    const charts = clonedElement.querySelectorAll('canvas');
-                    charts.forEach(chart => {
-                        chart.style.display = 'block';
-                        chart.style.visibility = 'visible';
-                    });
-                }
-            }
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
-    };
-
-    try {
-        showSnackbar("Generating PDF...", "hourglass_empty");
-
-        // Ensure element is fully visible for capture
-        element.style.visibility = 'visible';
-
-        // Generate PDF
-        const pdf = await html2pdf().set(opt).from(element).toPdf().get('pdf');
-
-        // Add metadata
-        pdf.setProperties({
-            title: 'Wealth Strategic Report',
-            subject: 'Portfolio Analysis',
-            author: 'TrackInvest',
-            keywords: 'finance, investment, portfolio',
-            creator: 'TrackInvest AI'
-        });
-
-        pdf.save(opt.filename);
-        showSnackbar("PDF Downloaded!", "check_circle");
-    } catch (error) {
-        console.error("PDF Generation failed:", error);
-        showSnackbar("Export failed. Try again.", "error");
-    } finally {
-        // Restore original styles strictly
-        Object.keys(originalStyles).forEach(key => {
-            element.style[key] = originalStyles[key];
-        });
-
-        // If the sheet was closed while generating, ensure it stays closed
-        if (sheet && !sheet.classList.contains('active')) {
-            element.style.display = 'none';
-            element.style.visibility = 'hidden';
-        }
-
-        console.log("PDF Generation Cleanup Complete");
-    }
-}
-
 async function generateAITags() {
     haptic(40);
     if (!db.geminiKey && !db.groqKey) return showSnackbar("Please add API Key in Settings.", "key");
@@ -419,7 +295,7 @@ function updatePortfolioCalculations() {
     if (activeTab && activeTab.id === 'tab-dashboard') { renderNWChart(); renderRollingChart(); }
     if (activeTab && activeTab.id === 'tab-portfolio') renderDonutChart(typeTotals, totalMarketValue);
 
-    renderHeatmap(); fetchAIPrediction();
+    renderHeatmap();
     updateStatChips(totalInvestedAll, totalMarketValue, yearTotal, thisMonthTotal);
     renderRecurringSheet();
     if (typeof renderSettingsSections === 'function') renderSettingsSections();
@@ -1618,12 +1494,6 @@ function updateAdvisorWidget() {
     const advisorText = document.getElementById('advisor-text');
     const advisorCard = document.getElementById('advisor-card');
     if (!advisorText || !advisorCard) return;
-
-    // Hide legacy advisor card if unified bubble is enabled to reduce front-page complexity
-    if (db.aiBubbleEnabled) {
-        advisorCard.style.display = 'none';
-        return;
-    }
 
     advisorCard.style.display = 'block';
 
