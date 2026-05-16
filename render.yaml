@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     rootDir: trackinvest-api
-    buildCommand: npm install --ignore-scripts
+    buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm install
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
@@ -37,5 +37,7 @@ services:
         sync: false
       - key: EXCHANGERATE_API_KEY
         sync: false
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
       - key: BROWSER_DISABLE
         value: "true"
