@@ -95,7 +95,7 @@ app.listen(config.port, () => {
   logger.info(`║  Auth: ${(config.supabase.url ? 'JWT + API Key' : 'API Key only').padEnd(39)}║`);
   logger.info(`║  Docs: http://localhost:${config.port}/api/v1/docs  ║`);
   logger.info(`╚════════════════════════════════════════════════════╝`);
-  warmOnStartup();
+  setTimeout(() => warmOnStartup(), 30000);
 });
 
 module.exports = app;

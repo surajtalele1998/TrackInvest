@@ -100,18 +100,12 @@ async function initSchema() {
     return false;
   }
   try {
-    const statements = SCHEMA.split(';').filter(s => s.trim().length > 5);
-    for (const stmt of statements) {
-      const { error } = await client.rpc('exec_sql', { query: stmt + ';' }).single();
-      if (error && !error.message.includes('already exists')) {
-        logger.warn('Supabase schema init (non-fatal): ' + error.message);
-      }
-    }
-    logger.info('Supabase schema initialized');
+    logger.info('Run these SQL statements in your Supabase SQL Editor (https://supabase.com → SQL Editor):');
+    SCHEMA.split(';').filter(s => s.trim().length > 5).forEach(stmt => logger.info('  ' + stmt.trim().slice(0, 80) + '...'));
+    logger.info('Supabase schema SQL logged — tables will be created when you run them manually');
     return true;
   } catch (e) {
-    logger.warn('Supabase schema init failed (run SQL manually): ' + e.message);
-    logger.info('Execute the CREATE TABLE statements in Supabase SQL Editor');
+    logger.warn('Supabase schema init failed: ' + e.message);
     return false;
   }
 }

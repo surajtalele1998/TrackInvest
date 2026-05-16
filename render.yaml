@@ -7,7 +7,6 @@ services:
     rootDir: trackinvest-api
     buildCommand: PUPPETEER_SKIP_DOWNLOAD=true npm install
     startCommand: npm start
-    healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
