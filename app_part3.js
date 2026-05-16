@@ -1324,7 +1324,7 @@ async function ensureNotificationPermission() {
     if (Notification.permission === 'granted') return true;
     if (Notification.permission === 'denied') return false;
     const result = await Notification.requestPermission();
-    if (typeof updateNotificationBtnState === 'function') updateNotificationBtnState();
+    if (typeof loadNotificationPrefs === 'function') loadNotificationPrefs();
     return result === 'granted';
 }
 function showLocalNotification(title, body) {

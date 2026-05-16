@@ -40,6 +40,7 @@
         rel="stylesheet">
 
     <link rel="stylesheet" href="./style.css">
+    <script src="./version.js"></script>
 </head>
 
 <body>
@@ -444,7 +445,8 @@
         </div>
     </nav>
     <div style="position:fixed;right:4px;bottom:4px;cursor:default;opacity:0.25;user-select:none;z-index:101;pointer-events:none;"
-        title="Build v100"><span style="font-size:8px;font-weight:600;">v100</span></div>
+        title="Build version" id="version-badge"></div>
+    <script>document.getElementById('version-badge').textContent=APP_VERSION;</script>
 
     <button class="fab" onclick="openInvestSheet()" title="Add Entry (N)"><span
             class="material-symbols-rounded">add</span> Add Entry</button>
@@ -941,12 +943,38 @@
                 <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Data auto-syncs across open tabs. Use Share or Nearby for cross-device. No server needed.</div>
 
                 <div
-                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
                     Notifications</div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn-primary" id="enable-alerts-btn" style="flex:1;" onclick="ensureNotificationPermission()"><span class="material-symbols-rounded">notifications_active</span> Enable Alerts</button>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--md-surface-container);border-radius:14px;margin-bottom:4px;">
+                    <div>
+                        <div style="font-weight:500;font-size:14px;color:var(--md-on-surface);">Master Toggle</div>
+                        <div style="font-size:11px;color:var(--md-outline);margin-top:2px;" id="notif-status-text">Requires browser permission</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="notif-master-toggle" onchange="toggleNotificationMaster(this.checked)"><span class="slider"></span></label>
                 </div>
-                <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Receive local notifications when SIPs are processed. No server needed.</div>
+                <div id="notif-preferences" style="display:flex;flex-direction:column;gap:4px;margin-top:4px;">
+                    <div class="notif-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--md-surface-container-highest);border-radius:12px;">
+                        <div><div style="font-weight:500;font-size:13px;">SIP Reminders</div><div style="font-size:11px;color:var(--md-outline);">Notify when SIPs are due</div></div>
+                        <label class="switch"><input type="checkbox" class="notif-toggle" data-key="sipReminders"><span class="slider"></span></label>
+                    </div>
+                    <div class="notif-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--md-surface-container-highest);border-radius:12px;">
+                        <div><div style="font-weight:500;font-size:13px;">Maturity Alerts</div><div style="font-size:11px;color:var(--md-outline);">Upcoming FD/PPF maturity reminders</div></div>
+                        <label class="switch"><input type="checkbox" class="notif-toggle" data-key="maturityAlerts"><span class="slider"></span></label>
+                    </div>
+                    <div class="notif-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--md-surface-container-highest);border-radius:12px;">
+                        <div><div style="font-weight:500;font-size:13px;">Goal Progress</div><div style="font-size:11px;color:var(--md-outline);">Monthly goal achievement updates</div></div>
+                        <label class="switch"><input type="checkbox" class="notif-toggle" data-key="goalProgressUpdates"><span class="slider"></span></label>
+                    </div>
+                    <div class="notif-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--md-surface-container-highest);border-radius:12px;">
+                        <div><div style="font-weight:500;font-size:13px;">Weekly Digest</div><div style="font-size:11px;color:var(--md-outline);">Weekly portfolio summary</div></div>
+                        <label class="switch"><input type="checkbox" class="notif-toggle" data-key="weeklyDigest"><span class="slider"></span></label>
+                    </div>
+                    <div class="notif-row" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--md-surface-container-highest);border-radius:12px;">
+                        <div><div style="font-weight:500;font-size:13px;">Price Alerts</div><div style="font-size:11px;color:var(--md-outline);">Stock/MF price movement alerts</div></div>
+                        <label class="switch"><input type="checkbox" class="notif-toggle" data-key="priceAlerts"><span class="slider"></span></label>
+                    </div>
+                </div>
+                <div style="font-size:11px;color:var(--md-outline);margin-top:8px;">Notifications work offline via service worker. No server needed.</div>
 
                 <div
                     style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">

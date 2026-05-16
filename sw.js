@@ -1,4 +1,5 @@
-const CACHE_NAME = 'invest-pro-v100';
+importScripts('./version.js');
+const CACHE_NAME = 'invest-pro-' + APP_VERSION;
 
 const CORE_ASSETS = [
     './',

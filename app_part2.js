@@ -1158,8 +1158,8 @@ function openSettings() {
     // Refresh manage sections
     renderSettingsSections();
 
-    // Update notification button state
-    updateNotificationBtnState();
+    // Load notification preferences
+    loadNotificationPrefs();
 
     // Update settings UI with helpful tips
     updateSettingsHelpText();
@@ -1167,24 +1167,73 @@ function openSettings() {
     openSheet('settings-sheet');
 }
 
-function updateNotificationBtnState() {
-    const btn = document.getElementById('enable-alerts-btn');
-    if (!btn || !('Notification' in window)) return;
-    if (Notification.permission === 'granted') {
-        btn.disabled = true;
-        btn.style.opacity = '0.6';
-        btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span> Alerts Active';
-    } else if (Notification.permission === 'denied') {
-        btn.innerHTML = '<span class="material-symbols-rounded">notifications_off</span> Alerts Blocked';
-        btn.style.background = 'var(--md-error-container)';
-        btn.style.color = 'var(--md-on-error-container)';
-    } else {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.background = '';
-        btn.style.color = '';
-        btn.innerHTML = '<span class="material-symbols-rounded">notifications_active</span> Enable Alerts';
+function loadNotificationPrefs() {
+    const prefs = db.userPreferences || {};
+    document.querySelectorAll('.notif-toggle').forEach(cb => {
+        const key = cb.dataset.key;
+        if (key in prefs) cb.checked = prefs[key];
+    });
+    const master = document.getElementById('notif-master-toggle');
+    const prefsEl = document.getElementById('notif-preferences');
+    if (master && prefsEl) {
+        master.checked = Notification.permission === 'granted';
+        prefsEl.style.opacity = master.checked ? '1' : '0.4';
+        prefsEl.style.pointerEvents = master.checked ? 'auto' : 'none';
     }
+    const statusText = document.getElementById('notif-status-text');
+    if (statusText) {
+        if (Notification.permission === 'granted') statusText.textContent = '✓ Notifications active';
+        else if (Notification.permission === 'denied') statusText.textContent = '✗ Notifications blocked in browser';
+        else statusText.textContent = 'Requires browser permission';
+    }
+    // Save on toggle change
+    document.querySelectorAll('.notif-toggle').forEach(cb => {
+        cb.onchange = function() {
+            if (!db.userPreferences) db.userPreferences = {};
+            db.userPreferences[this.dataset.key] = this.checked;
+            saveData();
+        };
+    });
+}
+
+function toggleNotificationMaster(checked) {
+    if (!('Notification' in window)) return;
+    if (checked) {
+        if (Notification.permission === 'granted') {
+            enableNotifPrefs(true);
+            return;
+        }
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+                enableNotifPrefs(true);
+            } else {
+                document.getElementById('notif-master-toggle').checked = false;
+                showSnackbar('Notification permission denied', 'error');
+            }
+        });
+    } else {
+        enableNotifPrefs(false);
+    }
+}
+
+function enableNotifPrefs(enabled) {
+    const prefsEl = document.getElementById('notif-preferences');
+    if (prefsEl) {
+        prefsEl.style.opacity = enabled ? '1' : '0.4';
+        prefsEl.style.pointerEvents = enabled ? 'auto' : 'none';
+    }
+    const statusText = document.getElementById('notif-status-text');
+    if (statusText) statusText.textContent = enabled ? '✓ Notifications active' : 'Notifications paused';
+    // If disabling, reset master toggle state too
+    if (!enabled) {
+        document.querySelectorAll('.notif-toggle').forEach(cb => cb.checked = false);
+    }
+    if (!db.userPreferences) db.userPreferences = {};
+    Object.assign(db.userPreferences, { sipReminders: enabled, maturityAlerts: enabled, goalProgressUpdates: enabled, weeklyDigest: false, priceAlerts: false });
+    document.querySelectorAll('.notif-toggle').forEach(cb => {
+        cb.checked = db.userPreferences[cb.dataset.key] || false;
+    });
+    saveData();
 }
 
 function switchSettingsTab(tabName, btn) {
@@ -1303,6 +1352,8 @@ function viewCategoryLedger(type) {
     }, 100);
 }
 window.viewCategoryLedger = viewCategoryLedger;
+window.toggleNotificationMaster = toggleNotificationMaster;
+window.loadNotificationPrefs = loadNotificationPrefs;
 
 function updateCategorySetting(cat, key, val) {
     if (!db.categories[cat]) return;
