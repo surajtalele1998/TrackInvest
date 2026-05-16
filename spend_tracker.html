@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F3F3F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
     <title>Spend Tracker | TrackInvest</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
@@ -14,20 +16,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --cat-food:#E3724A; --cat-transport:#415F91; --cat-bills:#186D33; --cat-entertainment:#9C27B0; --cat-health:#D96200; --cat-shopping:#E91E63; --cat-groceries:#388E3C; --cat-rent:#5C6BC0; --cat-travel:#00ACC1; --cat-education:#7B1FA2; --cat-investment:#F57C00; --cat-income:#2E7D32; --cat-other:#8E9099; }
-        .page-header { display:flex; align-items:center; gap:8px; padding:16px 0; position:sticky; top:0; z-index:10; background:var(--md-surface); }
-        .page-header .title { font-size:20px; font-weight:600; color:var(--md-on-surface); flex:1; }
-        .hero-spend { border-radius:28px; padding:24px; margin-bottom:16px; background:var(--md-primary-container); color:var(--md-on-primary-container); }
-        .hero-spend-total { font-size:44px; font-weight:400; line-height:1.1; margin:8px 0; word-break:break-word; }
-        .hero-spend-label { font-size:13px; font-weight:500; opacity:0.75; }
-        .stat-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; padding-bottom:4px; overscroll-behavior:contain; }
-        .stat-chip { flex-shrink:0; min-width:90px; background:var(--md-surface-container); border-radius:18px; padding:10px 14px; display:flex; flex-direction:column; gap:3px; }
-        .stat-chip-label { font-size:10px; color:var(--md-on-surface-variant); font-weight:500; white-space:nowrap; }
-        .stat-chip-val { font-size:16px; font-weight:600; color:var(--md-on-surface); white-space:nowrap; }
         .quick-add-bar { display:flex; gap:8px; margin-bottom:16px; align-items:center; }
-        .quick-add-bar .md-input { flex:1; min-width:0; background:var(--md-surface-container-highest) !important; padding:14px 16px !important; border-radius:16px !important; border:1.5px solid transparent !important; font-size:16px; }
-        .quick-add-bar .md-input:focus { border-color:var(--md-primary) !important; }
+        .quick-add-bar .md-input { flex:1; min-width:0; background:var(--md-surface-container-highest); padding:14px 16px; border-radius:16px; border:1.5px solid transparent; font-size:16px; transition:0.2s; }
+        .quick-add-bar .md-input:focus { border-color:var(--md-primary); outline:none; }
         .quick-add-bar .btn-primary { padding:14px 20px; border-radius:16px; white-space:nowrap; flex-shrink:0; }
-        .section-label { font-size:14px; font-weight:600; color:var(--md-on-surface); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .budget-rows { background:var(--md-surface-container); border-radius:20px; padding:12px 16px; }
         .budget-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--md-surface-container-highest); }
         .budget-row:last-child { border-bottom:none; }
         .budget-row .cat-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
@@ -40,11 +33,12 @@
         .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
         .filter-tab { flex-shrink:0; padding:8px 14px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; color:var(--md-on-surface-variant); transition:0.2s; white-space:nowrap; }
         .filter-tab.active { background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:600; }
-        .spend-row { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--md-surface-container-highest); }
-        .spend-row:last-child { border-bottom:none; }
-        .spend-date { font-size:11px; color:var(--md-outline); min-width:44px; }
+        .spend-list { display:flex; flex-direction:column; gap:6px; }
+        .spend-card { display:flex; align-items:center; gap:10px; padding:14px 16px; background:var(--md-surface-container); border-radius:16px; transition:0.2s; }
+        .spend-card:active { background:var(--md-surface-container-highest); }
+        .spend-date { font-size:11px; color:var(--md-outline); min-width:40px; font-weight:500; }
         .spend-comment { font-size:14px; color:var(--md-on-surface); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .spend-amt { font-size:15px; font-weight:600; white-space:nowrap; color:var(--md-on-surface); min-width:60px; text-align:right; }
+        .spend-amt { font-size:15px; font-weight:600; white-space:nowrap; color:var(--md-on-surface); min-width:65px; text-align:right; }
         .cat-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; cursor:pointer; border:none; font-family:inherit; white-space:nowrap; }
         .cat-badge.uncat { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
         .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
@@ -52,18 +46,18 @@
         .chart-card.full { grid-column:1/-1; }
         .chart-card-title { font-size:11px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; }
         .sankey-svg { width:100%; min-width:350px; height:180px; }
-        .bottom-spacer { height:96px; }
-        .import-sheet { position:fixed; bottom:0; left:0; right:0; background:var(--md-surface-container-low); border-radius:28px 28px 0 0; padding:24px; z-index:1001; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.1,0.7,0.1,1); max-height:70vh; overflow-y:auto; box-shadow:0 -8px 32px rgba(0,0,0,0.15); }
+        .import-sheet { position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:600px; background:var(--md-surface-container-low); border-radius:28px 28px 0 0; padding:24px; z-index:1001; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.1,0.7,0.1,1); max-height:70vh; overflow-y:auto; box-shadow:0 -8px 32px rgba(0,0,0,0.15); }
         .import-sheet.open { transform:translateY(0); }
         .import-scrim { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:1000; opacity:0; visibility:hidden; transition:0.3s; }
         .import-scrim.open { opacity:1; visibility:visible; }
         .biggest-item { background:var(--md-surface-container); border-radius:16px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:0.2s; }
         .biggest-item:active { transform:scale(0.98); }
+        .del-icon-btn { width:32px; height:32px; border:none; background:transparent; color:var(--md-error); border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; transition:0.2s; }
+        .del-icon-btn:active { background:var(--md-error-container); }
         @media(max-width:480px) {
             .chart-grid { grid-template-columns:1fr; }
             .quick-add-bar { flex-wrap:wrap; }
             .quick-add-bar .btn-primary { width:100%; }
-            .hero-spend-total { font-size:32px; }
         }
     </style>
 </head>
@@ -71,8 +65,8 @@
     <!-- Import Sheet -->
     <div class="import-scrim" id="import-scrim" onclick="closeImportSheet()"></div>
     <div class="import-sheet" id="import-sheet">
-        <div style="width:40px;height:5px;background:var(--md-outline);opacity:0.3;border-radius:10px;margin:-8px auto 20px auto;"></div>
-        <div style="font-weight:600;font-size:18px;margin-bottom:16px;">Import Transactions</div>
+        <div class="drag-handle"></div>
+        <div class="sheet-title" style="margin-bottom:16px;">Import Transactions</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
             <button class="btn-primary" style="flex:1;padding:12px;" onclick="document.getElementById('csv-file-input').click()"><span class="material-symbols-rounded">description</span> CSV</button>
             <button class="btn-primary" style="flex:1;padding:12px;" onclick="document.getElementById('xlsx-file-input').click()"><span class="material-symbols-rounded">table_chart</span> XLSX</button>
@@ -86,9 +80,27 @@
         <button class="btn-secondary" style="width:100%;margin-top:16px;" onclick="closeImportSheet()">Cancel</button>
     </div>
 
-    <header class="top-app-bar" style="gap:4px;">
+    <!-- Spend Entry Sheet -->
+    <div class="import-scrim" id="spend-scrim" onclick="closeSpendSheet()"></div>
+    <div class="import-sheet" id="spend-sheet">
+        <div class="drag-handle"></div>
+        <div class="sheet-title" id="spend-sheet-title">Add Expense</div>
+        <div class="input-container"><label>Amount (₹)</label><input type="number" id="spend-amt-input" class="md-input" placeholder="0.00" inputmode="decimal"></div>
+        <div class="input-container"><label>Description</label><input type="text" id="spend-comment-input" class="md-input" placeholder="What for?" list="comment-suggestions"></div>
+        <div class="input-container"><label>Date</label><input type="date" id="spend-date-input" class="md-input"></div>
+        <div style="display:flex;gap:12px;margin-top:16px;">
+            <button class="btn-secondary" id="spend-del-btn" style="display:none;color:var(--md-error);border-color:var(--md-error);flex:0.4;" onclick="deleteSpendEntry()">Delete</button>
+            <button class="btn-primary" onclick="saveSpendEntry()" style="flex:1;"><span class="material-symbols-rounded">add</span> Add Expense</button>
+        </div>
+        <button class="btn-secondary" onclick="closeSpendSheet()" style="margin-top:8px;">Cancel</button>
+    </div>
+
+    <!-- FAB -->
+    <button class="fab" onclick="openSpendSheet()" title="Add Expense (N)"><span class="material-symbols-rounded">add</span> Add Expense</button>
+
+    <header class="top-app-bar">
         <button class="icon-btn" onclick="window.location.href='index.html'"><span class="material-symbols-rounded">arrow_back</span></button>
-        <div class="app-title" style="flex:1;font-size:18px;">Spend Tracker</div>
+        <div class="app-title">Spend Tracker</div>
         <button class="icon-btn" onclick="openImportSheet()" title="Import"><span class="material-symbols-rounded">file_upload</span></button>
         <button class="icon-btn" onclick="showExportMenu()" title="Export"><span class="material-symbols-rounded">download</span></button>
         <button class="icon-btn" onclick="document.getElementById('ai-insights-output').style.display='none';renderAll()" title="Refresh"><span class="material-symbols-rounded">refresh</span></button>
@@ -103,10 +115,10 @@
         </div>
 
         <!-- Hero -->
-        <div class="hero-spend" id="hero-section">
-            <div class="hero-spend-label">Total Spent</div>
-            <div class="hero-spend-total" id="hero-total">₹0</div>
-            <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+        <div class="hero-card" id="hero-section">
+            <div class="hero-subtitle">Total Spent</div>
+            <div class="hero-title" id="hero-total">₹0</div>
+            <div class="chart-filters" style="margin-top:4px;gap:16px;">
                 <span style="font-size:12px;opacity:0.8;" id="hero-count">0 txns</span>
                 <span style="font-size:12px;opacity:0.8;" id="hero-avg">₹0/day</span>
                 <span style="font-size:12px;opacity:0.8;" id="hero-vs-budget"></span>
@@ -116,19 +128,12 @@
         <!-- Quick Stats -->
         <div class="stat-row" id="quick-stats"></div>
 
-        <!-- Quick Add (always visible) -->
-        <div class="quick-add-bar">
-            <input type="number" id="quick-amt" class="md-input" placeholder="Amount" inputmode="decimal">
-            <input type="text" id="quick-comment" class="md-input" placeholder="What for?" list="comment-suggestions">
-            <input type="date" id="quick-date" class="md-input" style="max-width:140px;flex-shrink:0;">
-            <button class="btn-primary" onclick="addQuickEntry()"><span class="material-symbols-rounded">add</span> Add</button>
-        </div>
         <datalist id="comment-suggestions"></datalist>
 
         <!-- Budget vs Actual -->
         <div id="budget-section" style="display:none; margin-bottom:16px;">
-            <div class="section-label"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-primary);">compare_arrows</span> Budget vs Actual</div>
-            <div style="background:var(--md-surface-container);border-radius:20px;padding:16px;" id="budget-list"></div>
+            <div style="font-size:14px;font-weight:600;color:var(--md-on-surface);margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-primary);">compare_arrows</span> Budget vs Actual</div>
+            <div class="budget-rows" id="budget-list"></div>
         </div>
 
         <!-- Charts -->
@@ -164,8 +169,10 @@
                 <button class="btn-icon" style="min-width:36px;min-height:36px;" onclick="deleteAllEntries()" title="Clear month"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_sweep</span></button>
             </div>
         </div>
-        <div id="spend-list"></div>
-        <div class="bottom-spacer"></div>
+        <div class="spend-list" id="spend-list"></div>
+        <div style="text-align:center;padding:8px 0;font-size:10px;color:var(--md-outline);opacity:0.4;user-select:none;"
+            onclick="navigator.clipboard.writeText('v96');renderAll()" title="Build v96">v96</div>
+        <div style="height:80px;"></div>
     </main>
 
     <script src="./shared_ai.js"></script>
@@ -196,39 +203,107 @@
             'income': ['Income']
         };
 
-        // ── QUICK ADD ──
-        function addQuickEntry() {
-            const amt = parseFloat(document.getElementById('quick-amt').value);
-            const comment = document.getElementById('quick-comment').value.trim();
-            const dateStr = document.getElementById('quick-date').value;
+        // ── SPEND ENTRY SHEET ──
+        let spendEditId = null;
+
+        function openSpendSheet(id = null) {
+            spendEditId = id;
+            const title = document.getElementById('spend-sheet-title');
+            const delBtn = document.getElementById('spend-del-btn');
+            const saveBtn = document.querySelector('#spend-sheet .btn-primary');
+            if (id) {
+                title.innerText = 'Edit Expense';
+                if (delBtn) delBtn.style.display = 'block';
+                if (saveBtn) saveBtn.innerHTML = '<span class="material-symbols-rounded">check</span> Update';
+                const e = db.spendTracker.entries.find(x => x.id === id);
+                if (e) {
+                    document.getElementById('spend-amt-input').value = e.amount;
+                    document.getElementById('spend-comment-input').value = e.comment || '';
+                    document.getElementById('spend-date-input').value = new Date(e.date).toISOString().split('T')[0];
+                }
+            } else {
+                title.innerText = 'Add Expense';
+                if (delBtn) delBtn.style.display = 'none';
+                if (saveBtn) saveBtn.innerHTML = '<span class="material-symbols-rounded">add</span> Add Expense';
+                document.getElementById('spend-amt-input').value = '';
+                document.getElementById('spend-comment-input').value = '';
+                document.getElementById('spend-date-input').value = new Date().toISOString().split('T')[0];
+                setTimeout(() => document.getElementById('spend-amt-input').focus(), 200);
+            }
+            document.getElementById('spend-sheet').classList.add('open');
+            document.getElementById('spend-scrim').classList.add('open');
+        }
+
+        function closeSpendSheet() {
+            document.getElementById('spend-sheet').classList.remove('open');
+            document.getElementById('spend-scrim').classList.remove('open');
+            spendEditId = null;
+        }
+
+        function saveSpendEntry() {
+            const amt = parseFloat(document.getElementById('spend-amt-input').value);
+            const comment = document.getElementById('spend-comment-input').value.trim();
+            const dateStr = document.getElementById('spend-date-input').value;
             if (!amt || amt <= 0) { Swal.fire({icon:'error',title:'Enter amount',timer:1200,showConfirmButton:false}); return; }
             const date = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
-            db.spendTracker.entries.push({
-                id: Date.now() + '_q' + Math.random().toString(36).slice(2,6),
-                amount: amt,
-                comment: DOMPurify.sanitize(comment, {ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),
-                date: date.toISOString(),
-                category: 'Uncategorized'
-            });
+            const sanitized = DOMPurify.sanitize(comment, {ALLOWED_TAGS:[],ALLOWED_ATTR:[]});
+
+            if (spendEditId) {
+                const e = db.spendTracker.entries.find(x => x.id === spendEditId);
+                if (e) { e.amount = amt; e.comment = sanitized; e.date = date.toISOString(); }
+            } else {
+                db.spendTracker.entries.push({
+                    id: Date.now() + '_q' + Math.random().toString(36).slice(2,6),
+                    amount: amt,
+                    comment: sanitized,
+                    date: date.toISOString(),
+                    category: 'Uncategorized'
+                });
+            }
             saveDB();
-            document.getElementById('quick-amt').value = '';
-            document.getElementById('quick-comment').value = '';
-            // Build comment suggestions
+            closeSpendSheet();
             updateCommentSuggestions();
             renderAll();
             haptic(30);
         }
+
+        function deleteSpendEntry() {
+            if (!spendEditId) return;
+            Swal.fire({title:'Delete?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r => {
+                if (r.isConfirmed) {
+                    db.spendTracker.entries = db.spendTracker.entries.filter(x => x.id !== spendEditId);
+                    saveDB();
+                    closeSpendSheet();
+                    renderAll();
+                }
+            });
+        }
+
         function updateCommentSuggestions() {
             const dl = document.getElementById('comment-suggestions');
             const comments = [...new Set(db.spendTracker.entries.map(e => e.comment).filter(Boolean))];
             dl.innerHTML = comments.map(c => `<option value="${DOMPurify.sanitize(c)}">`).join('');
         }
         function haptic(n) { try { navigator.vibrate(n); } catch(e) {} }
-        // Enter to submit
+
+        // Keyboard shortcut
+        document.addEventListener('keydown', e => {
+            if (e.key === 'n' && !e.ctrlKey && !e.metaKey && !document.querySelector('.import-sheet.open')) {
+                e.preventDefault(); openSpendSheet();
+            }
+        });
+
+        // Enter to focus next in sheet
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('quick-date').value = new Date().toISOString().split('T')[0];
-            document.getElementById('quick-amt').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('quick-comment').focus(); });
-            document.getElementById('quick-comment').addEventListener('keydown', e => { if(e.key==='Enter') addQuickEntry(); });
+            document.getElementById('spend-amt-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter') document.getElementById('spend-comment-input').focus();
+            });
+            document.getElementById('spend-comment-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter') document.getElementById('spend-date-input').focus();
+            });
+            document.getElementById('spend-date-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter') saveSpendEntry();
+            });
             updateCommentSuggestions();
             renderAll();
         });
@@ -488,7 +563,7 @@
             if(entries.length===0){container.style.display='none';return;}
             const biggest=entries.reduce((a,b)=>a.amount>b.amount?a:b);
             container.style.display='block';
-            container.innerHTML=`<div class="section-label"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">warning</span> Biggest Expense</div>
+            container.innerHTML=`<div style="font-size:14px;font-weight:600;color:var(--md-on-surface);margin-bottom:12px;display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">warning</span> Biggest Expense</div>
                 <div class="biggest-item" onclick="document.getElementById('quick-comment').value='${DOMPurify.sanitize(biggest.comment).replace(/'/g,"\\'")}';document.getElementById('quick-amt').focus();">
                     <span class="material-symbols-rounded" style="font-size:24px;color:var(--md-error);">emergency</span>
                     <div style="flex:1;"><div style="font-weight:600;font-size:15px;color:var(--md-on-surface);">${DOMPurify.sanitize(biggest.comment)}</div><div style="font-size:12px;color:var(--md-outline);">${fmtDate(new Date(biggest.date))}</div></div>
@@ -505,12 +580,11 @@
             entries.sort((a,b)=>new Date(b.date)-new Date(a.date));
             let html='';
             entries.forEach(e=>{const d=new Date(e.date);const cat=e.category||'Uncategorized';const color=CAT_COLORS[cat]||'#8E9099';
-                html+=`<div class="spend-row">
+                html+=`<div class="spend-card" onclick="openSpendSheet('${e.id}')" style="cursor:pointer;">
                     <div class="spend-date">${d.getDate()} ${d.toLocaleString('default',{month:'short'})}</div>
                     <div class="spend-comment">${DOMPurify.sanitize(e.comment||'—')}</div>
                     <div class="spend-amt">₹${e.amount.toLocaleString('en-IN')}</div>
-                    <button class="cat-badge" style="background:${color}22;color:${color};" onclick="changeCategory('${e.id}')">${DOMPurify.sanitize(cat)}</button>
-                    <button class="btn-icon" style="min-width:32px;min-height:32px;padding:4px;color:var(--md-error);" onclick="deleteEntry('${e.id}')"><span class="material-symbols-rounded" style="font-size:16px;">close</span></button>
+                    <button class="cat-badge" style="background:${color}18;color:${color};" onclick="event.stopPropagation();changeCategory('${e.id}')">${DOMPurify.sanitize(cat)}</button>
                 </div>`;
             });
             container.innerHTML=html;

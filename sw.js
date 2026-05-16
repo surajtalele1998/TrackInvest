@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v92';
+const CACHE_NAME = 'invest-pro-v96';
 
 const CORE_ASSETS = [
     './',
@@ -13,7 +13,8 @@ const CORE_ASSETS = [
     './app_part3.js',
     './shared_ai.js',
     './monthly_plan.html',
-    './spend_tracker.html'
+    './spend_tracker.html',
+    './market_watch.html'
 ];
 
 const CDN_ASSETS = [
@@ -79,7 +80,9 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('openrouter.ai') ||
         url.hostname.includes('cerebras.ai') ||
         url.hostname.includes('models.github.ai') ||
-        url.hostname.includes('query1.finance.yahoo.com')) {
+        url.hostname.includes('query1.finance.yahoo.com') ||
+        url.hostname.includes('mintedmetal.com') ||
+        url.hostname.includes('ibja-api.vercel.app')) {
         event.respondWith(fetch(event.request));
         return;
     }

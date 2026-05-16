@@ -15,7 +15,7 @@
         script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
         style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
         font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
-        connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.cerebras.ai https://models.github.ai https://mfapi.in https://api.exchangerate.host https://query1.finance.yahoo.com;
+        connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.cerebras.ai https://models.github.ai https://mfapi.in https://api.exchangerate.host https://query1.finance.yahoo.com https://mintedmetal.com https://ibja-api.vercel.app;
         img-src 'self' data:;
         manifest-src 'self';
     ">
@@ -415,6 +415,9 @@
             <div class="nav-icon-wrap"><span class="material-symbols-rounded">list_alt</span><span class="nav-badge"
                     id="ledger-entry-badge" style="display:none;"></span></div><span class="nav-label">Ledger</span>
         </div>
+        <div style="position:absolute;right:4px;bottom:2px;cursor:default;opacity:0.3;user-select:none;z-index:1;"
+            onclick="navigator.clipboard.writeText('v96');snack('Version copied','check_circle')"
+            title="Build v96"><span style="font-size:9px;font-weight:600;">v96</span></div>
     </nav>
 
     <button class="fab" onclick="openInvestSheet()" title="Add Entry (N)"><span
@@ -821,6 +824,8 @@
                         Inflation</button>
                     <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span
                             class="material-symbols-rounded" style="font-size: 18px;">picture_as_pdf</span> Wealth PDF</button>
+                    <button class="btn-secondary" onclick="window.location.href='market_watch.html'" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">monitoring</span> Market Watch</button>
                 </div>
             </div>
 
