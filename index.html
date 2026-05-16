@@ -10,6 +10,15 @@
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
 
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com;
+        connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://mfapi.in https://api.exchangerate.host;
+        img-src 'self' data:;
+        manifest-src 'self';
+    ">
     <link rel="manifest" href="./manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,6 +30,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
@@ -734,8 +744,21 @@
                             <option value="3">April (India)</option>
                         </select>
                     </div>
-                    <div class="input-container" style="flex:1"><label>Currency</label><input type="text"
-                            id="settings-currency" class="md-input" value="₹"></div>
+                    <div class="input-container" style="flex:1"><label>Currency Symbol</label><input type="text"
+                            id="settings-currency" class="md-input" value="₹" placeholder="₹"></div>
+                    <div class="input-container" style="flex:1"><label>Display Currency</label>
+                        <select id="settings-display-currency" class="md-input">
+                            <option value="INR">INR (₹)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="GBP">GBP (£)</option>
+                            <option value="JPY">JPY (¥)</option>
+                            <option value="SGD">SGD (S$)</option>
+                            <option value="AED">AED (د.إ)</option>
+                            <option value="AUD">AUD (A$)</option>
+                            <option value="CAD">CAD (C$)</option>
+                        </select>
+                    </div>
                 </div>
                 <div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; background:var(--md-surface-container-low); padding:12px 16px; border-radius:16px; border:1px solid var(--md-surface-container-highest);">
@@ -810,7 +833,27 @@
                     Save API Keys</button>
 
                 <div
-                    style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Sync</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button class="btn-primary" style="flex:1;" onclick="exportSyncUrl()"><span class="material-symbols-rounded">share</span> Share Sync Link</button>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button class="btn-secondary" style="flex:1;" onclick="nearbyBroadcast()"><span class="material-symbols-rounded">wifi</span> Nearby Sync</button>
+                    <button class="btn-secondary" style="flex:1;" onclick="webrtcStartAsSender()"><span class="material-symbols-rounded">qr_code_scanner</span> QR Sync</button>
+                </div>
+                <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Data auto-syncs across open tabs. Use Share or Nearby for cross-device. No server needed.</div>
+
+                <div
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Notifications</div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-primary" style="flex:1;" onclick="ensureNotificationPermission()"><span class="material-symbols-rounded">notifications_active</span> Enable Alerts</button>
+                </div>
+                <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Receive local notifications when SIPs are processed. No server needed.</div>
+
+                <div
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
                     Theme</div>
                 <div class="theme-picker" id="theme-picker" style="margin-bottom:24px;">
                     <div class="theme-swatch ts-indigo active" style="background: #415F91;"

@@ -56,6 +56,15 @@ if (typeof db.privacyMode === 'undefined') db.privacyMode = false;
 if (!db.theme) db.theme = 'indigo';
 if (!db.geminiKey) db.geminiKey = '';
 if (!db.groqKey) db.groqKey = '';
+// Decrypt encrypted API keys if present
+if (db._ek && db.appPin) {
+    const parts = db._ek.split('|');
+    if (parts.length === 2) {
+        if (!db.geminiKey) db.geminiKey = _decryptKey(parts[0], db.appPin) || '';
+        if (!db.groqKey) db.groqKey = _decryptKey(parts[1], db.appPin) || '';
+    }
+    delete db._ek;
+}
 if (!db.appPin) db.appPin = '';
 if (!db.chatHistory) db.chatHistory = [];
 if (!db.chatSessions) db.chatSessions = [];
@@ -745,8 +754,40 @@ function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
  * @param {number} num - The number to format
  * @returns {string} Formatted currency string
  */
+// ── Currency Conversion ──
+let _exchangeRates = null;
+let _exchangeRatesFetched = 0;
+const EXCHANGE_RATE_TTL = 4 * 60 * 60 * 1000; // 4 hours
+
+async function fetchExchangeRates() {
+    const now = Date.now();
+    if (_exchangeRates && now - _exchangeRatesFetched < EXCHANGE_RATE_TTL) return _exchangeRates;
+    try {
+        const res = await fetch('https://api.exchangerate.host/latest?base=INR');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        if (data && data.rates) {
+            _exchangeRates = data.rates;
+            _exchangeRatesFetched = now;
+            return _exchangeRates;
+        }
+    } catch (e) {
+        console.warn('[Forex] Failed to fetch rates:', e);
+    }
+    return null;
+}
+
+function convertCurrency(amountInr, targetCurrency) {
+    if (!targetCurrency || targetCurrency === 'INR' || !_exchangeRates) return amountInr;
+    const rate = _exchangeRates[targetCurrency];
+    if (!rate) return amountInr;
+    return amountInr * rate;
+}
+
 function formatMoney(num) {
-    return db.privacyMode ? '•••••' : '₹' + formatInr(num);
+    if (db.privacyMode) return '•••••';
+    const sym = db.currency && db.currency !== 'INR' ? (db.currencySymbol || db.currency + ' ') : '₹';
+    return sym + formatInr(num);
 }
 
 /**
@@ -1292,10 +1333,28 @@ function showFirstTimeTips() {
 }
 window.showFirstTimeTips = showFirstTimeTips;
 
+function _encryptKey(plain, pin) {
+    if (!plain || !pin) return plain || '';
+    let out = '';
+    for (let i = 0; i < plain.length; i++) out += String.fromCharCode(plain.charCodeAt(i) ^ pin.charCodeAt(i % pin.length));
+    return 'EX:' + btoa(out);
+}
+function _decryptKey(enc, pin) {
+    if (!enc || !pin || !enc.startsWith('EX:')) return enc || '';
+    let raw = atob(enc.slice(3)), out = '';
+    for (let i = 0; i < raw.length; i++) out += String.fromCharCode(raw.charCodeAt(i) ^ pin.charCodeAt(i % pin.length));
+    return out;
+}
+
 function saveData() {
     db.lastUpdated = Date.now();
 
-    // Validate and sanitize critical data before saving
+    // Encrypt API keys at rest if PIN is set
+    if (db.appPin) {
+        db._ek = _encryptKey(db.geminiKey || '', db.appPin) + '|' + _encryptKey(db.groqKey || '', db.appPin);
+        delete db.geminiKey; delete db.groqKey;
+    }
+
     const sanitizedDb = sanitizeDatabaseObject(db);
 
     // Save data first using cross-browser compatible function
@@ -1304,8 +1363,17 @@ function saveData() {
         return;
     }
 
+    // Restore keys in memory after saving
+    if (db.appPin && db._ek) {
+        const parts = db._ek.split('|');
+        db.geminiKey = _decryptKey(parts[0] || '', db.appPin);
+        db.groqKey = _decryptKey(parts[1] || '', db.appPin);
+    }
+
     // Check storage quota asynchronously (non-blocking)
     checkStorageQuota(sanitizedDb);
+    // Broadcast to other tabs after the quota check (non-blocking)
+    setTimeout(() => { try { window.__syncChannel = window.__syncChannel || new BroadcastChannel('trackinvest-sync'); window.__syncChannel.postMessage({ type: 'sync-data', data: { timestamp: Date.now() } }); } catch (e) {} }, 0);
 }
 
 function handleStorageError(error) {
@@ -1780,6 +1848,9 @@ function sanitizeDatabaseObject(dbObj) {
 
 function sanitizeText(text) {
     if (typeof text !== 'string') return '';
+    if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+        return DOMPurify.sanitize(text, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }).trim();
+    }
     return text
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
         .replace(/javascript:/gi, '')
@@ -1812,6 +1883,46 @@ function savePin() {
     else if (p.length === 0) { db.appPin = ''; saveData(); showSnackbar("App Lock Disabled", "lock_open"); }
     else { showSnackbar("PIN must be 4 digits", "error"); }
 }
+
+// ==========================================
+// EVENT DELEGATION (CSP-hardened action system)
+// ==========================================
+// Replace `onclick="fn(args)"` with `data-onclick="fn"` (no-args) or `data-onclick="fn:arg1|arg2"` (with args).
+// Complex actions can be registered via `registerAction(name, fn)`.
+
+const _actionMap = {};
+
+function registerAction(name, fn) {
+    if (typeof fn === 'function') _actionMap[name] = fn;
+}
+function _parseClickArgs(str) {
+    if (!str) return [];
+    return str.split('|').map(s => {
+        s = s.trim();
+        if (s === 'null') return null;
+        if (s === 'true') return true;
+        if (s === 'false') return false;
+        if (s === 'undefined') return undefined;
+        if (/^['"`]/.test(s)) return s.slice(1, -1);
+        const n = Number(s);
+        return isNaN(n) ? s : n;
+    });
+}
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-onclick]');
+    if (!target) return;
+    const expr = target.getAttribute('data-onclick');
+    if (!expr) return;
+    // Format: "fnName" or "fnName:arg1|arg2"
+    let fnName = expr, argsStr = '';
+    const colonIdx = expr.indexOf(':');
+    if (colonIdx > 0) { fnName = expr.slice(0, colonIdx); argsStr = expr.slice(colonIdx + 1); }
+    const fn = _actionMap[fnName] || window[fnName];
+    if (typeof fn === 'function') {
+        e.preventDefault();
+        fn(..._parseClickArgs(argsStr));
+    }
+});
 
 function switchTab(tabId) {
     haptic(20); // Subtle feedback on tab switch

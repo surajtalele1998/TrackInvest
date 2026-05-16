@@ -259,6 +259,7 @@ function processRecurring() {
     if (updated) {
         saveData();
         showSnackbar(`Auto‑SIPs Processed: ${processedCount} entries`, 'check_circle');
+        showLocalNotification('TrackInvest', `${processedCount} SIP${processedCount > 1 ? 's' : ''} auto-processed.`);
     }
 }
 
@@ -1407,6 +1408,27 @@ function isInstalledPWA() {
         window.navigator.standalone === true;
 }
 
+// ── Serverless Notifications (uses SW directly, no server needed) ──
+async function ensureNotificationPermission() {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const result = await Notification.requestPermission();
+    return result === 'granted';
+}
+function showLocalNotification(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    // Try via SW first (works in PWA standalone mode)
+    if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: 'show-notification', title, body });
+        return;
+    }
+    // Fallback: direct notification
+    try { new Notification(title, { body, icon: './icons/icon-192.png' }); } catch (e) {}
+}
+window.showLocalNotification = showLocalNotification;
+window.ensureNotificationPermission = ensureNotificationPermission;
+
 function calculatePortfolioHealth() {
     let score = 100;
     let issues = [];
@@ -2026,3 +2048,44 @@ function webrtcSendSync() {
         showSnackbar("Not connected. Ensure connection status is 'connected'.", "error");
     }
 }
+
+// ==========================================
+// SERVERLESS TAB SYNC (BroadcastChannel + WebRTC)
+// ==========================================
+const _syncChannel = new BroadcastChannel('trackinvest-sync');
+
+_syncChannel.onmessage = (e) => {
+    const msg = e.data;
+    if (msg && msg.type === 'sync-data') {
+        const incomingCount = msg.data?.investments?.length || 0;
+        const localCount = db.investments.length;
+        if (incomingCount > localCount) {
+            showSnackbar(`Tab sync: ${incomingCount - localCount} new entries from another tab. Reload to see them.`, 'sync');
+        }
+    }
+};
+
+function broadcastToTabs() {
+    try {
+        _syncChannel.postMessage({ type: 'sync-data', data: { investments: db.investments.length, timestamp: Date.now() } });
+    } catch (e) {}
+}
+
+// Export data as a shareable URL (for small datasets / manual sync)
+function exportSyncUrl() {
+    try {
+        const payload = { v: 1, d: Date.now(), inv: db.investments.slice(-50), goals: db.goals };
+        const encoded = btoa(encodeURIComponent(JSON.stringify(payload)));
+        const url = window.location.origin + window.location.pathname + '#sync:' + encoded;
+        if (navigator.share) {
+            navigator.share({ title: 'TrackInvest Sync', text: 'Sync your portfolio', url });
+        } else {
+            navigator.clipboard.writeText(url).then(() => showSnackbar('Sync URL copied!', 'link'));
+        }
+    } catch (e) {
+        showSnackbar('Failed to create sync URL', 'error');
+    }
+}
+
+window.exportSyncUrl = exportSyncUrl;
+window.broadcastToTabs = broadcastToTabs;

@@ -1059,6 +1059,8 @@ function saveProfileSettings() {
     db.userProfile.monthlyExpense = parseFloat(document.getElementById('settings-expenses').value) || 0;
     db.fyStartMonth = parseInt(document.getElementById('settings-fy-start').value) || 3;
     db.currency = document.getElementById('settings-currency').value || '₹';
+    db.displayCurrency = document.getElementById('settings-display-currency')?.value || 'INR';
+    db.currencySymbol = document.getElementById('settings-currency').value || '₹';
     db.userProfile.dob = document.getElementById('profile-dob')?.value || '';
     
     // NEW: Save Planner visibility
@@ -1101,7 +1103,8 @@ function openSettings() {
             regime: db.userProfile.regime || 'new',
             expenses: db.userProfile.monthlyExpense || 0,
             fyStart: db.fyStartMonth || 3,
-            currency: db.currency || '₹'
+            currency: db.currency || '₹',
+            displayCurrency: db.displayCurrency || 'INR'
         },
         security: {
             pin: db.appPin || '',
@@ -1119,23 +1122,23 @@ function openSettings() {
     const expensesEl = document.getElementById('settings-expenses');
     const fyStartEl = document.getElementById('settings-fy-start');
     const currencyEl = document.getElementById('settings-currency');
+    const displayCurrencyEl = document.getElementById('settings-display-currency');
     const pinEl = document.getElementById('settings-pin');
     const geminiEl = document.getElementById('gemini-api-key');
     const groqEl = document.getElementById('groq-api-key');
     const biometricEl = document.getElementById('use-biometric-toggle');
     const plannerEl = document.getElementById('settings-enable-planner'); // NEW
-
     if (salaryEl) salaryEl.value = settingsData.profile.salary;
     if (regimeEl) regimeEl.value = settingsData.profile.regime;
     if (expensesEl) expensesEl.value = settingsData.profile.expenses;
     if (fyStartEl) fyStartEl.value = settingsData.profile.fyStart;
     if (currencyEl) currencyEl.value = settingsData.profile.currency;
+    if (displayCurrencyEl) displayCurrencyEl.value = settingsData.profile.displayCurrency;
     if (pinEl) pinEl.value = settingsData.security.pin;
     if (geminiEl) geminiEl.value = settingsData.ai.geminiKey;
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
     if (plannerEl) plannerEl.checked = db.enableMonthlyPlanner; // NEW
-
     const bubbleToggle = document.getElementById('ai-bubble-toggle');
     if (bubbleToggle) bubbleToggle.checked = db.aiBubbleEnabled;
 
@@ -1788,6 +1791,14 @@ function restoreData(e) {
             db.theme = parsed.theme || 'indigo';
             db.geminiKey = parsed.geminiKey || '';
             db.groqKey = parsed.groqKey || '';
+            // Decrypt keys from _ek if plaintext not present but appPin matches
+            if (!db.geminiKey && parsed._ek && db.appPin) {
+                const parts = parsed._ek.split('|');
+                if (parts.length === 2) {
+                    db.geminiKey = _decryptKey(parts[0], db.appPin) || '';
+                    db.groqKey = _decryptKey(parts[1], db.appPin) || '';
+                }
+            }
             db.appPin = parsed.appPin || '';
             db.useBiometric = parsed.useBiometric || false;
             db.chatHistory = parsed.chatHistory || [];

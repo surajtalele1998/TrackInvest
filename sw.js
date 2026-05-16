@@ -136,3 +136,17 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     event.waitUntil(clients.openWindow(event.notification.data.url));
 });
+
+// 6. Message from client — show local notification (serverless)
+self.addEventListener('message', (event) => {
+    const data = event.data;
+    if (data && data.type === 'show-notification') {
+        self.registration.showNotification(data.title || 'TrackInvest', {
+            body: data.body || '',
+            icon: './icons/icon-192.png',
+            badge: './icons/icon-192.png',
+            vibrate: [200, 100, 200],
+            data: { url: './index.html' }
+        });
+    }
+});
