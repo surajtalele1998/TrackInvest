@@ -2674,6 +2674,7 @@ function initAIFloatingBubble() {
     `;
     document.head.appendChild(style);
     document.body.appendChild(bubble);
+    const popupEl = document.getElementById('ai-chat-popup');
 
     // Draggable Logic
     let isDragging = false;

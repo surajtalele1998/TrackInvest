@@ -211,12 +211,30 @@ function isMarketOpen() {
     return m >= 555 && m < 930;
 }
 
-// ===== API HELPERS =====
-async function fetchJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(r.status); return r.json(); }
+// ===== API HELPERS with CORS fallback =====
+const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+
+async function fetchJSON(url) {
+    try {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+    } catch (e) {
+        // CORS or network failure — retry via proxy
+        const proxied = await fetch(CORS_PROXY + encodeURIComponent(url));
+        if (!proxied.ok) throw new Error(proxied.status);
+        return proxied.json();
+    }
+}
+
+async function fetchChartData(symbol) {
+    const d = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d`);
+    return d.chart.result[0];
+}
 
 async function fetchYahooMeta(symbol) {
-    const d = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d`);
-    return d.chart.result[0].meta;
+    const data = await fetchChartData(symbol);
+    return data.meta;
 }
 
 async function fetchYahooSearch(q) {
@@ -441,9 +459,9 @@ async function refreshAll() {
     // Chart - NIFTY
     if (niftyMeta) {
         try {
-            const d = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/%5ENSEI?range=1d`);
-            const ts = d.chart.result[0].timestamp || [];
-            const q = d.chart.result[0].indicators?.quote?.[0];
+            const chartResult = await fetchChartData('%5ENSEI');
+            const ts = chartResult.timestamp || [];
+            const q = chartResult.indicators?.quote?.[0];
             if (ts.length && q?.close) {
                 const labels = ts.map(t => new Date(t*1000).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }));
                 const prices = q.close.filter(p => p !== null);
