@@ -10,7 +10,8 @@ const CORE_ASSETS = [
     './style.css',
     './app_part1.js',
     './app_part2.js',
-    './app_part3.js'
+    './app_part3.js',
+    './monthly_plan.html'
 ];
 
 const CDN_ASSETS = [

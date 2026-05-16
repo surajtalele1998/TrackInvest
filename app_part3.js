@@ -352,7 +352,6 @@ function updatePortfolioCalculations() {
             typeTotals[type] = Math.max(0, valResult.total); // Ensure non-negative
             totalMarketValue += Math.max(0, valResult.total);
             totalInterestEarnedAll += Math.max(0, valResult.interest || 0);
-            totalNW += Math.max(0, invested);
 
         } catch (error) {
             console.error(`Critical error processing ${type}:`, error);
@@ -1100,13 +1099,6 @@ function saveHealthCheckResults(answers) {
 
 window.openFinancialHealthCheck = openFinancialHealthCheck;
 
-// Check for prompts periodically
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        checkAndShowSmartPrompt();
-    }, 3000); // Wait 3 seconds after app loads
-}, { once: true });
-
 // Frequent Actions Quick Navigation
 function renderFrequentActions() {
     let container = document.getElementById('frequent-actions');
@@ -1180,6 +1172,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const lastSheet = sessionStorage.getItem('currentSheet');
         if (lastSheet) openSheet(lastSheet, true);
     }
+
+    // Check for smart prompts (after a short delay)
+    setTimeout(() => checkAndShowSmartPrompt(), 3000);
 
     // Show first-time tips for new users (after a short delay)
     setTimeout(() => {

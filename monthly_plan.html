@@ -125,6 +125,7 @@
             border:1.5px solid transparent; transition:border-color 0.2s;
         }
         .plan-input-box:focus-within { border-color:var(--md-primary); }
+        .plan-input-box.input-error { border-color: var(--md-error); background: var(--md-error-container); }
         .plan-input-box span { font-size:13px; color:var(--md-outline); margin-right:3px; }
         .plan-input {
             width:110px; text-align:right; font-size:16px; font-weight:600;
@@ -711,7 +712,7 @@ function makeIncomeRow(item, index) {
         <div class="plan-input-box">
             <span>₹</span>
             <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
-                oninput="updateAmount('income',${index},this.value)">
+                oninput="updateIncomeAmount(${index},this)">
         </div>
         ${canDelete ? `<button class="del-btn" onclick="removeIncomeRow(${index})" title="Remove">
             <span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>` : ''}
@@ -745,7 +746,7 @@ function makeRow(item, index, type) {
         <div class="plan-input-box">
             <span>₹</span>
             <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
-                oninput="updateAmount('${type}',${index},this.value)">
+                oninput="updateAmount('${type}',${index},this)">
         </div>
         <button class="del-btn" onclick="removeRow('${type}',${index})" title="Remove">
             <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
@@ -756,8 +757,8 @@ function makeRow(item, index, type) {
 // ──────────────────────────────────────────────────────────────
 // EDIT HANDLERS
 // ──────────────────────────────────────────────────────────────
-function updateAmount(type, index, val) {
-    plan[type][index].amount = parseFloat(val) || 0;
+function updateAmount(type, index, el) {
+    plan[type][index].amount = validatePlanInputBox(el);
     recalc();
     updatePVABars();
 }
@@ -822,7 +823,7 @@ function makeCustomInvestRow(item, index) {
         <div class="plan-input-box">
             <span>₹</span>
             <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
-                oninput="updateCustomInvestAmount(${index},this.value)">
+                oninput="updateCustomInvestAmount(${index},this)">
         </div>
         <button class="del-btn" onclick="removeCustomInvestment(${index})" title="Remove">
             <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
@@ -845,8 +846,24 @@ function removeCustomInvestment(index) {
     recalc();
 }
 
+function validatePlanInputBox(inputEl) {
+    const box = inputEl.closest('.plan-input-box');
+    const num = parseFloat(inputEl.value);
+    if (num < 0) {
+        if (box) box.classList.add('input-error');
+        return 0;
+    }
+    if (box) box.classList.remove('input-error');
+    return num || 0;
+}
+
+function updateIncomeAmount(index, el) {
+    plan.income[index].amount = validatePlanInputBox(el);
+    recalc();
+}
+
 function updateCustomInvestAmount(index, val) {
-    plan.customInvestments[index].amount = parseFloat(val) || 0;
+    plan.customInvestments[index].amount = validatePlanInputBox(event.target);
     recalc();
     updateCustomInvestTotal();
 }

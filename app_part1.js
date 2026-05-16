@@ -216,8 +216,8 @@ function setLoading(elementId, isLoading, message = '') {
     }
 }
 
-function setButtonLoading(buttonId, isLoading) {
-    const btn = document.getElementById(buttonId);
+function setButtonLoading(buttonOrId, isLoading) {
+    const btn = typeof buttonOrId === 'string' ? document.getElementById(buttonOrId) : buttonOrId;
     if (!btn) return;
 
     if (isLoading) {
@@ -1842,6 +1842,7 @@ function performTabSwitch(tabId, fromPopState = false) {
         history.pushState({ tabId: tabId }, "");
     }
 
+    renderAll();
     if (tabId === 'portfolio') renderDonutChart(currentTypeTotals, currentTotalNW);
     if (tabId === 'dashboard') renderRollingChart();
 }
@@ -1866,6 +1867,7 @@ function setChartRange(months, el) {
     el.classList.add('active');
     chartMonthsRange = months;
     renderNWChart();
+    renderRollingChart();
 }
 
 function updateProjectionSlider() {

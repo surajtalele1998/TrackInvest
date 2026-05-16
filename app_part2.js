@@ -219,7 +219,8 @@ function saveInvestment() {
                             e.preventDefault();
                             e.stopPropagation();
                         }
-                    });
+                        field.removeEventListener('keydown', preventSubmit);
+                    }, { once: true });
                 }
             }
         });
@@ -250,7 +251,7 @@ function saveInvestment() {
         id: editInvId || generateUniqueId(),
         date,
         type: window.currentInvType,
-        amount,
+        amount: amt,
         note,
         tags,
         subCategory: subCat,
@@ -310,9 +311,10 @@ function saveInvestment() {
 
     saveData(); renderAll(); closeOverlays(); clearFormDraft();
     // Reset edit states
+    const wasEdit = !!window.editInvId;
     window.editInvId = null;
     // Show undo-capable toast for new entries
-    if (!editInvId) {
+    if (!wasEdit) {
         const lastEntryId = newEntry.id;
         showUndoSnackbar("Investment Logged!", () => {
             // Undo: remove the entry
@@ -815,59 +817,37 @@ function hidePullRefreshIndicator() {
     }
 }
 
-// Add pull-to-refresh indicator
+// Pull-to-refresh indicator
 function showPullRefreshIndicator() {
     if (document.getElementById('pull-refresh-indicator')) return;
-
     const indicator = document.createElement('div');
     indicator.id = 'pull-refresh-indicator';
     indicator.className = 'pull-refresh-indicator';
-    indicator.innerHTML = `
-        <span class="material-symbols-rounded">arrow_downward</span>
-        <div>Pull to refresh</div>
-    `;
+    indicator.innerHTML = '<span class="material-symbols-rounded">arrow_downward</span><div>Pull to refresh</div>';
     indicator.style.cssText = `
-        position: fixed;
-        top: -60px;
-        left: 50%;
+        position: fixed; top: -60px; left: 50%;
         transform: translateX(-50%);
         background: var(--md-primary-container);
         color: var(--md-on-primary-container);
         padding: 12px 20px;
         border-radius: 0 0 16px 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 500;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 14px; font-weight: 500;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        transition: all 0.3s ease-out;
-        z-index: 3000;
-        opacity: 0;
+        transition: top 0.3s ease-out, opacity 0.3s ease-out;
+        z-index: 3000; opacity: 0;
     `;
-
     document.body.appendChild(indicator);
-
-    // Add event listeners with proper options
-    cE.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
-    cE.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
-    cE.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
-    cE.addEventListener('touchcancel', resetSwipeState, { passive: true, capture: true });
-
-    // Add mobile gestures to main content
-    if (cE.id === 'ledger-history-list') {
-        addMobileGestures(cE);
-        showPullRefreshIndicator();
-    }
-
-    // Cleanup function for memory management
-    return () => {
-        cE.removeEventListener('touchstart', handleTouchStart);
-        cE.removeEventListener('touchmove', handleTouchMove);
-        cE.removeEventListener('touchend', handleTouchEnd);
-        cE.removeEventListener('touchcancel', resetSwipeState);
-        resetSwipeState();
-    };
+    // Show the indicator briefly
+    requestAnimationFrame(() => {
+        indicator.style.top = '0px';
+        indicator.style.opacity = '1';
+    });
+    setTimeout(() => {
+        indicator.style.top = '-60px';
+        indicator.style.opacity = '0';
+        setTimeout(() => { if (indicator.parentNode) indicator.parentNode.removeChild(indicator); }, 300);
+    }, 1500);
 }
 
 // ==========================================
@@ -1043,7 +1023,7 @@ function saveCatSettings() {
 // Call this function when loading the settings UI tab panel
 function loadUserProfileSettings() {
     if (db.userProfile) {
-        if(document.getElementById('profile-salary')) document.getElementById('profile-salary').value = db.userProfile.salary || '';
+        if(document.getElementById('settings-salary')) document.getElementById('settings-salary').value = db.userProfile.salary || '';
         
         const dobInput = document.getElementById('profile-dob');
         if (dobInput) {
@@ -2158,7 +2138,7 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent', {
+                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
