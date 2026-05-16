@@ -78,7 +78,8 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('generativelanguage.googleapis.com') ||
         url.hostname.includes('openrouter.ai') ||
         url.hostname.includes('cerebras.ai') ||
-        url.hostname.includes('models.github.ai')) {
+        url.hostname.includes('models.github.ai') ||
+        url.hostname.includes('query1.finance.yahoo.com')) {
         event.respondWith(fetch(event.request));
         return;
     }

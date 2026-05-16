@@ -2903,6 +2903,9 @@ function reverseCalculateUnits() {
 }
 
 async function searchMFForLog() {
+    if (window.currentInvType === 'Stocks') {
+        return searchStockForLog();
+    }
     let q = document.getElementById('inv-mf-query').value.trim();
     if (!q) return showSnackbar("Enter fund name to search", "warning");
 
@@ -2940,6 +2943,9 @@ async function searchMFForLog() {
 }
 
 function handleMFSelectForLog(sel) {
+    if (window.currentInvType === 'Stocks') {
+        return handleStockSelectForLog(sel);
+    }
     let code = sel.value; if (!code) return;
     let opt = sel.options[sel.selectedIndex];
     document.getElementById('inv-note').value = opt.getAttribute('data-name');
@@ -2985,6 +2991,100 @@ async function fetchLiveNAV(code) {
         priceInput.value = originalPrice;
         priceInput.disabled = false;
         showSnackbar("Failed to fetch NAV", "error");
+    }
+}
+
+// --- STOCK SEARCH & PRICE LOOKUP via Yahoo Finance ---
+
+async function searchStockForLog() {
+    let q = document.getElementById('inv-mf-query').value.trim();
+    if (!q) return showSnackbar("Enter stock name to search", "warning");
+
+    let searchBtn = document.querySelector('#dynamic-mf-search button');
+    if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', true);
+    let sel = document.getElementById('inv-mf-select');
+    if (sel) {
+        sel.innerHTML = '<option>Searching...</option>';
+        sel.style.display = 'block';
+    }
+
+    try {
+        let res = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`);
+        let data = await res.json();
+
+        if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
+
+        let quotes = data.quotes || [];
+        if (quotes.length === 0) {
+            if (sel) sel.innerHTML = '<option>No stocks found</option>';
+            return showSnackbar("No stocks found", "error");
+        }
+
+        let indian = quotes.filter(s => s.symbol && (s.symbol.endsWith('.NS') || s.symbol.endsWith('.BO')));
+        let display = indian.length > 0 ? indian : quotes.slice(0, 10);
+
+        sel.innerHTML = `<option value="">Select stock (${display.length} found)...</option>` +
+            display.map(s => {
+                let name = s.longname || s.shortname || s.symbol;
+                let exch = s.symbol.endsWith('.NS') ? 'NSE' : s.symbol.endsWith('.BO') ? 'BSE' : s.exchange || '';
+                return `<option value="${escapeHtml(s.symbol)}" data-name="${escapeHtml(name)}">${escapeHtml(name.substring(0, 55))} — ${escapeHtml(s.symbol)} (${escapeHtml(exch)})</option>`;
+            }).join('');
+        sel.style.display = 'block';
+        showSnackbar(`${display.length} stocks found`, "check_circle");
+        setTimeout(() => sel.focus(), 100);
+    } catch (e) {
+        if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
+        if (sel) sel.innerHTML = '<option>Search failed</option>';
+        showSnackbar("Search failed - check connection", "error");
+    }
+}
+
+function handleStockSelectForLog(sel) {
+    let symbol = sel.value;
+    if (!symbol) return;
+    let opt = sel.options[sel.selectedIndex];
+    document.getElementById('inv-note').value = opt.getAttribute('data-name');
+    document.getElementById('inv-mf-code-hidden').value = symbol;
+    fetchLiveStockPrice(symbol);
+}
+
+async function fetchLiveStockPrice(symbol) {
+    if (!symbol) return;
+
+    let priceInput = document.getElementById('inv-price');
+    let originalPrice = priceInput.value;
+    priceInput.value = 'Loading...';
+    priceInput.disabled = true;
+
+    try {
+        let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+        let data = await res.json();
+        let result = data.chart?.result?.[0];
+        if (!result) throw new Error("No data");
+
+        let price = result.meta.regularMarketPrice;
+        let today = new Date();
+        let dateStr = today.toISOString().split('T')[0];
+
+        priceInput.value = price.toFixed(2);
+        priceInput.disabled = false;
+        db.navCache[symbol] = { nav: price, date: dateStr, lastFetched: new Date().toISOString() };
+        reverseCalculateUnits();
+        showSnackbar(`${result.meta.shortName || symbol}: ₹${price}`, "check_circle");
+
+        setTimeout(() => {
+            let qtyInput = document.getElementById('inv-qty');
+            let amtInput = document.getElementById('inv-amt');
+            if (qtyInput && qtyInput.value && amtInput && !amtInput.value) {
+                calculateDynamicTotal();
+                updateSmartPreview();
+            }
+            if (amtInput && !amtInput.value) amtInput.focus();
+        }, 100);
+    } catch (e) {
+        priceInput.value = originalPrice;
+        priceInput.disabled = false;
+        showSnackbar("Failed to fetch stock price", "error");
     }
 }
 
