@@ -2593,104 +2593,217 @@ function renderCategoryChart(category) {
     }
 }
 
+let heatmapMonth = new Date().getMonth();
+let heatmapYear = new Date().getFullYear();
+
 function renderHeatmap() {
     let heatmapGrid = document.getElementById('heatmap-grid');
     if (!heatmapGrid) return;
 
-    let now = new Date(); let year = now.getFullYear(); let month = now.getMonth();
-    let firstDay = new Date(year, month, 1).getDay(); let daysInMonth = new Date(year, month + 1, 0).getDate();
+    let month = heatmapMonth, year = heatmapYear;
+    let now = new Date();
+    let firstDay = new Date(year, month, 1).getDay();
+    let daysInMonth = new Date(year, month + 1, 0).getDate();
 
     let titleEl = document.getElementById('heatmap-month-title');
-    if (titleEl) titleEl.innerText = `Activity Calendar (${now.toLocaleString('default', { month: 'long' })})`;
+    if (titleEl) {
+        let label = new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' });
+        titleEl.innerText = label;
+    }
 
-    let pastMap = {};
+    // Disable prev/next at boundaries
+    let prevBtn = document.getElementById('heatmap-prev');
+    let nextBtn = document.getElementById('heatmap-next');
+    if (prevBtn) prevBtn.style.opacity = (year < now.getFullYear() || (year === now.getFullYear() && month <= now.getMonth())) ? '1' : '0.3';
+    if (nextBtn) {
+        let isFuture = (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth()));
+        nextBtn.style.opacity = isFuture ? '0.3' : '1';
+    }
+
+    // ── Invest past map ──
+    let investMap = {};
     db.investments.forEach(inv => {
         if (activeAccountFilter === 'All' || inv.account === activeAccountFilter) {
-            pastMap[inv.date] = (pastMap[inv.date] || 0) + inv.amount;
+            investMap[inv.date] = (investMap[inv.date] || 0) + inv.amount;
         }
     });
 
+    // ── Future SIP map ──
     let futureMap = {};
     db.recurring.forEach(rec => {
         let nextD = new Date(rec.nextRun);
         if (nextD.getMonth() === month && nextD.getFullYear() === year) {
             let dStr = getLocalYYYYMMDD(nextD);
-            futureMap[dStr] = (futureMap[dStr] || 0) + rec.amount;
+            if (activeAccountFilter === 'All' || rec.account === activeAccountFilter) {
+                futureMap[dStr] = (futureMap[dStr] || 0) + rec.amount;
+            }
         }
     });
 
-    let html = `
-            <div class="heatmap-header">
-                <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
-            </div>
-            <div class="heatmap-body">`;
+    // ── Spend map ──
+    let spendMap = {};
+    try {
+        let sdb = JSON.parse(localStorage.getItem('appHubInvestDb') || '{}');
+        if (sdb.spendTracker && sdb.spendTracker.entries) {
+            sdb.spendTracker.entries.forEach(e => {
+                let d = new Date(e.date);
+                if (d.getMonth() === month && d.getFullYear() === year) {
+                    let dStr = getLocalYYYYMMDD(d);
+                    spendMap[dStr] = (spendMap[dStr] || 0) + e.amount;
+                }
+            });
+        }
+    } catch (e) {}
 
-    for (let i = 0; i < firstDay; i++) { html += `<div></div>`; }
+    function intensityClass(base, amt) {
+        if (amt <= 0) return '';
+        if (amt < 500) return base + '-light';
+        if (amt < 5000) return base + '-mid';
+        return base;
+    }
+
+    function fmtAmt(amt) {
+        return '₹' + Math.round(amt).toLocaleString('en-IN');
+    }
+
+    let html = `
+        <div class="heatmap-header">
+            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+        </div>
+        <div class="heatmap-body">`;
+
+    for (let i = 0; i < firstDay; i++) html += '<div></div>';
+
+    let isCurrentMonth = (month === now.getMonth() && year === now.getFullYear());
 
     for (let d = 1; d <= daysInMonth; d++) {
         let cellDate = new Date(year, month, d);
         let dStr = getLocalYYYYMMDD(cellDate);
 
-        let pastAmt = pastMap[dStr] || 0;
+        let invAmt = investMap[dStr] || 0;
         let futAmt = futureMap[dStr] || 0;
+        let spdAmt = spendMap[dStr] || 0;
 
         let cls = 'heatmap-cell-cal';
         let hasData = false;
+        let tooltip = '';
 
-        if (pastAmt > 0 && futAmt > 0) { cls += ' active-both'; hasData = true; }
-        else if (pastAmt > 0) { cls += ' active-past'; hasData = true; }
-        else if (futAmt > 0) { cls += ' active-future'; hasData = true; }
+        // Priority: invest > spend > future (show the most significant)
+        if (invAmt > 0 && futAmt > 0) {
+            cls += ' ' + intensityClass('active-past', invAmt);
+            hasData = true;
+            tooltip = `Invest: ${fmtAmt(invAmt)} | SIP: ${fmtAmt(futAmt)}`;
+        } else if (invAmt > 0) {
+            cls += ' ' + intensityClass('active-past', invAmt);
+            hasData = true;
+            tooltip = `Invest: ${fmtAmt(invAmt)}`;
+        } else if (spdAmt > 0) {
+            cls += ' ' + intensityClass('active-spend', spdAmt);
+            hasData = true;
+            tooltip = `Spent: ${fmtAmt(spdAmt)}`;
+        } else if (futAmt > 0) {
+            cls += ' active-future';
+            hasData = true;
+            tooltip = `SIP: ${fmtAmt(futAmt)}`;
+        }
 
-        if (d === now.getDate()) cls += ' today-border';
+        if (isCurrentMonth && d === now.getDate()) cls += ' today-border';
 
         let onclick = hasData ? `onclick="showDayDetails('${dStr}')"` : '';
-        html += `<div class="${cls}" ${onclick}>${d}</div>`;
+        html += `<div class="${cls}" title="${tooltip}" ${onclick}>${d}</div>`;
     }
-    html += `</div>`;
+    html += '</div>';
 
-    html += `
-            <div style="display:flex; gap:12px; margin-top:12px; font-size:10px; justify-content:center; color:var(--md-on-surface-variant);">
-                <div style="display:flex; align-items:center; gap:4px;"><div style="width:8px;height:8px;border-radius:2px;background:var(--md-primary);"></div> Past</div>
-                <div style="display:flex; align-items:center; gap:4px;"><div style="width:8px;height:8px;border-radius:2px;background:#D96200;"></div> Upcoming SIP</div>
-            </div>`;
+    let legends = [
+        { cls: 'active-past', label: 'Invest' },
+        { cls: 'active-past-mid', label: ' ' },
+        { cls: 'active-past-light', label: ' ' },
+        { cls: 'active-spend', label: 'Spend' },
+        { cls: 'active-spend-mid', label: ' ' },
+        { cls: 'active-spend-light', label: ' ' },
+        { cls: 'active-future', label: 'SIP' },
+    ];
+
+    html += `<div class="heatmap-legends">`;
+    html += `<div><div class="dot" style="background:var(--md-primary);"></div> Invest <div class="row"><div class="labs"><span>₹500</span><span>₹5K</span></div></div></div>`;
+    html += `<div><div class="dot" style="background:var(--md-tertiary);"></div> Spend</div>`;
+    html += `<div><div class="dot" style="background:#D96200;"></div> SIP</div>`;
+    html += `</div>`;
 
     heatmapGrid.innerHTML = html;
 }
 
+function shiftHeatmapMonth(delta) {
+    heatmapMonth += delta;
+    if (heatmapMonth > 11) { heatmapMonth = 0; heatmapYear++; }
+    if (heatmapMonth < 0) { heatmapMonth = 11; heatmapYear--; }
+    renderHeatmap();
+}
+
 function showDayDetails(dateStr) {
     haptic(20);
+    let dObj = new Date(dateStr);
+    let displayDate = `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })} ${dObj.getFullYear()}`;
+
     let pastInvs = db.investments.filter(inv => inv.date === dateStr && (activeAccountFilter === 'All' || inv.account === activeAccountFilter));
     let futSips = db.recurring.filter(rec => {
         let nextD = new Date(rec.nextRun);
         return getLocalYYYYMMDD(nextD) === dateStr && (activeAccountFilter === 'All' || rec.account === activeAccountFilter);
     });
 
-    let dObj = new Date(dateStr);
-    let displayDate = `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })} ${dObj.getFullYear()}`;
+    let spends = [];
+    try {
+        let sdb = JSON.parse(localStorage.getItem('appHubInvestDb') || '{}');
+        if (sdb.spendTracker && sdb.spendTracker.entries) {
+            spends = sdb.spendTracker.entries.filter(e => {
+                let d = new Date(e.date);
+                return getLocalYYYYMMDD(d) === dateStr;
+            });
+        }
+    } catch (e) {}
 
-    let html = `<div style="text-align:left;">`;
+    let html = '<div style="text-align:left;">';
+
     if (pastInvs.length > 0) {
-        html += `<div style="font-size:13px; font-weight:700; color:var(--md-primary); margin-bottom:8px; text-transform:uppercase;">Invested</div>`;
+        html += `<div style="font-size:13px;font-weight:700;color:var(--md-primary);margin-bottom:8px;">💰 Investments</div>`;
         pastInvs.forEach(i => {
-            html += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--md-surface-container-highest);">
-                        <div><div style="font-weight:500;">${i.type}</div><div style="font-size:12px; color:var(--md-outline);">${i.note || ''}</div></div>
-                        <div style="font-weight:600; color:var(--md-on-surface);">+${formatMoney(i.amount)}</div>
-                    </div>`;
+            html += `<div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--md-surface-container-highest);">
+                <div><div style="font-weight:500;">${i.type}</div><div style="font-size:12px;color:var(--md-outline);">${i.note || ''}</div></div>
+                <div style="font-weight:600;color:var(--md-on-surface);">+${formatMoney(i.amount)}</div>
+            </div>`;
         });
     }
 
     if (futSips.length > 0) {
-        if (pastInvs.length > 0) html += `<br>`;
-        html += `<div style="font-size:13px; font-weight:700; color:#D96200; margin-bottom:8px; text-transform:uppercase;">Scheduled Auto-SIPs</div>`;
+        if (pastInvs.length > 0) html += '<br>';
+        html += `<div style="font-size:13px;font-weight:700;color:#D96200;margin-bottom:8px;">📅 Scheduled SIPs</div>`;
         futSips.forEach(r => {
-            html += `<div style="display:flex; justify-content:space-between; margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--md-surface-container-highest);">
-                        <div><div style="font-weight:500;">${r.type}</div><div style="font-size:12px; color:var(--md-outline);">${r.note || ''}</div></div>
-                        <div style="font-weight:600; color:var(--md-on-surface);">+${formatMoney(r.amount)}</div>
-                    </div>`;
+            html += `<div style="display:flex;justify-content:space-between;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--md-surface-container-highest);">
+                <div><div style="font-weight:500;">${r.type}</div><div style="font-size:12px;color:var(--md-outline);">${r.note || ''}</div></div>
+                <div style="font-weight:600;color:var(--md-on-surface);">+${formatMoney(r.amount)}</div>
+            </div>`;
         });
     }
-    html += `</div>`;
-    Swal.fire({ title: displayDate, html: html, showConfirmButton: true, confirmButtonText: 'Close' });
+
+    if (spends.length > 0) {
+        let totalSpend = spends.reduce((s, e) => s + e.amount, 0);
+        if (pastInvs.length > 0 || futSips.length > 0) html += '<br>';
+        html += `<div style="font-size:13px;font-weight:700;color:var(--md-tertiary);margin-bottom:8px;">💳 Spending <span style="font-weight:400;font-size:12px;">(${spends.length} txn &middot; ${formatMoney(totalSpend)})</span></div>`;
+        spends.forEach(e => {
+            let cat = e.category || 'Uncategorized';
+            html += `<div style="display:flex;justify-content:space-between;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--md-surface-container-highest);">
+                <div><div style="font-weight:500;font-size:13px;">${e.comment || '—'}</div><div style="font-size:11px;color:var(--md-outline);">${cat}</div></div>
+                <div style="font-weight:600;color:var(--md-error);">${formatMoney(e.amount)}</div>
+            </div>`;
+        });
+    }
+
+    if (!pastInvs.length && !futSips.length && !spends.length) {
+        html += '<div style="padding:20px;text-align:center;color:var(--md-outline);">No activity on this day</div>';
+    }
+
+    html += '</div>';
+    Swal.fire({ title: displayDate, html: html, showConfirmButton: true, confirmButtonText: 'Close', width: 400 });
 }
 
 // ==========================================

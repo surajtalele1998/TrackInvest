@@ -273,14 +273,29 @@
                     </div>
                 </div>
 
-                <div class="carousel-card">
-                    <div style="font-size:13px;font-weight:500;margin-bottom:8px;" id="heatmap-month-title">Consistency
-                        Calendar</div>
-                    <div class="heatmap-grid" id="heatmap-grid"></div>
+                <div class="carousel-card" id="portfolio-summary-card">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                        <span class="material-symbols-rounded" style="font-size:16px;">account_balance</span> Portfolio
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--md-on-surface-variant);">Invested</span><span id="ps-invested" style="font-weight:600;">₹0</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--md-on-surface-variant);">Returns</span><span id="ps-returns" style="font-weight:600;">₹0</span></div>
+                        <div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--md-on-surface-variant);">Assets</span><span id="ps-count" style="font-weight:600;">0</span></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="section-title">📈 12‑Month Trend</div>
+            <div class="section-title" style="justify-content:flex-start;gap:8px;"><span class="material-symbols-rounded" style="font-size:16px;">calendar_month</span> Activity Calendar</div>
+            <div id="heatmap-section" style="margin-bottom:24px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                    <button class="icon-btn" onclick="shiftHeatmapMonth(-1)" id="heatmap-prev" title="Previous month"><span class="material-symbols-rounded">chevron_left</span></button>
+                    <div style="font-size:15px;font-weight:500;color:var(--md-on-surface);flex:1;text-align:center;" id="heatmap-month-title">Activity Calendar</div>
+                    <button class="icon-btn" onclick="shiftHeatmapMonth(1)" id="heatmap-next" title="Next month"><span class="material-symbols-rounded">chevron_right</span></button>
+                </div>
+                <div class="heatmap-grid" id="heatmap-grid"></div>
+            </div>
+
+            <div class="section-title" style="justify-content:flex-start;gap:8px;"><span class="material-symbols-rounded" style="font-size:16px;">trending_up</span> 12‑Month Trend</div>
             <div class="chart-container-js" style="margin-bottom: 24px;"><canvas id="rollingChart"></canvas></div>
 
             <!-- Smart Advisor Card -->

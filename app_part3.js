@@ -295,6 +295,18 @@ function updatePortfolioCalculations() {
     if (activeTab && activeTab.id === 'tab-dashboard') { renderNWChart(); renderRollingChart(); }
     if (activeTab && activeTab.id === 'tab-portfolio') renderDonutChart(typeTotals, totalMarketValue);
 
+    // Portfolio summary card
+    let psInv = document.getElementById('ps-invested');
+    if (psInv) psInv.innerText = formatMoney(totalInvestedAll);
+    let psRet = document.getElementById('ps-returns');
+    if (psRet) {
+        let ret = totalMarketValue - totalInvestedAll;
+        psRet.innerText = (ret >= 0 ? '+' : '') + formatMoney(ret);
+        psRet.style.color = ret >= 0 ? 'var(--md-success)' : 'var(--md-error)';
+    }
+    let psCnt = document.getElementById('ps-count');
+    if (psCnt) psCnt.innerText = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter).length;
+
     renderHeatmap();
     updateStatChips(totalInvestedAll, totalMarketValue, yearTotal, thisMonthTotal);
     renderRecurringSheet();
