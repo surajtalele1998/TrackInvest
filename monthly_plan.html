@@ -8,27 +8,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
     <style>
-        /* ── PLANNER-SPECIFIC TOKENS ── */
         :root {
-            --cat-needs: #BA1A1A;
-            --cat-invest: #415F91;
-            --cat-wants: #186D33;
+            --cat-needs:   #BA1A1A;
+            --cat-invest:  #415F91;
+            --cat-wants:   #186D33;
             --cat-unalloc: #8E9099;
         }
 
         /* ── HERO ── */
         .planner-hero {
-            border-radius: 28px;
-            padding: 24px;
-            margin-bottom: 16px;
-            position: relative;
-            overflow: hidden;
-            transition: background 0.4s, color 0.4s;
+            border-radius: 28px; padding: 24px; margin-bottom: 16px;
+            position: relative; overflow: hidden; transition: background 0.4s, color 0.4s;
         }
-        .planner-hero.surplus  { background: var(--md-primary-container); color: var(--md-on-primary-container); }
-        .planner-hero.zero     { background: var(--md-success-container); color: var(--md-on-success-container); }
-        .planner-hero.deficit  { background: var(--md-error-container);   color: var(--md-on-error-container); }
-
+        .planner-hero.surplus { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+        .planner-hero.zero    { background: var(--md-success-container); color: var(--md-on-success-container); }
+        .planner-hero.deficit { background: var(--md-error-container);   color: var(--md-on-error-container); }
         .hero-balance { font-size: 44px; font-weight: 400; line-height: 1.1; margin: 8px 0; }
         .hero-label   { font-size: 13px; font-weight: 500; opacity: 0.75; }
         .hero-status  {
@@ -38,19 +32,18 @@
             border-radius: 20px; margin-top: 10px;
         }
 
-        /* ── METRIC CHIPS ROW ── */
+        /* ── METRIC CHIPS ── */
         .metric-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; }
         .metric-row::-webkit-scrollbar { display:none; }
         .metric-chip {
             flex-shrink:0; min-width:100px;
-            background: var(--md-surface-container);
-            border-radius: 18px; padding: 12px 16px;
+            background: var(--md-surface-container); border-radius: 18px; padding: 12px 16px;
             display:flex; flex-direction:column; gap:4px;
         }
         .metric-chip-label { font-size:11px; color:var(--md-on-surface-variant); font-weight:500; }
         .metric-chip-val   { font-size:18px; font-weight:600; color:var(--md-on-surface); }
 
-        /* ── STACKED ALLOCATION BAR ── */
+        /* ── ALLOCATION BAR ── */
         .alloc-bar-wrap { margin-bottom:6px; }
         .alloc-bar {
             display:flex; height:20px; border-radius:10px; overflow:hidden;
@@ -58,14 +51,15 @@
         }
         .alloc-seg { transition: width 0.45s cubic-bezier(0.4,0,0.2,1); height:100%; }
         .alloc-legend-row {
-            display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; margin-bottom:20px; font-size:11px; font-weight:600;
+            display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; margin-bottom:20px;
+            font-size:11px; font-weight:600;
         }
         .alloc-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; }
 
-        /* ── BENCHMARK BAR ── */
+        /* ── BENCHMARK ── */
         .benchmark-row {
-            display:flex; gap:4px; margin-bottom:20px; background:var(--md-surface-container);
-            border-radius:12px; padding:12px 16px;
+            display:flex; gap:4px; margin-bottom:20px;
+            background:var(--md-surface-container); border-radius:12px; padding:12px 16px;
         }
         .bench-item { flex:1; text-align:center; }
         .bench-label { font-size:10px; color:var(--md-on-surface-variant); font-weight:500; }
@@ -75,8 +69,8 @@
 
         /* ── CARDS ── */
         .planner-card {
-            background: var(--md-surface-container-low);
-            border-radius: 24px; padding: 20px; margin-bottom: 16px;
+            background: var(--md-surface-container-low); border-radius: 24px;
+            padding: 20px; margin-bottom: 16px;
             border: 1px solid var(--md-surface-container-highest);
         }
         .card-title {
@@ -88,6 +82,25 @@
             padding:3px 10px; border-radius:8px; font-weight:500;
             display:inline-flex; align-items:center; gap:4px; margin-left:auto;
         }
+
+        /* ── PLAN vs ACTUAL BAR ── */
+        .pva-bar {
+            display:flex; gap:0; padding: 10px 14px;
+            background: var(--md-surface-container); border-radius: 14px;
+            margin-bottom: 14px; align-items: center;
+        }
+        .pva-col { flex:1; text-align:center; }
+        .pva-label { font-size:10px; color:var(--md-on-surface-variant); font-weight:500; }
+        .pva-val   { font-size:14px; font-weight:700; margin-top:2px; }
+        .pva-divider { width:1px; background: var(--md-outline-variant); align-self:stretch; margin: 0 4px; }
+        .pva-status-chip {
+            display:inline-flex; align-items:center; gap:4px;
+            font-size:11px; font-weight:700; padding: 4px 10px;
+            border-radius:20px; white-space:nowrap;
+        }
+        .pva-over  { background:var(--md-error-container);   color:var(--md-on-error-container); }
+        .pva-under { background:var(--md-success-container); color:var(--md-on-success-container); }
+        .pva-match { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
 
         /* ── ROWS ── */
         .plan-row {
@@ -114,7 +127,7 @@
         .plan-input-box:focus-within { border-color:var(--md-primary); }
         .plan-input-box span { font-size:13px; color:var(--md-outline); margin-right:3px; }
         .plan-input {
-            width:100px; text-align:right; font-size:16px; font-weight:600;
+            width:110px; text-align:right; font-size:16px; font-weight:600;
             color:var(--md-on-surface); background:transparent;
             border:none; outline:none; font-family:inherit;
         }
@@ -126,7 +139,21 @@
         }
         .del-btn:hover { color:var(--md-error); background:var(--md-error-container); }
 
-        /* ── EXTRACTED READ-ONLY ITEMS ── */
+        /* ── INCOME ROWS ── */
+        .income-source-row {
+            display:flex; align-items:center; gap:10px;
+            padding: 9px 0; border-bottom: 1px solid var(--md-surface-container-highest);
+        }
+        .income-source-row:last-child { border-bottom:none; }
+        .income-name-input {
+            flex:1; font-size:15px; font-weight:500; color:var(--md-on-surface);
+            background:transparent; border:none; outline:none;
+            border-bottom:1px dashed transparent; font-family:inherit; cursor:text;
+            min-width:0;
+        }
+        .income-name-input:focus { border-bottom-color:var(--md-primary); }
+
+        /* ── EXTRACTED ROWS ── */
         .extracted-row {
             display:flex; justify-content:space-between; align-items:center;
             padding:10px 0; border-bottom:1px solid var(--md-surface-container-highest);
@@ -141,16 +168,6 @@
             display:flex; justify-content:space-between; align-items:center;
             border:1px solid var(--md-surface-container-highest);
         }
-
-        /* ── THIS MONTH ACTUAL ── */
-        .actual-chip {
-            display:inline-flex; align-items:center; gap:4px;
-            font-size:12px; font-weight:600; padding:3px 10px;
-            border-radius:10px; margin-left:8px;
-        }
-        .actual-over  { background:var(--md-error-container);   color:var(--md-on-error-container); }
-        .actual-under { background:var(--md-success-container);  color:var(--md-on-success-container); }
-        .actual-match { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
 
         /* ── ADD BUTTON ── */
         .add-row-btn {
@@ -172,15 +189,6 @@
         .total-row span { color:var(--md-on-surface-variant); }
         .total-row strong { color:var(--md-on-surface); font-size:16px; }
 
-        /* ── INCOME CARD ── */
-        .income-row {
-            display:flex; align-items:center; gap:12px;
-            padding:8px 0;
-        }
-        .income-row .lbl  { flex:1; }
-        .income-row .lbl .name { font-size:15px; font-weight:500; }
-        .income-row .lbl .sub  { font-size:12px; color:var(--md-outline); margin-top:2px; }
-
         /* ── AI TIP ── */
         .ai-tip-card {
             background:var(--md-secondary-container); color:var(--md-on-secondary-container);
@@ -191,20 +199,16 @@
         .ai-tip-card .text { font-size:13px; line-height:1.5; flex:1; }
         .ai-tip-card .text b { display:block; font-size:14px; margin-bottom:4px; }
 
-        /* ── EMPTY STATE ── */
-        .empty-hint {
-            text-align:center; padding:20px; color:var(--md-outline);
-            font-size:13px;
-        }
+        /* ── EMPTY ── */
+        .empty-hint { text-align:center; padding:20px; color:var(--md-outline); font-size:13px; }
 
-        /* ── SAVE BAR (sticky bottom) ── */
+        /* ── SAVE BAR ── */
         .save-bar {
             position:fixed; bottom:0; left:0; right:0;
             padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
             background:var(--md-surface-container-low);
             border-top:1px solid var(--md-outline-variant);
-            z-index:20;
-            display:flex; gap:10px;
+            z-index:20; display:flex; gap:10px;
         }
 
         /* ── MONTH NAV ── */
@@ -221,15 +225,21 @@
         }
         .month-nav button:active { background:var(--md-surface-container); }
 
-        /* Spacer for sticky bar */
         .bottom-spacer { height: 88px; }
 
         @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         .spin { animation:spin 1s linear infinite; display:inline-block; }
+
+        .horizon-input {
+            width: 52px; text-align:center; font-size:13px; font-weight:600;
+            color: var(--md-primary); background: var(--md-surface-container);
+            border: 1.5px solid var(--md-outline-variant); border-radius: 8px;
+            padding: 3px 6px; outline:none; font-family:inherit;
+        }
+        .horizon-input:focus { border-color: var(--md-primary); }
     </style>
 </head>
 <body>
-    <!-- TOP BAR -->
     <header class="top-app-bar" style="gap:8px;">
         <button class="icon-btn" onclick="window.location.href='index.html'">
             <span class="material-symbols-rounded">arrow_back</span>
@@ -237,7 +247,7 @@
         <div class="app-title" style="flex:1;">Monthly Planner</div>
         <div class="month-nav">
             <button onclick="shiftMonth(-1)"><span class="material-symbols-rounded" style="font-size:18px;">chevron_left</span></button>
-            <span id="month-label">June 2025</span>
+            <span id="month-label">—</span>
             <button onclick="shiftMonth(1)"><span class="material-symbols-rounded" style="font-size:18px;">chevron_right</span></button>
         </div>
         <button class="icon-btn" onclick="triggerAITip()" title="AI Insight">
@@ -279,10 +289,10 @@
 
         <!-- ALLOCATION BAR -->
         <div class="alloc-bar-wrap">
-            <div class="alloc-bar" id="alloc-bar">
-                <div class="alloc-seg" id="seg-needs"  style="background:var(--cat-needs);  width:0;"></div>
-                <div class="alloc-seg" id="seg-invest" style="background:var(--cat-invest); width:0;"></div>
-                <div class="alloc-seg" id="seg-wants"  style="background:var(--cat-wants);  width:0;"></div>
+            <div class="alloc-bar">
+                <div class="alloc-seg" id="seg-needs"   style="background:var(--cat-needs);  width:0;"></div>
+                <div class="alloc-seg" id="seg-invest"  style="background:var(--cat-invest); width:0;"></div>
+                <div class="alloc-seg" id="seg-wants"   style="background:var(--cat-wants);  width:0;"></div>
                 <div class="alloc-seg" id="seg-unalloc" style="background:var(--cat-unalloc); width:0%; opacity:0.3;"></div>
             </div>
             <div class="alloc-legend-row" id="alloc-legend"></div>
@@ -292,22 +302,22 @@
         <div class="benchmark-row">
             <div class="bench-item">
                 <div class="bench-label">Needs</div>
-                <div class="bench-val" id="b-needs" style="color:var(--cat-needs)">0%</div>
+                <div class="bench-val" id="b-needs">0%</div>
                 <div class="bench-ref">Ideal ≤ 50%</div>
             </div>
             <div class="bench-item">
                 <div class="bench-label">Investments</div>
-                <div class="bench-val" id="b-invest" style="color:var(--cat-invest)">0%</div>
+                <div class="bench-val" id="b-invest">0%</div>
                 <div class="bench-ref">Ideal ≥ 20%</div>
             </div>
             <div class="bench-item">
                 <div class="bench-label">Wants</div>
-                <div class="bench-val" id="b-wants" style="color:var(--cat-wants)">0%</div>
+                <div class="bench-val" id="b-wants">0%</div>
                 <div class="bench-ref">Ideal ≤ 30%</div>
             </div>
         </div>
 
-        <!-- AI TIP CARD (hidden until triggered) -->
+        <!-- AI TIP -->
         <div class="ai-tip-card" id="ai-tip-card" style="display:none;">
             <span class="material-symbols-rounded icon">lightbulb</span>
             <div class="text">
@@ -321,17 +331,25 @@
             <div class="card-title">
                 <span class="material-symbols-rounded">account_balance_wallet</span> Income
             </div>
-            <div class="income-row" id="income-rows">
-                <!-- Rendered by JS -->
+            <div id="income-rows"></div>
+            <button class="add-row-btn" onclick="addIncomeRow()">
+                <span class="material-symbols-rounded" style="font-size:18px;">add</span> Add Income Source
+            </button>
+            <div class="total-row">
+                <span>Total Income</span>
+                <strong id="total-income-val">₹0</strong>
             </div>
         </div>
 
-        <!-- EXTRACTED FROM APP CARD -->
+        <!-- AUTO-EXTRACTED CARD -->
         <div class="planner-card">
             <div class="card-title">
                 <span class="material-symbols-rounded">sync</span> Auto-Extracted
                 <span class="card-badge"><span class="material-symbols-rounded" style="font-size:12px;">database</span> Live Data</span>
             </div>
+
+            <!-- Plan vs Actual: investments -->
+            <div id="invest-pva" class="pva-bar" style="display:none;"></div>
 
             <div class="extracted-row">
                 <div>
@@ -345,7 +363,13 @@
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div>
                         <div style="font-weight:500; font-size:15px;">Goal Provisions</div>
-                        <div style="font-size:12px; color:var(--md-outline);">Monthly needed to hit targets</div>
+                        <div style="font-size:12px; color:var(--md-outline); display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:2px;">
+                            Monthly needed over
+                            <input type="number" class="horizon-input" id="goal-horizon" value="24"
+                                   min="1" max="360" title="Months to achieve goals"
+                                   onchange="extractSIPsAndGoals(); recalc();">
+                            months
+                        </div>
                     </div>
                     <div class="extracted-val" style="color:var(--md-secondary);">₹<span id="extracted-goals">0</span></div>
                 </div>
@@ -353,7 +377,7 @@
             </div>
 
             <div class="total-row" style="margin-top:14px;">
-                <span>Total Investments</span>
+                <span>Total Planned Investments</span>
                 <strong id="total-invest-val">₹0</strong>
             </div>
         </div>
@@ -364,6 +388,7 @@
                 <span class="material-symbols-rounded" style="color:var(--cat-needs);">gavel</span>
                 Fixed Needs
             </div>
+            <div id="needs-pva" class="pva-bar" style="display:none;"></div>
             <div id="needs-container"></div>
             <button class="add-row-btn" onclick="addRow('needs')">
                 <span class="material-symbols-rounded" style="font-size:18px;">add</span> Add Expense
@@ -374,12 +399,13 @@
             </div>
         </div>
 
-        <!-- WANTS / DISCRETIONARY CARD -->
+        <!-- WANTS CARD -->
         <div class="planner-card">
             <div class="card-title">
                 <span class="material-symbols-rounded" style="color:var(--cat-wants);">celebration</span>
                 Wants & Lifestyle
             </div>
+            <div id="wants-pva" class="pva-bar" style="display:none;"></div>
             <div id="wants-container"></div>
             <button class="add-row-btn" onclick="addRow('wants')">
                 <span class="material-symbols-rounded" style="font-size:18px;">add</span> Add Category
@@ -398,7 +424,6 @@
         <div class="bottom-spacer"></div>
     </main>
 
-    <!-- STICKY SAVE BAR -->
     <div class="save-bar">
         <button class="btn-secondary" style="flex:0.4; padding:14px 10px; font-size:13px;" onclick="resetPlanner()">
             Reset
@@ -415,24 +440,23 @@
 // STATE
 // ──────────────────────────────────────────────────────────────
 let db = {};
-let extractedSIPTotal = 0;
+let extractedSIPTotal  = 0;
 let extractedGoalTotal = 0;
-let viewOffset = 0; // months from today (0 = current month)
+let viewOffset = 0;
+let actualInvest = 0;
 
 let plan = {
-    income: [
-        { name: "Take-home Salary", amount: 0 }
-    ],
+    income: [{ name: 'Take-home Salary', amount: 0 }],
     needs: [
-        { name: "Rent & Housing", amount: 0 },
-        { name: "Groceries & Household", amount: 0 },
-        { name: "Utilities & Bills", amount: 0 },
-        { name: "Transport & Fuel", amount: 0 }
+        { name: 'Rent & Housing',        amount: 0 },
+        { name: 'Groceries & Household', amount: 0 },
+        { name: 'Utilities & Bills',     amount: 0 },
+        { name: 'Transport & Fuel',      amount: 0 }
     ],
     wants: [
-        { name: "Dining & Restaurants", amount: 0 },
-        { name: "Shopping & Lifestyle", amount: 0 },
-        { name: "Entertainment", amount: 0 }
+        { name: 'Dining & Restaurants',  amount: 0 },
+        { name: 'Shopping & Lifestyle',  amount: 0 },
+        { name: 'Entertainment',         amount: 0 }
     ]
 };
 
@@ -449,7 +473,7 @@ function getViewDate() {
 function shiftMonth(delta) {
     viewOffset += delta;
     updateMonthLabel();
-    loadActualInvested();
+    loadActuals();
     recalc();
 }
 
@@ -469,57 +493,45 @@ window.onload = function () {
         if (raw) db = JSON.parse(raw);
     } catch (e) { console.warn('DB read failed', e); }
 
-    // Load saved plan if exists, then normalize to ensure all sections are arrays
     if (db.monthlyPlanConfig) {
         const saved = db.monthlyPlanConfig;
-
-        // Old format had income as a plain number — upgrade it
+        // Normalise old format (income was a number)
         plan.income = Array.isArray(saved.income)
             ? saved.income
             : [{ name: 'Take-home Salary', amount: parseFloat(saved.income) || 0 }];
-
         plan.needs = Array.isArray(saved.needs) ? saved.needs : plan.needs;
         plan.wants = Array.isArray(saved.wants) ? saved.wants : plan.wants;
+        if (saved.goalHorizon) document.getElementById('goal-horizon').value = saved.goalHorizon;
     } else {
-        // Smart defaults from app data
-        const monthlySalary = db.userProfile?.salary
-            ? Math.round(db.userProfile.salary / 12)
-            : 0;
+        const monthlySalary = db.userProfile?.salary ? Math.round(db.userProfile.salary / 12) : 0;
         if (monthlySalary) plan.income[0].amount = monthlySalary;
-
-        if (db.userProfile?.monthlyExpense) {
-            plan.needs[0].amount = db.userProfile.monthlyExpense;
-        }
+        if (db.userProfile?.monthlyExpense) plan.needs[0].amount = db.userProfile.monthlyExpense;
     }
 
     extractSIPsAndGoals();
-    loadActualInvested();
+    loadActuals();
     renderAll();
 };
 
 // ──────────────────────────────────────────────────────────────
-// EXTRACT LIVE DATA FROM DB
+// EXTRACT LIVE DATA
 // ──────────────────────────────────────────────────────────────
 function extractSIPsAndGoals() {
-    // SIPs
-    extractedSIPTotal = (db.recurring || [])
-        .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-
+    extractedSIPTotal = (db.recurring || []).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const sipCount = (db.recurring || []).length;
     document.getElementById('extracted-sips').textContent =
         Math.round(extractedSIPTotal).toLocaleString('en-IN');
     document.getElementById('sip-sub-text').textContent =
-        sipCount > 0 ? `${sipCount} active auto-SIP${sipCount > 1 ? 's' : ''}` : 'No recurring SIPs set';
+        sipCount > 0 ? `${sipCount} active SIP${sipCount > 1 ? 's' : ''}` : 'No recurring SIPs set';
 
-    // Goals — use `goal.target` and `goal.saved` (correct app fields)
     extractedGoalTotal = 0;
+    const horizon = Math.max(1, parseInt(document.getElementById('goal-horizon').value) || 24);
     const container = document.getElementById('goals-breakdown-list');
     container.innerHTML = '';
 
     (db.goals || []).forEach(goal => {
         const target = parseFloat(goal.target) || 0;
-        const saved  = parseFloat(goal.saved) || 0;
-        // Also account for linked category's invested amount
+        const saved  = parseFloat(goal.saved)  || 0;
         let linkedSaved = 0;
         if (goal.linkedCategory && db.investments) {
             linkedSaved = db.investments
@@ -528,13 +540,9 @@ function extractSIPsAndGoals() {
         }
         const totalSaved = saved + linkedSaved;
         const diff = target - totalSaved;
-
         if (diff > 100) {
-            // No deadline field in app — use a sensible default (24 months)
-            const monthsRemaining = 24;
-            const monthly = Math.round(diff / monthsRemaining);
+            const monthly = Math.round(diff / horizon);
             extractedGoalTotal += monthly;
-
             const el = document.createElement('div');
             el.className = 'goal-sub-item';
             const pct = Math.min(100, Math.round((totalSaved / target) * 100));
@@ -564,12 +572,13 @@ function updateTotalInvestDisplay() {
 }
 
 // ──────────────────────────────────────────────────────────────
-// ACTUAL INVESTED THIS MONTH (from ledger)
+// LOAD ACTUALS FROM LEDGER
 // ──────────────────────────────────────────────────────────────
-function loadActualInvested() {
+function loadActuals() {
     const d = getViewDate();
     const m = d.getMonth(), y = d.getFullYear();
-    const actual = (db.investments || [])
+
+    actualInvest = (db.investments || [])
         .filter(i => {
             const id = new Date(i.date);
             return id.getMonth() === m && id.getFullYear() === y && !i.isDividend;
@@ -577,44 +586,135 @@ function loadActualInvested() {
         .reduce((s, i) => s + i.amount, 0);
 
     document.getElementById('m-actual-invest').textContent =
-        '₹' + Math.round(actual).toLocaleString('en-IN');
+        '₹' + Math.round(actualInvest).toLocaleString('en-IN');
+
+    updatePVABars();
+}
+
+// ──────────────────────────────────────────────────────────────
+// PLAN vs ACTUAL BARS
+// ──────────────────────────────────────────────────────────────
+function updatePVABars() {
+    const plannedInvest = extractedSIPTotal + extractedGoalTotal;
+    const plannedNeeds  = plan.needs.reduce((s, i) => s + i.amount, 0);
+    const plannedWants  = plan.wants.reduce((s, i) => s + i.amount, 0);
+
+    // Investments: always show (actual from ledger)
+    renderPVA('invest-pva', plannedInvest, actualInvest, true);
+
+    // Needs & Wants: only show if monthlyExpense is set (best-effort proxy)
+    const expProxy = db.userProfile?.monthlyExpense || 0;
+    if (expProxy > 0 && viewOffset === 0) {
+        // Approximate from total monthly expense (70/30 heuristic)
+        renderPVA('needs-pva', plannedNeeds, Math.round(expProxy * 0.70), false);
+        renderPVA('wants-pva', plannedWants, Math.round(expProxy * 0.30), false);
+    } else {
+        document.getElementById('needs-pva').style.display = 'none';
+        document.getElementById('wants-pva').style.display = 'none';
+    }
+}
+
+function renderPVA(elId, planned, actual, alwaysShow) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (!alwaysShow && actual === 0) { el.style.display = 'none'; return; }
+    el.style.display = 'flex';
+
+    const diff    = actual - planned;
+    const margin  = planned * 0.02;
+    const isOver  = diff >  margin;
+    const isUnder = diff < -margin;
+    const cls  = isOver ? 'pva-over' : isUnder ? 'pva-under' : 'pva-match';
+    const icon = isOver ? 'arrow_upward' : isUnder ? 'arrow_downward' : 'check';
+    const text = isOver
+        ? `₹${Math.abs(Math.round(diff)).toLocaleString('en-IN')} over`
+        : isUnder
+        ? `₹${Math.abs(Math.round(diff)).toLocaleString('en-IN')} under`
+        : 'On track';
+
+    el.innerHTML = `
+        <div class="pva-col">
+            <div class="pva-label">Planned</div>
+            <div class="pva-val" style="color:var(--md-primary);">₹${Math.round(planned).toLocaleString('en-IN')}</div>
+        </div>
+        <div class="pva-divider"></div>
+        <div class="pva-col">
+            <div class="pva-label">Actual${actual === 0 ? ' (none yet)' : ''}</div>
+            <div class="pva-val">₹${Math.round(actual).toLocaleString('en-IN')}</div>
+        </div>
+        <div class="pva-divider"></div>
+        <div style="display:flex;align-items:center;padding:0 2px;">
+            <span class="pva-status-chip ${cls}">
+                <span class="material-symbols-rounded" style="font-size:13px;">${icon}</span>${text}
+            </span>
+        </div>`;
 }
 
 // ──────────────────────────────────────────────────────────────
 // RENDER
 // ──────────────────────────────────────────────────────────────
 function renderAll() {
-    renderSection('income');
+    renderIncomeSection();
     renderSection('needs');
     renderSection('wants');
     recalc();
 }
 
-function renderSection(type) {
-    const container = document.getElementById(type === 'income' ? 'income-rows' : `${type}-container`);
+function renderIncomeSection() {
+    const container = document.getElementById('income-rows');
     if (!container) return;
-    // Ensure the section is always an array — guards against corrupted saves
+    if (!Array.isArray(plan.income)) plan.income = [];
+    container.innerHTML = '';
+    plan.income.forEach((item, i) => container.appendChild(makeIncomeRow(item, i)));
+}
+
+function renderSection(type) {
+    const container = document.getElementById(`${type}-container`);
+    if (!container) return;
     if (!Array.isArray(plan[type])) plan[type] = [];
     container.innerHTML = '';
     plan[type].forEach((item, i) => container.appendChild(makeRow(item, i, type)));
 }
 
+function makeIncomeRow(item, index) {
+    const wrap = document.createElement('div');
+    wrap.className = 'income-source-row';
+    const canDelete = plan.income.length > 1;
+    wrap.innerHTML = `
+        <input type="text" class="income-name-input" value="${escapeHtml(item.name)}"
+            onchange="updateName('income',${index},this.value)" placeholder="Source name">
+        <div class="plan-input-box">
+            <span>₹</span>
+            <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
+                oninput="updateAmount('income',${index},this.value)">
+        </div>
+        ${canDelete ? `<button class="del-btn" onclick="removeIncomeRow(${index})" title="Remove">
+            <span class="material-symbols-rounded" style="font-size:18px;">delete</span></button>` : ''}
+    `;
+    return wrap;
+}
+
 function makeRow(item, index, type) {
     const wrap = document.createElement('div');
-    wrap.className = type === 'income' ? 'income-row' : 'plan-row';
-
+    wrap.className = 'plan-row';
     const hints = {
-        needs: { 'Rent & Housing': 'EMI / rent', 'Groceries & Household': 'monthly grocery run', 'Utilities & Bills': 'electricity, internet, gas', 'Transport & Fuel': 'commute costs' },
-        wants: { 'Dining & Restaurants': 'eating out', 'Shopping & Lifestyle': 'clothing, personal care', 'Entertainment': 'OTT, movies, events' },
-        income: { 'Take-home Salary': 'after-tax monthly income', 'Freelance / Side': 'variable income' }
+        needs: {
+            'Rent & Housing': 'EMI / rent',
+            'Groceries & Household': 'monthly grocery run',
+            'Utilities & Bills': 'electricity, internet, gas',
+            'Transport & Fuel': 'commute costs'
+        },
+        wants: {
+            'Dining & Restaurants': 'eating out',
+            'Shopping & Lifestyle': 'clothing, personal care',
+            'Entertainment': 'OTT, movies, events'
+        }
     };
-    const hint = (hints[type] && hints[type][item.name]) || '';
-
+    const hint = hints[type]?.[item.name] || '';
     wrap.innerHTML = `
         <div class="plan-row-label" style="flex:1; min-width:0;">
             <input type="text" class="name" value="${escapeHtml(item.name)}"
-                onchange="updateName('${type}',${index},this.value)"
-                title="Click to rename">
+                onchange="updateName('${type}',${index},this.value)" title="Click to rename">
             ${hint ? `<div class="hint">${hint}</div>` : ''}
         </div>
         <div class="plan-input-box">
@@ -622,11 +722,9 @@ function makeRow(item, index, type) {
             <input type="number" class="plan-input" value="${item.amount || ''}" placeholder="0"
                 oninput="updateAmount('${type}',${index},this.value)">
         </div>
-        ${type !== 'income' ? `
         <button class="del-btn" onclick="removeRow('${type}',${index})" title="Remove">
             <span class="material-symbols-rounded" style="font-size:18px;">delete</span>
-        </button>` : ''}
-    `;
+        </button>`;
     return wrap;
 }
 
@@ -636,6 +734,7 @@ function makeRow(item, index, type) {
 function updateAmount(type, index, val) {
     plan[type][index].amount = parseFloat(val) || 0;
     recalc();
+    updatePVABars();
 }
 
 function updateName(type, index, val) {
@@ -646,34 +745,47 @@ function addRow(type) {
     plan[type].push({ name: type === 'needs' ? 'New Expense' : 'New Category', amount: 0 });
     renderSection(type);
     recalc();
-    // Focus the new name input
     const rows = document.querySelectorAll(`#${type}-container .plan-row`);
     const last = rows[rows.length - 1];
-    if (last) {
-        const nameInput = last.querySelector('.name');
-        if (nameInput) { nameInput.select(); nameInput.focus(); }
-    }
+    if (last) { const ni = last.querySelector('.name'); if (ni) { ni.select(); ni.focus(); } }
 }
 
 function removeRow(type, index) {
     plan[type].splice(index, 1);
     renderSection(type);
     recalc();
+    updatePVABars();
+}
+
+function addIncomeRow() {
+    plan.income.push({ name: 'Freelance / Side Income', amount: 0 });
+    renderIncomeSection();
+    recalc();
+    const rows = document.querySelectorAll('#income-rows .income-source-row');
+    const last = rows[rows.length - 1];
+    if (last) { const ni = last.querySelector('input[type="text"]'); if (ni) { ni.select(); ni.focus(); } }
+}
+
+function removeIncomeRow(index) {
+    if (plan.income.length <= 1) { snack('Need at least one income source.', 'info'); return; }
+    plan.income.splice(index, 1);
+    renderIncomeSection();
+    recalc();
 }
 
 function autoFillWants() {
-    const income = plan.income.reduce((s, i) => s + i.amount, 0);
-    const totalNeeds = plan.needs.reduce((s, i) => s + i.amount, 0);
+    const income      = plan.income.reduce((s, i) => s + i.amount, 0);
+    const totalNeeds  = plan.needs.reduce((s, i) => s + i.amount, 0);
     const totalInvest = extractedSIPTotal + extractedGoalTotal;
-    const surplus = income - totalNeeds - totalInvest;
-
+    const surplus     = income - totalNeeds - totalInvest;
     if (surplus <= 0 || plan.wants.length === 0) {
-        snack('No surplus left to split among wants.', 'info'); return;
+        snack('No surplus to split among wants.', 'info'); return;
     }
     const split = Math.round(surplus / plan.wants.length);
     plan.wants.forEach(w => w.amount = split);
     renderSection('wants');
     recalc();
+    updatePVABars();
     snack('Surplus split equally across wants ✓', 'check_circle');
 }
 
@@ -688,28 +800,41 @@ function recalc() {
     const totalOut    = totalNeeds + totalWants + totalInvest;
     const balance     = income - totalOut;
 
-    // ── Update totals ──
-    document.getElementById('total-needs-val').textContent = '₹' + Math.round(totalNeeds).toLocaleString('en-IN');
-    document.getElementById('total-wants-val').textContent = '₹' + Math.round(totalWants).toLocaleString('en-IN');
-    document.getElementById('m-total-out').textContent     = '₹' + Math.round(totalOut).toLocaleString('en-IN');
+    document.getElementById('total-income-val').textContent = '₹' + Math.round(income).toLocaleString('en-IN');
+    document.getElementById('total-needs-val').textContent  = '₹' + Math.round(totalNeeds).toLocaleString('en-IN');
+    document.getElementById('total-wants-val').textContent  = '₹' + Math.round(totalWants).toLocaleString('en-IN');
+    document.getElementById('m-total-out').textContent      = '₹' + Math.round(totalOut).toLocaleString('en-IN');
     updateTotalInvestDisplay();
 
-    // ── Hero ──
-    const hero = document.getElementById('hero-card');
-    const balEl = document.getElementById('hero-balance');
-    const msgEl = document.getElementById('hero-msg');
+    // Hero
+    const hero   = document.getElementById('hero-card');
+    const balEl  = document.getElementById('hero-balance');
+    const msgEl  = document.getElementById('hero-msg');
     const iconEl = document.getElementById('hero-icon');
 
     balEl.textContent = (balance >= 0 ? '₹' : '-₹') +
         Math.abs(Math.round(balance)).toLocaleString('en-IN');
 
     hero.className = 'planner-hero ';
-    if (balance < 0)        { hero.className += 'deficit';  iconEl.textContent = 'warning'; msgEl.textContent = 'Over-allocated! Reduce expenses or increase income.'; }
-    else if (balance === 0) { hero.className += 'zero';     iconEl.textContent = 'check_circle'; msgEl.textContent = 'Perfect zero-based budget achieved!'; }
-    else if (balance < income * 0.05) { hero.className += 'zero'; iconEl.textContent = 'check_circle'; msgEl.textContent = 'Nearly zero-based — great allocation!'; }
-    else                    { hero.className += 'surplus';  iconEl.textContent = 'info'; msgEl.textContent = `₹${Math.round(balance).toLocaleString('en-IN')} unallocated — assign it or save more.`; }
+    if (balance < 0) {
+        hero.className += 'deficit';
+        iconEl.textContent = 'warning';
+        msgEl.textContent  = 'Over-allocated! Reduce expenses or increase income.';
+    } else if (balance <= income * 0.02) {
+        hero.className += 'zero';
+        iconEl.textContent = 'check_circle';
+        msgEl.textContent  = income === 0 ? 'Enter your income to begin' : 'Perfect zero-based budget!';
+    } else if (balance < income * 0.05) {
+        hero.className += 'zero';
+        iconEl.textContent = 'check_circle';
+        msgEl.textContent  = 'Nearly zero-based — great allocation!';
+    } else {
+        hero.className += 'surplus';
+        iconEl.textContent = 'info';
+        msgEl.textContent  = `₹${Math.round(balance).toLocaleString('en-IN')} unallocated — assign it or save more.`;
+    }
 
-    // ── Metrics ──
+    // Metrics
     const savingsRate = income > 0 ? Math.round((totalInvest / income) * 100) : 0;
     const needsRatio  = income > 0 ? Math.round((totalNeeds  / income) * 100) : 0;
     const srEl = document.getElementById('m-savings-rate');
@@ -719,16 +844,16 @@ function recalc() {
     nrEl.textContent = needsRatio + '%';
     nrEl.style.color = needsRatio > 50 ? 'var(--cat-needs)' : 'var(--md-success)';
 
-    // ── Allocation bar ──
+    // Allocation bar
     if (income > 0) {
         const pN = Math.min(100, (totalNeeds  / income) * 100);
         const pI = Math.min(100 - pN,  (totalInvest / income) * 100);
         const pW = Math.min(100 - pN - pI, (totalWants  / income) * 100);
         const pU = Math.max(0, 100 - pN - pI - pW);
 
-        document.getElementById('seg-needs').style.width  = pN + '%';
-        document.getElementById('seg-invest').style.width = pI + '%';
-        document.getElementById('seg-wants').style.width  = pW + '%';
+        document.getElementById('seg-needs').style.width   = pN + '%';
+        document.getElementById('seg-invest').style.width  = pI + '%';
+        document.getElementById('seg-wants').style.width   = pW + '%';
         document.getElementById('seg-unalloc').style.width = pU + '%';
 
         document.getElementById('alloc-legend').innerHTML = `
@@ -738,22 +863,25 @@ function recalc() {
             ${pU > 0 ? `<span><span class="alloc-dot" style="background:var(--cat-unalloc)"></span>Unallocated ${Math.round(pU)}%</span>` : ''}
         `;
 
-        // Benchmarks with color feedback
         setBench('b-needs',  Math.round(pN), 50,  true);
         setBench('b-invest', Math.round(pI), 20,  false);
         setBench('b-wants',  Math.round(pW), 30,  true);
     } else {
         document.getElementById('alloc-legend').innerHTML = '';
-        ['seg-needs','seg-invest','seg-wants','seg-unalloc'].forEach(id => document.getElementById(id).style.width = '0');
-        ['b-needs','b-invest','b-wants'].forEach(id => document.getElementById(id).textContent = '—');
+        ['seg-needs','seg-invest','seg-wants','seg-unalloc'].forEach(id =>
+            document.getElementById(id).style.width = '0');
+        ['b-needs','b-invest','b-wants'].forEach(id => {
+            const el = document.getElementById(id);
+            el.textContent = '—'; el.style.color = '';
+        });
     }
 }
 
 function setBench(elId, val, threshold, lowerIsBetter) {
     const el = document.getElementById(elId);
     el.textContent = val + '%';
-    const ok = lowerIsBetter ? (val <= threshold) : (val >= threshold);
-    el.style.color = ok ? 'var(--md-success)' : 'var(--cat-needs)';
+    el.style.color = (lowerIsBetter ? val <= threshold : val >= threshold)
+        ? 'var(--md-success)' : 'var(--cat-needs)';
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -761,12 +889,16 @@ function setBench(elId, val, threshold, lowerIsBetter) {
 // ──────────────────────────────────────────────────────────────
 function savePlanner() {
     try {
-        db.monthlyPlanConfig = plan;
-        // Sync monthlyExpense = total of needs
+        db.monthlyPlanConfig = {
+            income:      plan.income,
+            needs:       plan.needs,
+            wants:       plan.wants,
+            goalHorizon: parseInt(document.getElementById('goal-horizon').value) || 24
+        };
         if (!db.userProfile) db.userProfile = {};
         db.userProfile.monthlyExpense = plan.needs.reduce((s, i) => s + i.amount, 0);
         localStorage.setItem('appHubInvestDb', JSON.stringify(db));
-        snack('Plan saved successfully!', 'check_circle');
+        snack('Plan saved!', 'check_circle');
     } catch (e) {
         snack('Save failed — storage may be full.', 'error');
     }
@@ -780,7 +912,9 @@ function resetPlanner() {
         needs:  [{ name:'Rent & Housing',amount:0},{name:'Groceries & Household',amount:0},{name:'Utilities & Bills',amount:0},{name:'Transport & Fuel',amount:0}],
         wants:  [{ name:'Dining & Restaurants',amount:0},{name:'Shopping & Lifestyle',amount:0},{name:'Entertainment',amount:0}]
     };
+    document.getElementById('goal-horizon').value = 24;
     renderAll();
+    updatePVABars();
     snack('Plan reset.', 'refresh');
 }
 
@@ -791,11 +925,9 @@ async function triggerAITip() {
     if (!db.geminiKey && !db.groqKey) {
         snack('Add an API key in Settings for AI tips.', 'key'); return;
     }
-
-    const tipCard = document.getElementById('ai-tip-card');
+    const tipCard  = document.getElementById('ai-tip-card');
     const tipTitle = document.getElementById('ai-tip-title');
     const tipBody  = document.getElementById('ai-tip-body');
-
     tipCard.style.display = 'flex';
     tipTitle.textContent = 'Thinking…';
     tipBody.innerHTML = '<span class="material-symbols-rounded spin" style="font-size:16px;">autorenew</span>';
@@ -806,14 +938,12 @@ async function triggerAITip() {
     const totalInvest = extractedSIPTotal + extractedGoalTotal;
     const savingsRate = income > 0 ? Math.round((totalInvest / income) * 100) : 0;
 
-    const prompt = `Monthly budget data:
-Income: ₹${income}, Fixed needs: ₹${totalNeeds}, Investments: ₹${totalInvest}, Wants: ₹${totalWants}, Savings rate: ${savingsRate}%.
-Give ONE short, specific, actionable tip for this person in 2 sentences max. Focus on the biggest improvement opportunity. Start with a relevant emoji.`;
+    const prompt = `Monthly budget for an Indian user: Income ₹${income}, Fixed needs ₹${totalNeeds}, Investments ₹${totalInvest}, Wants ₹${totalWants}, Savings rate ${savingsRate}%. Actual invested this month from ledger: ₹${Math.round(actualInvest)}.
+Give ONE short, specific, actionable tip in 2 sentences max. Focus on the biggest improvement. Start with a relevant emoji.`;
 
     try {
-        const response = await callAI(prompt);
+        tipBody.textContent = await callAI(prompt);
         tipTitle.textContent = 'AI Budget Tip';
-        tipBody.textContent  = response;
     } catch (e) {
         tipTitle.textContent = 'Tip unavailable';
         tipBody.textContent  = 'Check your API key in Settings.';
@@ -825,7 +955,7 @@ async function callAI(prompt) {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${db.groqKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role:'user', content: prompt }], max_tokens: 120 })
+            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 120 })
         });
         const data = await res.json();
         return data.choices?.[0]?.message?.content || '';
@@ -853,7 +983,9 @@ function snack(msg, icon = 'info') {
 }
 
 function escapeHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(str || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>

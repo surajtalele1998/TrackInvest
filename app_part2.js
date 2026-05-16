@@ -2158,7 +2158,7 @@ async function callAIApi(promptText, systemPrompt = "You are a helpful financial
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
+                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3509,7 +3509,7 @@ async function askAIEngine(context) {
     if (context === 'allocation') loadingLabel = "Analyzing Asset Distribution & Risk...";
     if (context === 'ledger') loadingLabel = "Auditing Behavioral Spending Habits...";
 
-    toggleAIPopup(true);
+    toggleAIPopup(true, 'report');
     renderAIPopupContent('report', `
         <div style="padding:40px 24px; text-align:center; color:var(--md-primary);">
             <span class="material-symbols-rounded ai-loading-icon" style="font-size:48px;">cognition</span>
