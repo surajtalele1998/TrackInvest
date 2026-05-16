@@ -1159,6 +1159,18 @@ function openSettings() {
     const mwEl = document.getElementById('settings-enable-market-watch');
     if (mwEl) mwEl.checked = db.enableMarketWatch;
 
+    // Master toggles
+    const aiToggle = document.getElementById('ai-master-toggle');
+    if (aiToggle) {
+      aiToggle.checked = db.aiEnabled !== false;
+      toggleAiMaster(db.aiEnabled !== false);
+    }
+    const webToggle = document.getElementById('web-api-toggle');
+    if (webToggle) {
+      webToggle.checked = db.webEnabled !== false;
+      toggleWebApi(db.webEnabled !== false);
+    }
+
     // Refresh manage sections
     renderSettingsSections();
 
@@ -1369,6 +1381,43 @@ function updateCategorySetting(cat, key, val) {
 }
 
 function saveApiKeys() { db.geminiKey = document.getElementById('gemini-api-key').value.trim(); db.groqKey = document.getElementById('groq-api-key').value.trim(); db.openrouterKey = document.getElementById('openrouter-api-key').value.trim(); db.cerebrasKey = document.getElementById('cerebras-api-key').value.trim(); db.githubKey = document.getElementById('github-api-key').value.trim(); saveData(); showSnackbar("API Keys Saved", "key"); }
+
+// ── Master Toggles ──
+function toggleAiMaster(checked) {
+  db.aiEnabled = !!checked;
+  saveData();
+  document.getElementById('ai-master-toggle').checked = checked;
+  [document.getElementById('groq-api-key'), document.getElementById('gemini-api-key'),
+   document.getElementById('openrouter-api-key'), document.getElementById('cerebras-api-key'),
+   document.getElementById('github-api-key')].forEach(el => { if (el) el.disabled = !checked; });
+  const saveBtn = document.querySelector('button[onclick="saveApiKeys()"]');
+  if (saveBtn) saveBtn.style.opacity = checked ? '1' : '0.4';
+  applyAiVisibility(checked);
+  showSnackbar(checked ? 'AI Features Enabled' : 'AI Features Disabled', 'smart_toy');
+}
+
+function applyAiVisibility(enabled) {
+  const show = enabled !== false && db.aiEnabled !== false;
+  document.body.classList.toggle('ai-disabled', !show);
+  const aiCard = document.querySelector('.carousel-card[onclick*="openAIHub"]');
+  if (aiCard) aiCard.style.display = show ? '' : 'none';
+  const aiBubble = document.getElementById('ai-floating-bubble');
+  if (aiBubble) aiBubble.style.display = show ? '' : 'none';
+}
+
+function toggleWebApi(checked) {
+  db.webEnabled = !!checked;
+  window.__webEnabled = !!checked;
+  saveData();
+  document.getElementById('web-api-toggle').checked = checked;
+  const cloudToggle = document.getElementById('cloud-api-toggle');
+  if (cloudToggle) cloudToggle.disabled = !checked;
+  if (!checked && cloudToggle?.checked) {
+    cloudToggle.checked = false;
+    toggleCloudApi(false);
+  }
+  showSnackbar(checked ? 'Web APIs Enabled' : 'Web APIs Disabled', 'public');
+}
 
 // ── Cloud API Settings ──
 function updateCloudStatusText() {
@@ -2622,6 +2671,10 @@ function updateRebalanceBadge() { let badge = document.getElementById('rebalance
 // ==========================================
 // Delegates to shared_ai.js
 async function callAIApi(promptText, systemPrompt) {
+    if (!db.aiEnabled) {
+      showSnackbar('AI is disabled — enable in Settings', 'smart_toy');
+      throw new Error('AI disabled');
+    }
     return callAIProvider(db, promptText, systemPrompt);
 }
 

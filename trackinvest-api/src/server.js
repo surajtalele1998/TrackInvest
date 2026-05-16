@@ -13,6 +13,7 @@ const { warmOnStartup } = require('./services/cacheWarmer');
 const { trackRequest } = require('./services/adminService');
 
 const app = express();
+app.set('trust proxy', 1);
 
 app.set('view engine', 'ejs');
 app.set('views', path.resolve(__dirname, 'views'));

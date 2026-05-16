@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const config = require('../config');
 const logger = require('../utils/logger');
 
@@ -9,6 +10,8 @@ function getDb() {
   if (db) return db;
   if (enabled === false && db === null) {
     try {
+      const dir = path.dirname(config.dbPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       const Database = require('better-sqlite3');
       db = new Database(config.dbPath);
       db.pragma('journal_mode = WAL');

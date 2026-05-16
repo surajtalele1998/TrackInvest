@@ -79,6 +79,28 @@ if (!db.navCache) db.navCache = {};
 if (typeof db.fyStartMonth === 'undefined') db.fyStartMonth = 3; // Default: April (month index 3) for India FY
 if (typeof db.firstTimeTipsShown === 'undefined') db.firstTimeTipsShown = false;
 
+// Master toggles for AI and Web connectivity
+if (typeof db.aiEnabled === 'undefined') db.aiEnabled = true;
+if (typeof db.webEnabled === 'undefined') db.webEnabled = true;
+
+// Global fetch wrapper — blocks external requests when webEnabled is off
+const _origFetch = window.fetch.bind(window);
+window.__webEnabled = db.webEnabled !== false;
+window.fetch = function(input, init) {
+  try {
+    const urlStr = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
+    if (urlStr.startsWith('http')) {
+      const parsed = new URL(urlStr);
+      const isSameOrigin = parsed.origin === (window.location.origin || 'http://localhost');
+      const isDataBlob = parsed.protocol === 'data:' || parsed.protocol === 'blob:';
+      if (!isSameOrigin && !isDataBlob && window.__webEnabled !== undefined && !window.__webEnabled) {
+        return Promise.reject(new Error('Web APIs disabled'));
+      }
+    }
+  } catch {}
+  return _origFetch(input, init);
+};
+
 
 // NEW: Default state for Monthly Planner visibility
 if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = true;
@@ -2133,6 +2155,8 @@ function initUI() {
 
     // Initialize cloud status indicator
     if (typeof updateCloudStatusIndicators === 'function') updateCloudStatusIndicators();
+    // Initialize AI visibility
+    if (typeof applyAiVisibility === 'function') applyAiVisibility(db.aiEnabled !== false);
 }
 
 // getThemeColor defined above (removed duplicate)

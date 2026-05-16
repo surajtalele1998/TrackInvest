@@ -999,6 +999,17 @@
                 </div>
 
                 <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:8px;letter-spacing:0.5px;text-transform:uppercase;">
+                    AI Features</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:12px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable AI</div>
+                        <div style="font-size:11px; color:var(--md-outline); margin-top:2px;">Master toggle for all AI features — chat, categorization, insights, reports</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="ai-master-toggle" onchange="toggleAiMaster(this.checked)"><span class="slider"></span></label>
+                </div>
+
+                <div
                     style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
                     AI Strategy Keys</div>
                 <div class="input-container"><label>Groq API Key (Primary)</label><input type="password"
@@ -1108,6 +1119,17 @@
                     </div>
                 </div>
                 <div style="font-size:11px;color:var(--md-outline);margin-top:8px;">Notifications work offline via service worker. No server needed.</div>
+
+                <div
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Web & Connectivity</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable Web APIs</div>
+                        <div style="font-size:11px; color:var(--md-outline); margin-top:2px;">Master toggle for all internet requests — market data, MF NAV, AI, cloud sync, currency rates</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="web-api-toggle" onchange="toggleWebApi(this.checked)"><span class="slider"></span></label>
+                </div>
 
                 <div
                     style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">

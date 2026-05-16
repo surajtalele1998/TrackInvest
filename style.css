@@ -2689,3 +2689,11 @@ input:checked+.slider:before {
     background: var(--md-surface-container-highest);
     border-radius: 10px;
 }
+
+/* AI disabled state — hide AI entry points */
+body.ai-disabled .carousel-card[onclick*="openAIHub"],
+body.ai-disabled #ai-floating-bubble,
+body.ai-disabled [onclick*="runAICategorization"],
+body.ai-disabled [onclick*="runAIInsights"],
+body.ai-disabled [onclick*="generateWealthBlueprint"],
+body.ai-disabled [onclick*="openAIHub"] { display:none !important; }

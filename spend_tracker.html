@@ -18,6 +18,8 @@
     <script src="./apiClient.js"></script>
     <style>
         :root { --cat-food:#E3724A; --cat-transport:#415F91; --cat-bills:#186D33; --cat-entertainment:#9C27B0; --cat-health:#D96200; --cat-shopping:#E91E63; --cat-groceries:#388E3C; --cat-rent:#5C6BC0; --cat-travel:#00ACC1; --cat-education:#7B1FA2; --cat-investment:#F57C00; --cat-income:#2E7D32; --cat-other:#8E9099; }
+        *, *::before, *::after { box-sizing:border-box; }
+        html, body { overflow-x:hidden; max-width:100%; margin:0; padding:0; }
 
         /* ── Hero overrides ── */
         .hero-decor { position:absolute; top:-20px; right:-20px; width:140px; height:140px; border-radius:50%; background:var(--md-primary); opacity:0.06; pointer-events:none; }
@@ -42,7 +44,7 @@
         .status-over { color:var(--md-error); }
 
         /* ── Filters ── */
-        .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:14px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+        .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:14px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; max-width:100%; }
         .filter-tab { flex-shrink:0; padding:8px 16px; border:none; background:transparent; border-radius:10px; font-size:13px; font-weight:500; cursor:pointer; color:var(--md-on-surface-variant); transition:0.2s; white-space:nowrap; }
         .filter-tab.active { background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:600; }
 
@@ -101,6 +103,13 @@
             .sankey-svg { height:140px; }
             .filter-tabs { gap:2px; padding:3px; }
             .filter-tab { padding:6px 10px; font-size:12px; }
+            .stat-row { flex-wrap:wrap; gap:6px; }
+            .stat-row .stat-chip { flex:1 1 auto; min-width:0; }
+            #hero-section { padding:16px; }
+            #hero-section .hero-title { font-size:28px; }
+            .chart-grid { margin-left:0; margin-right:0; }
+            .chart-card { max-width:100%; overflow:hidden; }
+            .sankey-container { overflow-x:auto; -webkit-overflow-scrolling:touch; }
         }
     </style>
 </head>
@@ -203,9 +212,9 @@
 
         <!-- AI Actions -->
         <div class="st-section"><span class="material-symbols-rounded">auto_awesome</span> AI Tools</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <button class="btn-secondary" style="flex:1;padding:12px;" onclick="runAICategorization()" id="ai-cat-btn"><span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize</button>
-            <button class="btn-secondary" style="flex:1;padding:12px;" onclick="runAIInsights()" id="ai-insights-btn"><span class="material-symbols-rounded">insights</span> Insights</button>
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <button class="btn-secondary" style="flex:1;padding:12px;white-space:nowrap;" onclick="runAICategorization()" id="ai-cat-btn"><span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize</button>
+            <button class="btn-secondary" style="flex:1;padding:12px;white-space:nowrap;" onclick="runAIInsights()" id="ai-insights-btn"><span class="material-symbols-rounded">insights</span> Insights</button>
         </div>
         <div id="ai-insights-output" style="display:none;background:var(--md-surface-container);border-radius:18px;padding:20px;margin-bottom:16px;font-size:14px;line-height:1.6;border:1px solid var(--md-outline-variant);"></div>
 
