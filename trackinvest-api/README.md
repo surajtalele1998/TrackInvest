@@ -151,22 +151,47 @@ x-api-key: sk-your-api-key-here
 }
 ```
 
-## Deployment — Render
+## Deployment — Render (Free Tier)
 
 1. Push this folder to GitHub
 2. On Render.com, create a **New Web Service**
 3. Connect your repo, set root directory to `trackinvest-api`
 4. Render will auto-detect `render.yaml` — or manually configure:
    - **Runtime**: Node
-   - **Build Command**: `npm install`
+   - **Plan**: Free
+   - **Build Command**: `npm install --ignore-scripts` (skips heavy chromium download)
    - **Start Command**: `npm start`
    - **Health Check Path**: `/api/v1/health`
-5. Add environment variables (see `.env.example`)
-6. Add a **Disk** mount at `/data` (1 GB) for persistent SQLite + backups
+5. Set all sensitive env vars in Render dashboard
 
 ### render.yaml (auto-deploy)
 
-A `render.yaml` is included for blueprint-based deployment. Set sensitive env vars in the Render dashboard.
+A `render.yaml` is included for blueprint-based deployment.
+
+### ⚠ Free Tier Limitations
+
+| Limitation | Impact | Workaround |
+|------------|--------|------------|
+| No persistent disk | SQLite data lost on redeploy | Use `/sync/backup` to export data before redeploy |
+| Spins down after 15min idle | ~30s cold start on first request | Use a cron-job.org ping every 10min |
+| 512 MB RAM | Cannot run Chromium for PDF | PDF endpoint returns HTML fallback; render client-side using html2pdf.js |
+| No chromium | Puppeteer PDF disabled | Set `BROWSER_DISABLE=true` (done in render.yaml) |
+
+### Data Persistence on Free Tier
+
+Data survives between idle spins but is **lost on redeploy**. Use these endpoints to backup/restore:
+
+```bash
+# Before redeploy — save backup
+curl -X POST https://your-api.onrender.com/api/v1/sync/backup \
+  -H "x-api-key: YOUR_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "data": { ... your data ... }, "label": "pre-redeploy" }'
+
+# After redeploy — list and restore
+curl https://your-api.onrender.com/api/v1/sync/backups \
+  -H "x-api-key: YOUR_KEY"
+```
 
 ---
 
@@ -182,6 +207,7 @@ A `render.yaml` is included for blueprint-based deployment. Set sensitive env va
 | `VAPID_PUBLIC_KEY` | For push | Web Push public key |
 | `VAPID_PRIVATE_KEY` | For push | Web Push private key |
 | `SMTP_*` | For email | SMTP credentials for email notifications |
+| `BROWSER_DISABLE` | No | Set `true` to skip Puppeteer/Chromium (free Render tier) |
 
 ## Tech Stack
 
@@ -189,6 +215,6 @@ A `render.yaml` is included for blueprint-based deployment. Set sensitive env va
 - **Framework**: Express 4
 - **Database**: SQLite (via better-sqlite3) — zero config, bundled
 - **AI**: Google Gemini 1.5 Flash / OpenAI GPT-4o-mini
-- **PDF**: Puppeteer (headless Chrome)
+- **PDF**: Puppeteer (optional — falls back to HTML on free tier)
 - **Cache**: In-memory (Redis optional)
 - **Auth**: API key via header

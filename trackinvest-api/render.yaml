@@ -3,8 +3,8 @@ services:
     name: trackinvest-api
     runtime: node
     region: singapore
-    plan: starter
-    buildCommand: npm install
+    plan: free
+    buildCommand: npm install --ignore-scripts
     startCommand: npm start
     healthCheckPath: /api/v1/health
     envVars:
@@ -34,7 +34,5 @@ services:
         sync: false
       - key: SMTP_PASS
         sync: false
-    disk:
-      name: data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+      - key: BROWSER_DISABLE
+        value: "true"

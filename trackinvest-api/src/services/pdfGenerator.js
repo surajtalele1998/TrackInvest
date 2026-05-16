@@ -1,51 +1,68 @@
 const path = require('path');
 const fs = require('fs');
-const puppeteer = require('puppeteer');
 const config = require('../config');
 const logger = require('../utils/logger');
 
+function buildReportHtml(htmlContent) {
+  return `<!DOCTYPE html><html><head>
+    <meta charset="UTF-8">
+    <style>
+      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a2e; line-height: 1.6; }
+      h1 { color: #6c63ff; border-bottom: 2px solid #6c63ff; padding-bottom: 8px; }
+      h2 { color: #333; margin-top: 24px; }
+      h3 { color: #555; }
+      .header { text-align: center; margin-bottom: 30px; }
+      .header h1 { border-bottom: none; font-size: 26px; }
+      .header p { color: #888; font-size: 13px; }
+      .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #aaa; }
+      table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+      th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+      th { background: #f5f3ff; color: #6c63ff; font-weight: 600; }
+      .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+      .badge-green { background: #e8f5e9; color: #2e7d32; }
+      .badge-red { background: #fce4ec; color: #c62828; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 4px; font-size: 13px; }
+      .section { page-break-inside: avoid; }
+    </style>
+  </head><body>
+    <div class="header">
+      <h1>TrackInvest Report</h1>
+      <p>Generated on ${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+    </div>
+    ${htmlContent}
+    <div class="footer">
+      <p>TrackInvest — AI-Powered Wealth Management</p>
+    </div>
+  </body></html>`;
+}
+
+let puppeteer;
+async function getBrowser() {
+  if (process.env.BROWSER_DISABLE === 'true') return null;
+  try {
+    puppeteer = puppeteer || require('puppeteer');
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    });
+    return browser;
+  } catch (e) {
+    logger.warn('Puppeteer not available, PDF generation disabled: ' + e.message);
+    return null;
+  }
+}
+
 async function generatePdfFromHtml(htmlContent, options = {}) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-  });
+  const browser = await getBrowser();
+  if (!browser) {
+    return { error: true, html: buildReportHtml(htmlContent), message: 'PDF generation requires chromium (not available on free tier). Use the HTML endpoint instead.' };
+  }
 
   try {
     const page = await browser.newPage();
-    const fullHtml = `<!DOCTYPE html><html><head>
-      <meta charset="UTF-8">
-      <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #1a1a2e; line-height: 1.6; }
-        h1 { color: #6c63ff; border-bottom: 2px solid #6c63ff; padding-bottom: 8px; }
-        h2 { color: #333; margin-top: 24px; }
-        h3 { color: #555; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .header h1 { border-bottom: none; font-size: 26px; }
-        .header p { color: #888; font-size: 13px; }
-        .footer { text-align: center; margin-top: 40px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 11px; color: #aaa; }
-        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
-        th { background: #f5f3ff; color: #6c63ff; font-weight: 600; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-        .badge-green { background: #e8f5e9; color: #2e7d32; }
-        .badge-red { background: #fce4ec; color: #c62828; }
-        .badge-blue { background: #e3f2fd; color: #1565c0; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 4px; font-size: 13px; }
-        .section { page-break-inside: avoid; }
-      </style>
-    </head><body>
-      <div class="header">
-        <h1>TrackInvest Report</h1>
-        <p>Generated on ${new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-      </div>
-      ${htmlContent}
-      <div class="footer">
-        <p>TrackInvest — AI-Powered Wealth Management</p>
-      </div>
-    </body></html>`;
-
+    const fullHtml = buildReportHtml(htmlContent);
     await page.setContent(fullHtml, { waitUntil: 'networkidle0' });
 
     const pdfBuffer = await page.pdf({
@@ -55,7 +72,6 @@ async function generatePdfFromHtml(htmlContent, options = {}) {
       displayHeaderFooter: false,
       ...options,
     });
-
     return pdfBuffer;
   } finally {
     await browser.close();

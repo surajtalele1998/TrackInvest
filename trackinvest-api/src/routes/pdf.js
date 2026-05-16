@@ -8,13 +8,16 @@ router.post('/from-html', async (req, res, next) => {
   try {
     const { html, filename } = req.body;
     if (!html) return res.status(400).json({ error: 'html content required' });
-    const buffer = await generatePdfFromHtml(html);
+    const result = await generatePdfFromHtml(html);
+    if (result && result.error) {
+      return res.status(200).json({ error: result.message, html: result.html, note: 'Use the HTML to render client-side PDF' });
+    }
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename || 'report.pdf'}"`,
-      'Content-Length': buffer.length,
+      'Content-Length': result.length,
     });
-    res.send(buffer);
+    res.send(result);
   } catch (err) {
     next(err);
   }
@@ -27,13 +30,16 @@ router.post('/report/:type', async (req, res, next) => {
       return res.status(400).json({ error: `Unknown report type: ${type}` });
     }
     const portfolioData = req.body || {};
-    const buffer = await generatePdfFromReportType(type, portfolioData);
+    const result = await generatePdfFromReportType(type, portfolioData);
+    if (result && result.error) {
+      return res.status(200).json({ error: result.message, html: result.html, note: 'Use the HTML to render client-side PDF' });
+    }
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${type}-${Date.now()}.pdf"`,
-      'Content-Length': buffer.length,
+      'Content-Length': result.length,
     });
-    res.send(buffer);
+    res.send(result);
   } catch (err) {
     next(err);
   }
