@@ -13,167 +13,155 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root {
-            --cat-food: #E3724A;
-            --cat-transport: #415F91;
-            --cat-bills: #186D33;
-            --cat-entertainment: #9C27B0;
-            --cat-health: #D96200;
-            --cat-shopping: #E91E63;
-            --cat-other: #8E9099;
-        }
+        :root { --cat-food:#E3724A; --cat-transport:#415F91; --cat-bills:#186D33; --cat-entertainment:#9C27B0; --cat-health:#D96200; --cat-shopping:#E91E63; --cat-groceries:#388E3C; --cat-rent:#5C6BC0; --cat-travel:#00ACC1; --cat-education:#7B1FA2; --cat-investment:#F57C00; --cat-income:#2E7D32; --cat-other:#8E9099; }
+        .page-header { display:flex; align-items:center; gap:8px; padding:16px 0; position:sticky; top:0; z-index:10; background:var(--md-surface); }
+        .page-header .title { font-size:20px; font-weight:600; color:var(--md-on-surface); flex:1; }
         .hero-spend { border-radius:28px; padding:24px; margin-bottom:16px; background:var(--md-primary-container); color:var(--md-on-primary-container); }
-        .hero-spend-total { font-size:44px; font-weight:400; line-height:1.1; margin:8px 0; }
+        .hero-spend-total { font-size:44px; font-weight:400; line-height:1.1; margin:8px 0; word-break:break-word; }
         .hero-spend-label { font-size:13px; font-weight:500; opacity:0.75; }
-        .stat-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; }
-        .stat-chip { flex-shrink:0; min-width:100px; background:var(--md-surface-container); border-radius:18px; padding:12px 16px; display:flex; flex-direction:column; gap:4px; cursor:pointer; }
-        .stat-chip-label { font-size:11px; color:var(--md-on-surface-variant); font-weight:500; }
-        .stat-chip-val { font-size:18px; font-weight:600; color:var(--md-on-surface); }
-        .cat-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; cursor:pointer; border:none; font-family:inherit; }
-        .cat-badge.uncat { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
-        .spend-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--md-surface-container-highest); }
-        .spend-row:last-child { border-bottom:none; }
-        .spend-amt { font-weight:600; font-size:15px; white-space:nowrap; color:var(--md-on-surface); }
-        .spend-comment { font-size:13px; color:var(--md-on-surface-variant); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .spend-date { font-size:11px; color:var(--md-outline); white-space:nowrap; }
-        .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:16px; }
-        .filter-tab { flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; color:var(--md-on-surface-variant); transition:0.2s; }
+        .stat-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; padding-bottom:4px; overscroll-behavior:contain; }
+        .stat-chip { flex-shrink:0; min-width:90px; background:var(--md-surface-container); border-radius:18px; padding:10px 14px; display:flex; flex-direction:column; gap:3px; }
+        .stat-chip-label { font-size:10px; color:var(--md-on-surface-variant); font-weight:500; white-space:nowrap; }
+        .stat-chip-val { font-size:16px; font-weight:600; color:var(--md-on-surface); white-space:nowrap; }
+        .quick-add-bar { display:flex; gap:8px; margin-bottom:16px; align-items:center; }
+        .quick-add-bar .md-input { flex:1; min-width:0; background:var(--md-surface-container-highest) !important; padding:14px 16px !important; border-radius:16px !important; border:1.5px solid transparent !important; font-size:16px; }
+        .quick-add-bar .md-input:focus { border-color:var(--md-primary) !important; }
+        .quick-add-bar .btn-primary { padding:14px 20px; border-radius:16px; white-space:nowrap; flex-shrink:0; }
+        .section-label { font-size:14px; font-weight:600; color:var(--md-on-surface); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+        .budget-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--md-surface-container-highest); }
+        .budget-row:last-child { border-bottom:none; }
+        .budget-row .cat-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+        .budget-row .b-label { flex:1; font-size:13px; font-weight:500; color:var(--md-on-surface); }
+        .budget-row .b-budget { font-size:12px; color:var(--md-outline); text-align:right; min-width:60px; }
+        .budget-row .b-actual { font-size:14px; font-weight:600; text-align:right; min-width:70px; }
+        .budget-row .b-status { font-size:11px; font-weight:600; min-width:40px; text-align:right; }
+        .status-ok { color:var(--md-success); }
+        .status-over { color:var(--md-error); }
+        .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:12px; overflow-x:auto; scrollbar-width:none; }
+        .filter-tab { flex-shrink:0; padding:8px 14px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; color:var(--md-on-surface-variant); transition:0.2s; white-space:nowrap; }
         .filter-tab.active { background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:600; }
-        .input-group { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-        .input-group .md-input { flex:1; min-width:120px; }
-        .btn-icon { background:transparent; border:none; color:var(--md-primary); cursor:pointer; padding:10px; border-radius:50%; display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; }
-        .btn-icon:hover { background:var(--md-surface-container-highest); }
-        .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
-        .chart-card { background:var(--md-surface-container); border-radius:20px; padding:16px; min-height:200px; }
+        .spend-row { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--md-surface-container-highest); }
+        .spend-row:last-child { border-bottom:none; }
+        .spend-date { font-size:11px; color:var(--md-outline); min-width:44px; }
+        .spend-comment { font-size:14px; color:var(--md-on-surface); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .spend-amt { font-size:15px; font-weight:600; white-space:nowrap; color:var(--md-on-surface); min-width:60px; text-align:right; }
+        .cat-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600; cursor:pointer; border:none; font-family:inherit; white-space:nowrap; }
+        .cat-badge.uncat { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
+        .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+        .chart-card { background:var(--md-surface-container); border-radius:20px; padding:16px; }
         .chart-card.full { grid-column:1/-1; }
-        .chart-card-title { font-size:13px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
-        .sankey-container { width:100%; overflow-x:auto; padding:16px 0; }
-        .sankey-svg { width:100%; min-width:400px; height:200px; }
-        .bottom-spacer { height:88px; }
+        .chart-card-title { font-size:11px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; }
+        .sankey-svg { width:100%; min-width:350px; height:180px; }
+        .bottom-spacer { height:96px; }
+        .import-sheet { position:fixed; bottom:0; left:0; right:0; background:var(--md-surface-container-low); border-radius:28px 28px 0 0; padding:24px; z-index:1001; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.1,0.7,0.1,1); max-height:70vh; overflow-y:auto; box-shadow:0 -8px 32px rgba(0,0,0,0.15); }
+        .import-sheet.open { transform:translateY(0); }
+        .import-scrim { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:1000; opacity:0; visibility:hidden; transition:0.3s; }
+        .import-scrim.open { opacity:1; visibility:visible; }
+        .biggest-item { background:var(--md-surface-container); border-radius:16px; padding:16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:0.2s; }
+        .biggest-item:active { transform:scale(0.98); }
         @media(max-width:480px) {
             .chart-grid { grid-template-columns:1fr; }
+            .quick-add-bar { flex-wrap:wrap; }
+            .quick-add-bar .btn-primary { width:100%; }
+            .hero-spend-total { font-size:32px; }
         }
     </style>
 </head>
 <body>
-    <header class="top-app-bar" style="gap:8px;">
-        <button class="icon-btn" onclick="window.location.href='index.html'">
-            <span class="material-symbols-rounded">arrow_back</span>
-        </button>
-        <div class="app-title" style="flex:1;">Spend Tracker</div>
-        <button class="icon-btn" onclick="toggleImportPanel()" title="Import Data">
-            <span class="material-symbols-rounded">file_upload</span>
-        </button>
-        <button class="icon-btn" onclick="showExportMenu()" title="Export">
-            <span class="material-symbols-rounded">download</span>
-        </button>
+    <!-- Import Sheet -->
+    <div class="import-scrim" id="import-scrim" onclick="closeImportSheet()"></div>
+    <div class="import-sheet" id="import-sheet">
+        <div style="width:40px;height:5px;background:var(--md-outline);opacity:0.3;border-radius:10px;margin:-8px auto 20px auto;"></div>
+        <div style="font-weight:600;font-size:18px;margin-bottom:16px;">Import Transactions</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+            <button class="btn-primary" style="flex:1;padding:12px;" onclick="document.getElementById('csv-file-input').click()"><span class="material-symbols-rounded">description</span> CSV</button>
+            <button class="btn-primary" style="flex:1;padding:12px;" onclick="document.getElementById('xlsx-file-input').click()"><span class="material-symbols-rounded">table_chart</span> XLSX</button>
+            <button class="btn-secondary" style="flex:1;padding:12px;" onclick="document.getElementById('pdf-file-input').click()"><span class="material-symbols-rounded">picture_as_pdf</span> PDF</button>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="importCSVFile(event)">
+        <input type="file" id="pdf-file-input" accept=".pdf" style="display:none" onchange="importPDFFile(event)">
+        <input type="file" id="xlsx-file-input" accept=".xlsx,.xls" style="display:none" onchange="importXLSXFile(event)">
+        <div style="font-size:12px;color:var(--md-outline);">Expected: amount,comment,commit_time (DD/MM/YY, HH:MM AM/PM)</div>
+        <div style="font-size:12px;color:var(--md-outline);margin-top:4px;">XLSX: columns amount, comment, commit_time or date</div>
+        <button class="btn-secondary" style="width:100%;margin-top:16px;" onclick="closeImportSheet()">Cancel</button>
+    </div>
+
+    <header class="top-app-bar" style="gap:4px;">
+        <button class="icon-btn" onclick="window.location.href='index.html'"><span class="material-symbols-rounded">arrow_back</span></button>
+        <div class="app-title" style="flex:1;font-size:18px;">Spend Tracker</div>
+        <button class="icon-btn" onclick="openImportSheet()" title="Import"><span class="material-symbols-rounded">file_upload</span></button>
+        <button class="icon-btn" onclick="showExportMenu()" title="Export"><span class="material-symbols-rounded">download</span></button>
+        <button class="icon-btn" onclick="document.getElementById('ai-insights-output').style.display='none';renderAll()" title="Refresh"><span class="material-symbols-rounded">refresh</span></button>
     </header>
 
     <main class="container" style="padding-top:0;">
         <!-- Month Picker -->
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-top:16px;">
-            <button class="btn-icon" onclick="shiftMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
-            <div style="font-size:20px; font-weight:500; color:var(--md-on-surface);" id="month-label"></div>
-            <button class="btn-icon" onclick="shiftMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;">
+            <button class="icon-btn" onclick="shiftMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
+            <div style="font-size:18px;font-weight:500;color:var(--md-on-surface);" id="month-label"></div>
+            <button class="icon-btn" onclick="shiftMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button>
         </div>
 
         <!-- Hero -->
         <div class="hero-spend" id="hero-section">
             <div class="hero-spend-label">Total Spent</div>
             <div class="hero-spend-total" id="hero-total">₹0</div>
-            <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;">
-                <span style="font-size:13px; opacity:0.8;" id="hero-count">0 transactions</span>
-                <span style="font-size:13px; opacity:0.8;" id="hero-avg">Avg: ₹0/day</span>
+            <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+                <span style="font-size:12px;opacity:0.8;" id="hero-count">0 txns</span>
+                <span style="font-size:12px;opacity:0.8;" id="hero-avg">₹0/day</span>
+                <span style="font-size:12px;opacity:0.8;" id="hero-vs-budget"></span>
             </div>
         </div>
 
         <!-- Quick Stats -->
         <div class="stat-row" id="quick-stats"></div>
 
-        <!-- Filter Tabs -->
-        <div class="filter-tabs">
-            <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
-            <button class="filter-tab" onclick="setFilter('uncat',this)">Uncategorized</button>
-            <button class="filter-tab" onclick="setFilter('categorized',this)">Categorized</button>
+        <!-- Quick Add (always visible) -->
+        <div class="quick-add-bar">
+            <input type="number" id="quick-amt" class="md-input" placeholder="Amount" inputmode="decimal">
+            <input type="text" id="quick-comment" class="md-input" placeholder="What for?" list="comment-suggestions">
+            <input type="date" id="quick-date" class="md-input" style="max-width:140px;flex-shrink:0;">
+            <button class="btn-primary" onclick="addQuickEntry()"><span class="material-symbols-rounded">add</span> Add</button>
         </div>
+        <datalist id="comment-suggestions"></datalist>
 
-        <!-- Import Panel (hidden) -->
-        <div id="import-panel" style="display:none; background:var(--md-surface-container-high); border-radius:20px; padding:16px; margin-bottom:16px;">
-            <div style="font-weight:600; margin-bottom:12px; font-size:14px;">Import Transactions</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('csv-file-input').click()">
-                    <span class="material-symbols-rounded">description</span> CSV
-                </button>
-                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('pdf-file-input').click()">
-                    <span class="material-symbols-rounded">picture_as_pdf</span> PDF
-                </button>
-                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('xlsx-file-input').click()">
-                    <span class="material-symbols-rounded">table_chart</span> XLSX
-                </button>
-            </div>
-            <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="importCSVFile(event)">
-            <input type="file" id="pdf-file-input" accept=".pdf" style="display:none" onchange="importPDFFile(event)">
-            <input type="file" id="xlsx-file-input" accept=".xlsx,.xls" style="display:none" onchange="importXLSXFile(event)">
-            <div style="font-size:12px; color:var(--md-outline);">Expected CSV format: amount,comment,commit_time</div>
-            <div style="font-size:12px; color:var(--md-primary); margin-top:4px; cursor:pointer;" onclick="document.getElementById('manual-entry').style.display=document.getElementById('manual-entry').style.display==='none'?'block':'none'">
-                + Add entry manually
-            </div>
-        </div>
-
-        <!-- Manual Entry -->
-        <div id="manual-entry" style="display:none; background:var(--md-surface-container-high); border-radius:20px; padding:16px; margin-bottom:16px;">
-            <div style="font-weight:600; margin-bottom:12px; font-size:14px;">Add Expense</div>
-            <div class="input-group">
-                <input type="number" id="manual-amt" class="md-input" placeholder="Amount" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
-                <input type="text" id="manual-comment" class="md-input" placeholder="Description" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
-            </div>
-            <div class="input-group">
-                <input type="date" id="manual-date" class="md-input" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
-                <button class="btn-primary" onclick="addManualEntry()" style="flex:0.5;">
-                    <span class="material-symbols-rounded">add</span> Add
-                </button>
-            </div>
+        <!-- Budget vs Actual -->
+        <div id="budget-section" style="display:none; margin-bottom:16px;">
+            <div class="section-label"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-primary);">compare_arrows</span> Budget vs Actual</div>
+            <div style="background:var(--md-surface-container);border-radius:20px;padding:16px;" id="budget-list"></div>
         </div>
 
         <!-- Charts -->
         <div class="chart-grid" id="charts-section">
-            <div class="chart-card">
-                <div class="chart-card-title">Category Split</div>
-                <div style="height:180px;"><canvas id="catPieChart"></canvas></div>
-            </div>
-            <div class="chart-card">
-                <div class="chart-card-title">Daily Spend</div>
-                <div style="height:180px;"><canvas id="dailyTrendChart"></canvas></div>
-            </div>
-            <div class="chart-card full">
-                <div class="chart-card-title">Spend Flow</div>
-                <div class="sankey-container" id="sankey-container">
-                    <svg class="sankey-svg" id="sankey-svg"></svg>
-                </div>
-            </div>
+            <div class="chart-card"><div class="chart-card-title">By Category</div><div style="height:170px;"><canvas id="catPieChart"></canvas></div></div>
+            <div class="chart-card"><div class="chart-card-title">Daily Trend</div><div style="height:170px;"><canvas id="dailyTrendChart"></canvas></div></div>
+            <div class="chart-card full"><div class="chart-card-title">Spend Flow</div><div class="sankey-container"><svg class="sankey-svg" id="sankey-svg"></svg></div></div>
         </div>
 
-        <!-- AI Section -->
-        <div style="margin-bottom:16px;">
-            <button class="btn-primary" style="width:100%;" onclick="runAICategorization()" id="ai-cat-btn">
-                <span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize with AI
-            </button>
-            <button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="runAIInsights()" id="ai-insights-btn">
-                <span class="material-symbols-rounded">insights</span> AI Spending Insights
-            </button>
-        </div>
-        <div id="ai-insights-output" style="display:none; background:var(--md-surface-container); border-radius:20px; padding:20px; margin-bottom:16px; line-height:1.6;"></div>
+        <!-- Biggest Single Expense -->
+        <div id="biggest-item-section" style="display:none;"></div>
 
-        <!-- Transactions List -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <div style="font-size:15px; font-weight:600; color:var(--md-on-surface);">Transactions</div>
-            <div style="display:flex; gap:4px;">
-                <button class="btn-icon" onclick="deleteAllUncategorized()" title="Clear uncategorized">
-                    <span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_sweep</span>
-                </button>
-                <button class="btn-icon" onclick="deleteAllEntries()" title="Clear all">
-                    <span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_forever</span>
-                </button>
+        <!-- AI Actions -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;">
+            <button class="btn-secondary" style="flex:1;padding:12px;" onclick="runAICategorization()" id="ai-cat-btn"><span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize</button>
+            <button class="btn-secondary" style="flex:1;padding:12px;" onclick="runAIInsights()" id="ai-insights-btn"><span class="material-symbols-rounded">insights</span> Insights</button>
+        </div>
+        <div id="ai-insights-output" style="display:none;background:var(--md-surface-container);border-radius:20px;padding:20px;margin-bottom:16px;font-size:14px;line-height:1.6;"></div>
+
+        <!-- Filters -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-tab" onclick="setFilter('uncat',this)">Uncategorized</button>
+            <button class="filter-tab" onclick="setFilter('categorized',this)">Categorized</button>
+            <button class="filter-tab" onclick="setFilter('biggest',this)">Biggest</button>
+        </div>
+
+        <!-- Transaction Actions -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:13px;color:var(--md-on-surface-variant);" id="list-count"></span>
+            <div style="display:flex;gap:4px;">
+                <button class="btn-icon" style="min-width:36px;min-height:36px;" onclick="deleteAllUncategorized()" title="Clear uncategorized"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">filter_alt_off</span></button>
+                <button class="btn-icon" style="min-width:36px;min-height:36px;" onclick="deleteAllEntries()" title="Clear month"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_sweep</span></button>
             </div>
         </div>
         <div id="spend-list"></div>
@@ -181,639 +169,408 @@
     </main>
 
     <script>
-        // ── STORAGE ──
         const STORAGE_KEY = 'appHubInvestDb';
-
-        function loadDB() {
-            try {
-                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-            } catch (e) { return {}; }
-        }
-
-        function saveDB() {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { alert('Storage failed'); }
-        }
-
+        function loadDB() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
+        function saveDB() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch(e) { alert('Storage failed'); } }
         let db = loadDB();
         if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
         if (!db.spendTracker.entries) db.spendTracker.entries = [];
 
-        // ── STATE ──
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let currentFilter = 'all';
+        let currentMonth = new Date().getMonth(), currentYear = new Date().getFullYear(), currentFilter = 'all';
         let catPieChart = null, dailyTrendChart = null;
+
         const CAT_COLORS = {
-            'Food & Dining': '#E3724A', 'Transport': '#415F91', 'Bills & Utilities': '#186D33',
-            'Entertainment': '#9C27B0', 'Health & Medical': '#D96200', 'Shopping': '#E91E63',
-            'Groceries': '#388E3C', 'Rent': '#5C6BC0', 'Travel': '#00ACC1',
-            'Education': '#7B1FA2', 'Investment': '#F57C00', 'Income': '#2E7D32',
-            'Other': '#8E9099'
+            'Food & Dining':'#E3724A','Transport':'#415F91','Bills & Utilities':'#186D33',
+            'Entertainment':'#9C27B0','Health & Medical':'#D96200','Shopping':'#E91E63',
+            'Groceries':'#388E3C','Rent':'#5C6BC0','Travel':'#00ACC1','Education':'#7B1FA2',
+            'Investment':'#F57C00','Income':'#2E7D32','Other':'#8E9099'
         };
-        const DEFAULTS = Object.values(CAT_COLORS);
 
-        // ── DATE PARSERS ──
-        function parseBuckwheatDate(str) {
-            // "01/01/26, 3:20 pm" or "01/01/26, 3:20 pm" (with weird space)
-            str = str.trim().replace(/\u202f/g, ' ').replace(/\u2009/g, ' ');
-            const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}),\s*(\d{1,2}):(\d{2})\s*(am|pm)/i);
-            if (!m) return null;
-            let [, dd, mm, yy, hh, mi, ap] = m;
-            let year = 2000 + parseInt(yy);
-            let month = parseInt(mm) - 1;
-            let day = parseInt(dd);
-            let hour = parseInt(hh);
-            if (ap.toLowerCase() === 'pm' && hour < 12) hour += 12;
-            if (ap.toLowerCase() === 'am' && hour === 12) hour = 0;
-            return new Date(year, month, day, hour, parseInt(mi));
-        }
+        // ── MAPPING: Monthly Planner categories → Spend Tracker categories ──
+        const BUDGET_CAT_MAP = {
+            'needs': ['Food & Dining','Groceries','Bills & Utilities','Rent','Health & Medical','Transport'],
+            'wants': ['Entertainment','Shopping','Travel','Food & Dining'],
+            'investments': ['Investment'],
+            'customInvestments': ['Investment'],
+            'income': ['Income']
+        };
 
-        function fmtDate(d) {
-            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-        }
-
-        function getMonthEntries() {
-            return db.spendTracker.entries.filter(e => {
-                const d = new Date(e.date);
-                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        // ── QUICK ADD ──
+        function addQuickEntry() {
+            const amt = parseFloat(document.getElementById('quick-amt').value);
+            const comment = document.getElementById('quick-comment').value.trim();
+            const dateStr = document.getElementById('quick-date').value;
+            if (!amt || amt <= 0) { Swal.fire({icon:'error',title:'Enter amount',timer:1200,showConfirmButton:false}); return; }
+            const date = dateStr ? new Date(dateStr + 'T12:00:00') : new Date();
+            db.spendTracker.entries.push({
+                id: Date.now() + '_q' + Math.random().toString(36).slice(2,6),
+                amount: amt,
+                comment: DOMPurify.sanitize(comment, {ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),
+                date: date.toISOString(),
+                category: 'Uncategorized'
             });
+            saveDB();
+            document.getElementById('quick-amt').value = '';
+            document.getElementById('quick-comment').value = '';
+            // Build comment suggestions
+            updateCommentSuggestions();
+            renderAll();
+            haptic(30);
         }
+        function updateCommentSuggestions() {
+            const dl = document.getElementById('comment-suggestions');
+            const comments = [...new Set(db.spendTracker.entries.map(e => e.comment).filter(Boolean))];
+            dl.innerHTML = comments.map(c => `<option value="${DOMPurify.sanitize(c)}">`).join('');
+        }
+        function haptic(n) { try { navigator.vibrate(n); } catch(e) {} }
+        // Enter to submit
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('quick-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('quick-amt').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('quick-comment').focus(); });
+            document.getElementById('quick-comment').addEventListener('keydown', e => { if(e.key==='Enter') addQuickEntry(); });
+            updateCommentSuggestions();
+            renderAll();
+        });
 
+        // ── IMPORT SHEET ──
+        function openImportSheet() { document.getElementById('import-sheet').classList.add('open'); document.getElementById('import-scrim').classList.add('open'); }
+        function closeImportSheet() { document.getElementById('import-sheet').classList.remove('open'); document.getElementById('import-scrim').classList.remove('open'); }
+
+        // ── DATE ──
+        function parseBuckwheatDate(str) {
+            str = str.trim().replace(/\u202f/g,' ').replace(/\u2009/g,' ');
+            const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}),\s*(\d{1,2}):(\d{2})\s*(am|pm)/i);
+            if (m) { let y=2000+parseInt(m[3]),mo=parseInt(m[2])-1,d=parseInt(m[1]),h=parseInt(m[4]); if(m[6].toLowerCase()==='pm'&&h<12) h+=12; if(m[6].toLowerCase()==='am'&&h===12) h=0; return new Date(y,mo,d,h,parseInt(m[5])); }
+            const d2 = new Date(str); if(!isNaN(d2)) return d2;
+            return null;
+        }
+        function fmtDate(d) { return d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
+
+        // ── GETTERS ──
+        function getMonthEntries() { return db.spendTracker.entries.filter(e => { const d=new Date(e.date); return d.getMonth()===currentMonth && d.getFullYear()===currentYear; }); }
         function getFilteredEntries() {
-            let entries = getMonthEntries();
-            if (currentFilter === 'uncat') return entries.filter(e => !e.category || e.category === 'Uncategorized');
-            if (currentFilter === 'categorized') return entries.filter(e => e.category && e.category !== 'Uncategorized');
-            return entries;
+            let e = getMonthEntries();
+            if (currentFilter==='uncat') return e.filter(x => !x.category || x.category==='Uncategorized');
+            if (currentFilter==='categorized') return e.filter(x => x.category && x.category!=='Uncategorized');
+            if (currentFilter==='biggest') return [...e].sort((a,b) => b.amount - a.amount).slice(0,5);
+            return e;
         }
 
-        // ── IMPORT ──
-        function toggleImportPanel() {
-            const p = document.getElementById('import-panel');
-            p.style.display = p.style.display === 'none' ? 'block' : 'none';
-        }
+        // ── BUDGET VS ACTUAL ──
+        function renderBudgetVsActual() {
+            const section = document.getElementById('budget-section');
+            const plan = db.monthlyPlanConfig;
+            if (!plan || !plan.income || plan.income.length === 0) { section.style.display = 'none'; return; }
+            section.style.display = 'block';
+            const list = document.getElementById('budget-list');
+            const entries = getMonthEntries();
+            const totals = {};
+            entries.forEach(e => { const c = e.category || 'Other'; if(!totals[c]) totals[c] = 0; totals[c] += e.amount; });
 
-        function importCSVFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(ev) {
-                const text = ev.target.result;
-                const lines = text.split(/\r?\n/).filter(l => l.trim());
-                if (lines.length < 2) { Swal.fire('Error', 'CSV must have header + data rows', 'error'); return; }
-                const header = lines[0].toLowerCase();
-                // Detect column positions
-                const cols = header.split(',').map(c => c.trim());
-                const amtIdx = cols.indexOf('amount');
-                const commentIdx = cols.indexOf('comment');
-                const timeIdx = cols.indexOf('commit_time');
-                if (amtIdx === -1 || timeIdx === -1) { Swal.fire('Error', 'CSV must have amount, comment, commit_time columns', 'error'); return; }
+            // Build budget categories → spend mapping
+            const rows = [];
+            let totalBudget = 0, totalActual = 0;
 
-                let added = 0, skipped = 0;
-                for (let i = 1; i < lines.length; i++) {
-                    // Handle quoted fields properly
-                    const parsed = parseCSVLine(lines[i]);
-                    const amtStr = parsed[amtIdx];
-                    const comment = commentIdx >= 0 ? (parsed[commentIdx] || '') : '';
-                    const timeStr = parsed[timeIdx];
-                    const amt = parseFloat(amtStr);
-                    const date = parseBuckwheatDate(timeStr);
-                    if (!isNaN(amt) && date) {
-                        db.spendTracker.entries.push({
-                            id: Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6),
-                            amount: amt,
-                            comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }),
-                            date: date.toISOString(),
-                            category: 'Uncategorized'
-                        });
-                        added++;
-                    } else { skipped++; }
-                }
-                saveDB();
-                e.target.value = '';
-                Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions added${skipped ? ', ' + skipped + ' skipped' : ''}`, timer: 2000, showConfirmButton: false });
-                renderAll();
-            };
-            reader.readAsText(file);
-        }
+            // Income
+            const incomeBudget = plan.income.reduce((s,i) => s + (parseFloat(i.amount)||0), 0);
+            rows.push({ label: 'Income', budget: incomeBudget, actual: 0, color: '#2E7D32', isIncome: true });
 
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '', inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const ch = line[i];
-                if (inQuotes) {
-                    if (ch === '"') {
-                        if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
-                        else { inQuotes = false; }
-                    } else { current += ch; }
-                } else {
-                    if (ch === '"') { inQuotes = true; }
-                    else if (ch === ',') { result.push(current.trim()); current = ''; }
-                    else { current += ch; }
-                }
+            // Needs
+            const needsBudget = (plan.needs||[]).reduce((s,i) => s+(parseFloat(i.amount)||0),0);
+            const needsActual = sumOfCategories(totals, BUDGET_CAT_MAP.needs);
+            if (needsBudget > 0 || needsActual > 0) rows.push({ label: 'Needs (Bills, Food, Rent)', budget: needsBudget, actual: needsActual, color: '#186D33' });
+
+            // Wants
+            const wantsBudget = (plan.wants||[]).reduce((s,i) => s+(parseFloat(i.amount)||0),0);
+            const wantsActual = sumOfCategories(totals, BUDGET_CAT_MAP.wants);
+            if (wantsBudget > 0 || wantsActual > 0) rows.push({ label: 'Wants (Fun, Shopping, Travel)', budget: wantsBudget, actual: wantsActual, color: '#E91E63' });
+
+            // Investments
+            const invBudget = (plan.investments||[]).reduce((s,i) => s+(parseFloat(i.amount)||0),0);
+            const invActual = sumOfCategories(totals, BUDGET_CAT_MAP.investments);
+            if (invBudget > 0 || invActual > 0) rows.push({ label: 'Investments', budget: invBudget, actual: invActual, color: '#F57C00' });
+
+            // Custom Investments
+            const custInvBudget = (plan.customInvestments||[]).reduce((s,i) => s+(parseFloat(i.amount)||0),0);
+            const custInvActual = sumOfCategories(totals, BUDGET_CAT_MAP.customInvestments);
+            if (custInvBudget > 0 || custInvActual > 0) rows.push({ label: 'Extra Investments', budget: custInvBudget, actual: custInvActual, color: '#F57C00' });
+
+            // Other (uncategorized spend)
+            const otherActual = entries.filter(e => !e.category || e.category==='Uncategorized').reduce((s,e) => s+e.amount, 0);
+            if (otherActual > 0) rows.push({ label: 'Uncategorized', budget: 0, actual: otherActual, color: '#8E9099' });
+
+            totalActual = entries.reduce((s,e) => s+e.amount, 0);
+            // budget total = wants + needs + investments
+            totalBudget = rows.filter(r => !r.isIncome).reduce((s,r) => s+r.budget, 0);
+
+            let html = '';
+            rows.forEach(r => {
+                const diff = r.budget - r.actual;
+                const status = r.isIncome ? '' : (diff >= 0 ? `<span class="status-ok">✓</span>` : `<span class="status-over">! ${Math.abs(diff).toLocaleString('en-IN')}</span>`);
+                html += `<div class="budget-row">
+                    <div class="cat-dot" style="background:${r.color}"></div>
+                    <div class="b-label">${r.label}</div>
+                    <div class="b-budget">${r.isIncome ? '' : '₹' + r.budget.toLocaleString('en-IN')}</div>
+                    <div class="b-actual" style="color:${r.isIncome ? 'var(--md-success)' : (diff < 0 ? 'var(--md-error)' : 'var(--md-on-surface)')}">₹${r.actual.toLocaleString('en-IN')}</div>
+                    <div class="b-status">${status}</div>
+                </div>`;
+            });
+
+            // Total row
+            const totalDiff = totalBudget - totalActual;
+            html += `<div class="budget-row" style="border-top:2px solid var(--md-surface-container-highest);padding-top:12px;margin-top:4px;font-weight:700;">
+                <div class="cat-dot" style="background:var(--md-primary)"></div>
+                <div class="b-label">Total Spend</div>
+                <div class="b-budget">₹${totalBudget.toLocaleString('en-IN')}</div>
+                <div class="b-actual" style="color:${totalDiff < 0 ? 'var(--md-error)' : 'var(--md-success)'}">₹${totalActual.toLocaleString('en-IN')}</div>
+                <div class="b-status">${totalDiff >= 0 ? `<span class="status-ok">✓ ${totalDiff.toLocaleString('en-IN')}</span>` : `<span class="status-over">+${Math.abs(totalDiff).toLocaleString('en-IN')}</span>`}</div>
+            </div>`;
+
+            list.innerHTML = html;
+
+            // Update hero with budget info
+            const heroBudget = document.getElementById('hero-vs-budget');
+            if (totalBudget > 0) {
+                heroBudget.innerText = totalActual <= totalBudget ? `✓ Under budget by ₹${(totalBudget-totalActual).toLocaleString('en-IN')}` : `⚠ Over budget by ₹${(totalActual-totalBudget).toLocaleString('en-IN')}`;
+                heroBudget.style.color = totalActual <= totalBudget ? 'rgba(255,255,255,0.8)' : 'rgba(255,200,200,0.9)';
             }
-            result.push(current.trim());
-            return result;
         }
+        function sumOfCategories(totals, cats) { return cats.reduce((s,c) => s + (totals[c]||0), 0); }
 
-        function importPDFFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // ── CSV IMPORT ──
+        function importCSVFile(e) {
+            const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader();
             reader.onload = function(ev) {
-                // Basic text extraction from PDF (simple approach)
-                const text = ev.target.result;
-                const lines = text.split(/\r?\n/).filter(l => l.trim());
-                parseGenericLines(lines);
-                e.target.value = '';
+                const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+                if(lines.length<2) { Swal.fire('Error','CSV needs header + data','error'); return; }
+                const cols = lines[0].toLowerCase().split(',').map(c=>c.trim());
+                const amtIdx=cols.indexOf('amount'), commentIdx=cols.indexOf('comment'), timeIdx=cols.indexOf('commit_time');
+                if(amtIdx===-1||timeIdx===-1){ Swal.fire('Error','Need amount, comment, commit_time','error'); return; }
+                let added=0, skipped=0;
+                for(let i=1;i<lines.length;i++) {
+                    const p = parseCSVLine(lines[i]);
+                    const amt=parseFloat(p[amtIdx]), comment=commentIdx>=0?(p[commentIdx]||''):'', date=parseBuckwheatDate(p[timeIdx]);
+                    if(!isNaN(amt)&&date) { db.spendTracker.entries.push({id:Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6),amount:amt,comment:DOMPurify.sanitize(comment,{ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),date:date.toISOString(),category:'Uncategorized'}); added++; }
+                    else skipped++;
+                }
+                saveDB(); e.target.value='';
+                Swal.fire({icon:'success',title:'Imported',text:`${added} added${skipped?', '+skipped+' skipped':''}`,timer:2000,showConfirmButton:false});
+                closeImportSheet(); renderAll();
             };
             reader.readAsText(file);
         }
+        function parseCSVLine(l) { const r=[]; let c='',q=false; for(let i=0;i<l.length;i++){const ch=l[i]; if(q){if(ch==='"'){if(i+1<l.length&&l[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}else{if(ch==='"')q=true;else if(ch===','){r.push(c.trim());c=''}else c+=ch}} r.push(c.trim()); return r; }
 
         function importXLSXFile(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(ev) {
-                const data = new Uint8Array(ev.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const json = XLSX.utils.sheet_to_json(sheet);
-                if (!json || json.length === 0) { Swal.fire('Error', 'No data found in sheet', 'error'); return; }
-                let added = 0;
-                json.forEach((row, i) => {
-                    const amt = parseFloat(row.amount || row.Amount || row.AMOUNT || 0);
-                    const comment = String(row.comment || row.Comment || row.COMMENT || row.description || row.Description || '');
-                    let date = null;
-                    const dStr = row.commit_time || row.Commit_time || row.date || row.Date || '';
-                    date = parseBuckwheatDate(String(dStr)) || new Date(String(dStr));
-                    if (!isNaN(amt) && amt > 0 && date) {
-                        db.spendTracker.entries.push({ id: Date.now() + '_x' + i + '_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
-                        added++;
-                    }
+            const file=e.target.files[0]; if(!file) return;
+            const reader=new FileReader();
+            reader.onload=function(ev) {
+                const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+                const json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                if(!json||!json.length){Swal.fire('Error','Empty sheet','error');return;}
+                let added=0;
+                json.forEach((row,i)=>{
+                    const amt=parseFloat(row.amount||row.Amount||row.AMOUNT||0);
+                    const comment=String(row.comment||row.Comment||row.COMMENT||row.description||row.Description||'');
+                    let date=null; const dStr=row.commit_time||row.Commit_time||row.date||row.Date||'';
+                    date = parseBuckwheatDate(String(dStr)) || (dStr ? new Date(String(dStr)) : null);
+                    if(!isNaN(amt)&&amt>0&&date) { db.spendTracker.entries.push({id:Date.now()+'_x'+i,amount:amt,comment:DOMPurify.sanitize(comment,{ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),date:date.toISOString(),category:'Uncategorized'}); added++; }
                 });
-                saveDB();
-                e.target.value = '';
-                Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions added`, timer: 2000, showConfirmButton: false });
-                renderAll();
+                saveDB(); e.target.value='';
+                Swal.fire({icon:'success',title:'Imported',text:`${added} added`,timer:2000,showConfirmButton:false});
+                closeImportSheet(); renderAll();
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function parseGenericLines(lines) {
-            let added = 0;
-            lines.forEach((line, i) => {
-                const parts = line.split(/\t|,/);
-                if (parts.length >= 2) {
-                    const amt = parseFloat(parts[0].replace(/[₹$,]/g, ''));
-                    if (!isNaN(amt) && amt > 0) {
-                        const date = new Date();
-                        db.spendTracker.entries.push({ id: Date.now() + '_p' + i + '_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(parts.slice(1).join(' '), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
-                        added++;
-                    }
-                }
-            });
-            if (added > 0) { saveDB(); Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions`, timer: 2000, showConfirmButton: false }); renderAll(); }
+        function importPDFFile(e) {
+            const file=e.target.files[0]; if(!file) return;
+            const reader=new FileReader();
+            reader.onload=function(ev) {
+                const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+                let added=0;
+                lines.forEach((line,i)=>{
+                    const parts=line.split(/\t|,/);
+                    if(parts.length>=2) { const amt=parseFloat(parts[0].replace(/[₹$,]/g,'')); if(!isNaN(amt)&&amt>0){const d=new Date(); db.spendTracker.entries.push({id:Date.now()+'_p'+i,amount:amt,comment:DOMPurify.sanitize(parts.slice(1).join(' '),{ALLOWED_TAGS:[],ALLOWED_ATTR:[]}),date:d.toISOString(),category:'Uncategorized'}); added++; } }
+                });
+                if(added>0){saveDB();Swal.fire({icon:'success',title:'Imported',text:`${added} added`,timer:2000,showConfirmButton:false});closeImportSheet();renderAll();}
+                else Swal.fire('Info','No data could be parsed. Try CSV/XLSX instead.','info');
+                e.target.value='';
+            };
+            reader.readAsText(file);
         }
 
-        // ── MANUAL ENTRY ──
-        function addManualEntry() {
-            const amt = parseFloat(document.getElementById('manual-amt').value);
-            const comment = document.getElementById('manual-comment').value.trim();
-            const dateStr = document.getElementById('manual-date').value;
-            if (!amt || amt <= 0) { Swal.fire('Error', 'Enter a valid amount', 'error'); return; }
-            const date = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
-            db.spendTracker.entries.push({ id: Date.now() + '_m_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
-            saveDB();
-            document.getElementById('manual-amt').value = '';
-            document.getElementById('manual-comment').value = '';
-            document.getElementById('manual-date').value = '';
-            renderAll();
-            Swal.fire({ icon: 'success', title: 'Added', timer: 1200, showConfirmButton: false });
-        }
-
-        // ── CATEGORIZATION ──
-        function getUncategorized() {
-            return db.spendTracker.entries.filter(e => !e.category || e.category === 'Uncategorized');
+        // ── AI ──
+        async function callAI(prompt, system) {
+            const data = loadDB(); const geminiKey = data.geminiKey||'', groqKey = data.groqKey||'';
+            const timeoutMs=15000;
+            if(geminiKey) { const c=new AbortController(); const t=setTimeout(()=>c.abort(),timeoutMs); try{ const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+geminiKey,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:system+'\n\n'+prompt}]}]}),signal:c.signal}); clearTimeout(t); const d=await r.json(); return d.candidates?.[0]?.content?.parts?.[0]?.text||'No response'; }catch(e){clearTimeout(t); if(groqKey) throw e; return 'AI Error';} }
+            if(groqKey) { const c=new AbortController(); const t=setTimeout(()=>c.abort(),timeoutMs); try{ const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},body:JSON.stringify({model:'llama-3.3-70b-versatile',messages:[{role:'system',content:system},{role:'user',content:prompt}],temperature:0.3}),signal:c.signal}); clearTimeout(t); const d=await r.json(); return d.choices?.[0]?.message?.content||'No response'; }catch(e){clearTimeout(t); return 'AI Error';} }
+            throw new Error('No API key');
         }
 
         async function runAICategorization() {
-            const uncat = getUncategorized();
-            if (uncat.length === 0) { Swal.fire('Info', 'No uncategorized entries', 'info'); return; }
-            const btn = document.getElementById('ai-cat-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-rounded ai-loading-icon" style="font-size:18px;">autorenew</span> Categorizing...';
-
-            const prompt = `You are a financial categorizer. Categorize each expense into one of: ${Object.keys(CAT_COLORS).join(', ')}. Respond ONLY with a valid JSON array of objects, each with "comment" (exact match) and "category" fields. No explanation, no markdown.\n\nExpenses:\n${JSON.stringify(uncat.map(e => ({ comment: e.comment, amount: e.amount })))}`;
-
+            const uncat = db.spendTracker.entries.filter(e => !e.category || e.category==='Uncategorized');
+            if(uncat.length===0){Swal.fire('Info','Nothing to categorize','info');return;}
+            const btn=document.getElementById('ai-cat-btn'); btn.disabled=true; btn.innerHTML='<span class="material-symbols-rounded ai-loading-icon">autorenew</span> Categorizing...';
+            const prompt = `You are a financial categorizer. Categorize each expense into: ${Object.keys(CAT_COLORS).join(', ')}. Respond ONLY with valid JSON array: [{"comment":"exact match","category":"..."}]. No markdown.\n\n${JSON.stringify(uncat.map(e=>({comment:e.comment,amount:e.amount})))}`;
             try {
-                const response = await callAI(prompt, 'spend_categorize_1');
-                const cleaned = response.replace(/```json|```/gi, '').trim();
-                const cats = JSON.parse(cleaned);
-                if (!Array.isArray(cats)) throw new Error('Not an array');
-                let mapped = 0;
-                uncat.forEach(e => {
-                    const match = cats.find(c => c.comment === e.comment);
-                    if (match && CAT_COLORS[match.category]) {
-                        e.category = match.category;
-                        mapped++;
-                    }
-                });
-                saveDB();
-                Swal.fire({ icon: 'success', title: 'Categorized', text: `${mapped}/${uncat.length} entries categorized`, timer: 2000, showConfirmButton: false });
-                renderAll();
-            } catch (e) {
-                // Fallback: let user pick categories manually
-                showManualCategoryPicker(uncat);
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize with AI';
+                const resp = await callAI(prompt, 'spend_categorize_2');
+                const cats = JSON.parse(resp.replace(/```json|```/gi,'').trim());
+                if(!Array.isArray(cats)) throw new Error('Not array');
+                let m=0; uncat.forEach(e=>{const x=cats.find(c=>c.comment===e.comment); if(x&&CAT_COLORS[x.category]){e.category=x.category;m++;}});
+                saveDB(); Swal.fire({icon:'success',title:'Done',text:`${m}/${uncat.length} categorized`,timer:2000,showConfirmButton:false}); renderAll();
+            } catch(e) { showManualCategoryPicker(uncat); }
+            btn.disabled=false; btn.innerHTML='<span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize';
         }
 
         function showManualCategoryPicker(entries) {
-            const cats = Object.keys(CAT_COLORS);
-            let html = '<div style="max-height:400px;overflow-y:auto;">';
-            entries.forEach((e, idx) => {
-                html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--md-surface-container-highest);">
-                    <span style="flex:1;font-size:13px;">${DOMPurify.sanitize(e.comment)} — ₹${e.amount}</span>
-                    <select id="manual-cat-${idx}" style="padding:4px 8px;border-radius:8px;border:1px solid var(--md-outline);font-size:12px;">
-                        ${cats.map(c => `<option value="${c}">${c}</option>`).join('')}
-                    </select>
-                </div>`;
+            const cats=Object.keys(CAT_COLORS);
+            const opts=cats.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+            let h='<div style="max-height:50vh;overflow-y:auto;">';
+            entries.forEach((e,i)=>{
+                h+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--md-surface-container-highest);font-size:13px;">'
+                  + '<span style="flex:1;">'+DOMPurify.sanitize(e.comment)+' — ₹'+e.amount+'</span>'
+                  + '<select id="mc-'+i+'" style="padding:6px 8px;border-radius:8px;border:1px solid var(--md-outline);font-size:12px;">'+opts+'</select></div>';
             });
-            html += '</div>';
-            Swal.fire({
-                title: 'Categorize Manually',
-                html: html,
-                showCancelButton: true,
-                confirmButtonText: 'Save',
-                preConfirm: () => {
-                    entries.forEach((e, idx) => {
-                        const sel = document.getElementById('manual-cat-' + idx);
-                        if (sel) e.category = sel.value;
-                    });
-                    saveDB();
-                    renderAll();
-                }
-            });
+            h+='</div>';
+            Swal.fire({title:'Categorize '+entries.length+' items',html:h,showCancelButton:true,confirmButtonText:'Save',preConfirm:()=>{entries.forEach((e,i)=>{const s=document.getElementById('mc-'+i); if(s) e.category=s.value;}); saveDB(); renderAll();}});
         }
 
-        // ── AI INSIGHTS ──
         async function runAIInsights() {
-            const entries = getMonthEntries();
-            if (entries.length === 0) { Swal.fire('Info', 'No entries this month', 'info'); return; }
-            const btn = document.getElementById('ai-insights-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-rounded ai-loading-icon" style="font-size:18px;">autorenew</span> Analyzing...';
-
-            // Aggregate by category
-            const byCat = {};
-            entries.forEach(e => {
-                const cat = e.category || 'Uncategorized';
-                if (!byCat[cat]) byCat[cat] = 0;
-                byCat[cat] += e.amount;
-            });
-
-            const prompt = `Analyze this monthly spending data and provide 3-5 concise, actionable insights. Format as simple HTML paragraphs with <strong> for key numbers. No markdown, no codeblocks.\n\nTotal: ₹${entries.reduce((s,e) => s + e.amount, 0)}\nTransactions: ${entries.length}\nCategory breakdown: ${JSON.stringify(byCat)}\nAverage per day: ₹${Math.round(entries.reduce((s,e) => s + e.amount, 0) / Math.max(1, new Date().getDate()))}`;
-
-            try {
-                const response = await callAI(prompt, 'spend_insight_1');
-                const out = document.getElementById('ai-insights-output');
-                out.innerHTML = response.replace(/```html|```/gi, '');
-                out.style.display = 'block';
-            } catch (e) {
-                Swal.fire('Error', 'AI analysis failed. Check API keys.', 'error');
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<span class="material-symbols-rounded">insights</span> AI Spending Insights';
-        }
-
-        // ── AI HELPER ──
-        async function callAI(prompt, systemPrompt) {
-            const data = loadDB();
-            const geminiKey = data.geminiKey || '';
-            const groqKey = data.groqKey || '';
-            const timeoutMs = 15000;
-
-            if (geminiKey) {
-                const controller = new AbortController();
-                const tid = setTimeout(() => controller.abort(), timeoutMs);
-                try {
-                    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + '\n\n' + prompt }] }] }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(tid);
-                    const data = await res.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
-                } catch (e) { clearTimeout(tid); if (groqKey) throw e; return 'AI Error'; }
-            }
-
-            if (groqKey) {
-                const controller = new AbortController();
-                const tid = setTimeout(() => controller.abort(), timeoutMs);
-                try {
-                    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
-                        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }], temperature: 0.3 }),
-                        signal: controller.signal
-                    });
-                    clearTimeout(tid);
-                    const data = await res.json();
-                    return data.choices?.[0]?.message?.content || 'No response';
-                } catch (e) { clearTimeout(tid); return 'AI Error'; }
-            }
-            throw new Error('No API key configured');
+            const entries=getMonthEntries();
+            if(entries.length===0){Swal.fire('Info','No data this month','info');return;}
+            const btn=document.getElementById('ai-insights-btn'); btn.disabled=true; btn.innerHTML='<span class="material-symbols-rounded ai-loading-icon">autorenew</span> Analyzing...';
+            const byCat={}; entries.forEach(e=>{const c=e.category||'Uncategorized';if(!byCat[c])byCat[c]=0;byCat[c]+=e.amount;});
+            const total=entries.reduce((s,e)=>s+e.amount,0); const days=Math.min(new Date().getDate(), new Date(currentYear,currentMonth+1,0).getDate());
+            const prompt = `Monthly spending analysis. 3-5 insights as simple HTML paragraphs with <strong> for numbers. No markdown, no codeblocks.\n\nTotal: ₹${total}\nTxns: ${entries.length}\nCategories: ${JSON.stringify(byCat)}\nAvg/day: ₹${Math.round(total/days)}`;
+            try { const r=await callAI(prompt,'spend_insight_2'); const o=document.getElementById('ai-insights-output'); o.innerHTML=r.replace(/```html|```/gi,''); o.style.display='block'; } catch(e) { Swal.fire('Error','AI failed. Check API keys.','error'); }
+            btn.disabled=false; btn.innerHTML='<span class="material-symbols-rounded">insights</span> Insights';
         }
 
         // ── CHARTS ──
         function renderCharts() {
-            const entries = getMonthEntries();
-            const cats = {};
-            const daily = {};
-            entries.forEach(e => {
-                const cat = e.category || 'Uncategorized';
-                if (!cats[cat]) cats[cat] = 0;
-                cats[cat] += e.amount;
-                const dayStr = fmtDate(new Date(e.date));
-                if (!daily[dayStr]) daily[dayStr] = 0;
-                daily[dayStr] += e.amount;
-            });
+            const entries=getMonthEntries();
+            const cats={}, daily={};
+            entries.forEach(e=>{const c=e.category||'Uncategorized';if(!cats[c])cats[c]=0;cats[c]+=e.amount;const d=fmtDate(new Date(e.date));if(!daily[d])daily[d]=0;daily[d]+=e.amount;});
 
-            // Category Pie
-            const ctx1 = document.getElementById('catPieChart').getContext('2d');
-            if (catPieChart) catPieChart.destroy();
-            catPieChart = new Chart(ctx1, {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(cats),
-                    datasets: [{ data: Object.values(cats), backgroundColor: Object.keys(cats).map(c => CAT_COLORS[c] || '#8E9099'), borderWidth: 0 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false, cutout: '65%',
-                    plugins: { legend: { position: 'bottom', labels: { padding: 8, font: { size: 10 }, boxWidth: 10 } } }
-                }
-            });
+            const ctx1=document.getElementById('catPieChart').getContext('2d'); if(catPieChart)catPieChart.destroy();
+            catPieChart=new Chart(ctx1,{type:'doughnut',data:{labels:Object.keys(cats),datasets:[{data:Object.values(cats),backgroundColor:Object.keys(cats).map(c=>CAT_COLORS[c]||'#8E9099'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{padding:6,font:{size:10},boxWidth:10}}}}});
 
-            // Daily Trend
-            const ctx2 = document.getElementById('dailyTrendChart').getContext('2d');
-            if (dailyTrendChart) dailyTrendChart.destroy();
-            const days = Object.keys(daily).sort();
-            dailyTrendChart = new Chart(ctx2, {
-                type: 'bar',
-                data: {
-                    labels: days,
-                    datasets: [{ data: days.map(d => daily[d]), backgroundColor: 'var(--md-primary)', borderRadius: 4 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { x: { ticks: { font: { size: 9 } } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } }
-                }
-            });
-
-            // Sankey
-            renderSankey(cats);
+            const ctx2=document.getElementById('dailyTrendChart').getContext('2d'); if(dailyTrendChart)dailyTrendChart.destroy();
+            const days=Object.keys(daily).sort();
+            dailyTrendChart=new Chart(ctx2,{type:'bar',data:{labels:days,datasets:[{data:days.map(d=>daily[d]),backgroundColor:'var(--md-primary)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:9}}},y:{beginAtZero:true,ticks:{font:{size:9}}}}}});
         }
 
-        function renderSankey(cats) {
-            const svg = document.getElementById('sankey-svg');
-            const total = Object.values(cats).reduce((s, v) => s + v, 0);
-            if (total === 0) { svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="var(--md-outline)" font-size="14">No data</text>'; return; }
-
-            const w = Math.max(400, svg.clientWidth || 600);
-            const h = 180;
-            const barW = 14;
-            const gap = Math.min(16, (h - 40) / Object.keys(cats).length);
-            const colors = Object.keys(cats).map(c => CAT_COLORS[c] || '#8E9099');
-            const vals = Object.values(cats);
-            const totalPx = h - 40;
-            let y = 20;
-
-            let html = `<rect width="${w}" height="${h}" fill="none"/>
-                <text x="10" y="16" fill="var(--md-on-surface-variant)" font-size="11" font-weight="500">Total: ₹${total.toLocaleString('en-IN')}</text>`;
-
-            Object.keys(cats).forEach((cat, i) => {
-                const pct = vals[i] / total;
-                const barH = Math.max(8, pct * totalPx);
-                const color = colors[i];
-                html += `<rect x="20" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${color}" opacity="0.9"/>
-                    <text x="42" y="${y + Math.min(barH / 2 + 4, 14)}" fill="var(--md-on-surface)" font-size="10">${cat}</text>
-                    <text x="${w - 10}" y="${y + Math.min(barH / 2 + 4, 14)}" fill="var(--md-on-surface)" font-size="10" text-anchor="end">₹${vals[i].toLocaleString('en-IN')} (${(pct * 100).toFixed(0)}%)</text>`;
-                // flow lines to a common point
-                const cx = w / 2;
-                html += `<path d="M${20 + barW} ${y + barH / 2} Q${cx} ${y + barH / 2} ${cx} ${h / 2}" fill="none" stroke="${color}" stroke-width="2" opacity="0.2"/>`;
-                y += barH + gap;
+        // ── SANKEY ──
+        function renderSankey() {
+            const entries=getMonthEntries(); const svg=document.getElementById('sankey-svg');
+            const cats={}; entries.forEach(e=>{const c=e.category||'Uncategorized';if(!cats[c])cats[c]=0;cats[c]+=e.amount;});
+            const total=Object.values(cats).reduce((s,v)=>s+v,0);
+            if(total===0){svg.innerHTML='<text x="50%" y="50%" text-anchor="middle" fill="var(--md-outline)" font-size="13">No data</text>';return;}
+            const w=Math.max(400,svg.clientWidth||600), h=180, barW=14; let y=20;
+            const vals=Object.values(cats), colors=Object.keys(cats).map(c=>CAT_COLORS[c]||'#8E9099');
+            const totalPx=h-40, gap=Math.min(14,(h-40)/vals.length);
+            let html=`<rect width="${w}" height="${h}" fill="none"/><text x="10" y="16" fill="var(--md-on-surface-variant)" font-size="11">Total: ₹${total.toLocaleString('en-IN')}</text>`;
+            const cx=w/2;
+            Object.keys(cats).forEach((cat,i)=>{const pct=vals[i]/total;const barH=Math.max(8,pct*totalPx);const color=colors[i];
+                html+=`<rect x="20" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${color}" opacity="0.9"/>
+                <text x="42" y="${y+Math.min(barH/2+4,14)}" fill="var(--md-on-surface)" font-size="9">${cat}</text>
+                <text x="${w-10}" y="${y+Math.min(barH/2+4,14)}" fill="var(--md-on-surface)" font-size="9" text-anchor="end">₹${vals[i].toLocaleString('en-IN')}</text>
+                <path d="M${20+barW} ${y+barH/2} Q${cx} ${y+barH/2} ${cx} ${h/2}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.15"/>`;
+                y+=barH+gap;
             });
-
-            // Total aggregation bar
-            html += `<rect x="${w / 2 - barW / 2}" y="${h / 2 - 10}" width="${barW}" height="20" rx="4" fill="var(--md-primary)" opacity="0.8"/>
-                <text x="${w / 2}" y="${h / 2 + 4}" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">Total</text>`;
-
-            svg.innerHTML = html;
+            html+=`<rect x="${cx-barW/2}" y="${h/2-10}" width="${barW}" height="20" rx="4" fill="var(--md-primary)" opacity="0.8"/><text x="${cx}" y="${h/2+4}" text-anchor="middle" fill="#fff" font-size="10" font-weight="600">TOTAL</text>`;
+            svg.innerHTML=html;
         }
 
-        // ── LIST RENDER ──
+        // ── BIGGEST ITEM ──
+        function renderBiggestItem() {
+            const entries=getMonthEntries(); const container=document.getElementById('biggest-item-section');
+            if(entries.length===0){container.style.display='none';return;}
+            const biggest=entries.reduce((a,b)=>a.amount>b.amount?a:b);
+            container.style.display='block';
+            container.innerHTML=`<div class="section-label"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">warning</span> Biggest Expense</div>
+                <div class="biggest-item" onclick="document.getElementById('quick-comment').value='${DOMPurify.sanitize(biggest.comment).replace(/'/g,"\\'")}';document.getElementById('quick-amt').focus();">
+                    <span class="material-symbols-rounded" style="font-size:24px;color:var(--md-error);">emergency</span>
+                    <div style="flex:1;"><div style="font-weight:600;font-size:15px;color:var(--md-on-surface);">${DOMPurify.sanitize(biggest.comment)}</div><div style="font-size:12px;color:var(--md-outline);">${fmtDate(new Date(biggest.date))}</div></div>
+                    <div style="font-size:20px;font-weight:600;color:var(--md-error);">₹${biggest.amount.toLocaleString('en-IN')}</div>
+                </div>`;
+        }
+
+        // ── LIST ──
         function renderSpendList() {
-            const container = document.getElementById('spend-list');
-            const entries = getFilteredEntries();
-            if (entries.length === 0) {
-                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--md-outline);"><span class="material-symbols-rounded" style="font-size:48px;">receipt_long</span><div style="margin-top:12px;font-size:14px;">No transactions</div><div style="font-size:12px;margin-top:4px;">Import a CSV or add manually</div></div>';
-                return;
-            }
-            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
-            let html = '';
-            entries.forEach(e => {
-                const d = new Date(e.date);
-                const cat = e.category || 'Uncategorized';
-                const color = CAT_COLORS[cat] || '#8E9099';
-                html += `<div class="spend-row">
-                    <div class="spend-date">${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}</div>
-                    <div class="spend-comment">${DOMPurify.sanitize(e.comment)}</div>
+            const container=document.getElementById('spend-list');
+            const entries=getFilteredEntries();
+            document.getElementById('list-count').innerText = entries.length + ' entries';
+            if(entries.length===0){container.innerHTML='<div style="padding:40px;text-align:center;color:var(--md-outline);"><span class="material-symbols-rounded" style="font-size:48px;">receipt_long</span><div style="margin-top:12px;font-size:14px;">No transactions</div></div>';return;}
+            entries.sort((a,b)=>new Date(b.date)-new Date(a.date));
+            let html='';
+            entries.forEach(e=>{const d=new Date(e.date);const cat=e.category||'Uncategorized';const color=CAT_COLORS[cat]||'#8E9099';
+                html+=`<div class="spend-row">
+                    <div class="spend-date">${d.getDate()} ${d.toLocaleString('default',{month:'short'})}</div>
+                    <div class="spend-comment">${DOMPurify.sanitize(e.comment||'—')}</div>
                     <div class="spend-amt">₹${e.amount.toLocaleString('en-IN')}</div>
                     <button class="cat-badge" style="background:${color}22;color:${color};" onclick="changeCategory('${e.id}')">${cat}</button>
-                    <button class="btn-icon" onclick="deleteEntry('${e.id}')" style="color:var(--md-error);min-width:32px;min-height:32px;padding:4px;">
-                        <span class="material-symbols-rounded" style="font-size:16px;">close</span>
-                    </button>
+                    <button class="btn-icon" style="min-width:32px;min-height:32px;padding:4px;color:var(--md-error);" onclick="deleteEntry('${e.id}')"><span class="material-symbols-rounded" style="font-size:16px;">close</span></button>
                 </div>`;
             });
-            container.innerHTML = html;
+            container.innerHTML=html;
         }
 
         function changeCategory(id) {
-            const entry = db.spendTracker.entries.find(e => e.id === id);
-            if (!entry) return;
-            const cats = Object.keys(CAT_COLORS);
-            Swal.fire({
-                title: 'Category for ' + DOMPurify.sanitize(entry.comment),
-                input: 'select',
-                inputOptions: cats.reduce((o, c) => { o[c] = c; return o; }, {}),
-                inputValue: entry.category === 'Uncategorized' ? cats[0] : entry.category,
-                showCancelButton: true,
-                preConfirm: (val) => { entry.category = val; saveDB(); renderAll(); }
-            });
+            const e=db.spendTracker.entries.find(x=>x.id===id); if(!e) return;
+            const cats=Object.keys(CAT_COLORS);
+            Swal.fire({title:'Category',input:'select',inputOptions:cats.reduce((o,c)=>{o[c]=c;return o},{}),inputValue:e.category==='Uncategorized'?cats[0]:e.category,showCancelButton:true,preConfirm:v=>{e.category=v;saveDB();renderAll();}});
         }
 
-        function deleteEntry(id) {
-            Swal.fire({ title: 'Delete?', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: 'var(--md-error)' }).then(r => {
-                if (r.isConfirmed) { db.spendTracker.entries = db.spendTracker.entries.filter(e => e.id !== id); saveDB(); renderAll(); }
-            });
-        }
+        function deleteEntry(id) { Swal.fire({title:'Delete?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.id!==id);saveDB();renderAll();}}); }
+        function deleteAllUncategorized() { Swal.fire({title:'Delete uncategorized?',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){db.spendTracker.entries=db.spendTracker.entries.filter(x=>x.category&&x.category!=='Uncategorized');saveDB();renderAll();}}); }
+        function deleteAllEntries() { Swal.fire({title:'Delete ALL this month?',text:'Cannot be undone',showCancelButton:true,confirmButtonColor:'var(--md-error)'}).then(r=>{if(r.isConfirmed){const ids=new Set(getMonthEntries().map(x=>x.id));db.spendTracker.entries=db.spendTracker.entries.filter(x=>!ids.has(x.id));saveDB();renderAll();}}); }
 
-        function deleteAllUncategorized() {
-            Swal.fire({ title: 'Delete all uncategorized?', showCancelButton: true, confirmButtonColor: 'var(--md-error)' }).then(r => {
-                if (r.isConfirmed) { db.spendTracker.entries = db.spendTracker.entries.filter(e => e.category && e.category !== 'Uncategorized'); saveDB(); renderAll(); }
-            });
-        }
+        // ── FILTER ──
+        function setFilter(f,btn) { currentFilter=f; document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); renderSpendList(); }
 
-        function deleteAllEntries() {
-            Swal.fire({ title: 'Delete ALL entries?', text: 'This cannot be undone', showCancelButton: true, confirmButtonColor: 'var(--md-error)' }).then(r => {
-                if (r.isConfirmed) {
-                    const monthEntries = getMonthEntries();
-                    monthEntries.forEach(e => {
-                        db.spendTracker.entries = db.spendTracker.entries.filter(x => x.id !== e.id);
-                    });
-                    saveDB(); renderAll();
-                }
-            });
-        }
+        // ── MONTH NAV ──
+        function shiftMonth(d) { currentMonth+=d; if(currentMonth>11){currentMonth=0;currentYear++;} if(currentMonth<0){currentMonth=11;currentYear--;} renderAll(); }
 
         // ── EXPORT ──
         function showExportMenu() {
-            const entries = getMonthEntries();
-            if (entries.length === 0) { Swal.fire('Info', 'No data to export', 'info'); return; }
-            Swal.fire({
-                title: 'Export Data',
-                html: `
-                    <div style="display:flex; gap:8px; flex-direction:column;">
-                        <button class="btn-secondary" onclick="exportCSV()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">description</span> CSV</button>
-                        <button class="btn-secondary" onclick="exportPDF()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">picture_as_pdf</span> PDF</button>
-                        <button class="btn-secondary" onclick="exportXLSX()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">table_chart</span> XLSX</button>
-                    </div>`,
-                showConfirmButton: false, showCloseButton: true
-            });
+            const entries=getMonthEntries();
+            if(entries.length===0){Swal.fire('Info','Nothing to export','info');return;}
+            Swal.fire({title:'Export',html:`<div style="display:flex;gap:8px;flex-direction:column;"><button class="btn-secondary" onclick="exportCSV()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">description</span> CSV</button><button class="btn-secondary" onclick="exportXLSX()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">table_chart</span> XLSX</button><button class="btn-secondary" onclick="exportPDF()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">picture_as_pdf</span> PDF</button></div>`,showConfirmButton:false,showCloseButton:true});
         }
-
-        function exportCSV() {
-            const entries = getMonthEntries();
-            let csv = 'amount,comment,category,date\n';
-            entries.forEach(e => {
-                const d = new Date(e.date);
-                csv += `${e.amount},"${(e.comment || '').replace(/"/g, '""')}","${e.category || 'Uncategorized'}",${d.toISOString().split('T')[0]}\n`;
-            });
-            downloadFile(csv, `spends_${currentMonth + 1}_${currentYear}.csv`, 'text/csv');
-            Swal.close();
-        }
-
+        function exportCSV() { const e=getMonthEntries(); let c='amount,comment,category,date\n'; e.forEach(x=>{const d=new Date(x.date);c+=`${x.amount},"${(x.comment||'').replace(/"/g,'""')}","${x.category||'Uncategorized'}",${d.toISOString().split('T')[0]}\n`;}); downloadFile(c,`spends_${currentMonth+1}_${currentYear}.csv`,'text/csv'); Swal.close(); }
+        function exportXLSX() { const e=getMonthEntries().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(x=>({Date:new Date(x.date).toISOString().split('T')[0],Comment:x.comment||'',Category:x.category||'Uncategorized',Amount:x.amount})); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(e),'Spends'); XLSX.writeFile(wb,`spends_${currentMonth+1}_${currentYear}.xlsx`); Swal.close(); }
         function exportPDF() {
-            const entries = getMonthEntries();
-            const total = entries.reduce((s, e) => s + e.amount, 0);
-            const cats = {};
-            entries.forEach(e => { const c = e.category || 'Uncategorized'; cats[c] = (cats[c] || 0) + e.amount; });
-
-            let tableRows = entries.sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => {
-                const d = new Date(e.date);
-                return `<tr><td>${d.getDate()}/${d.getMonth() + 1}</td><td>${DOMPurify.sanitize(e.comment)}</td><td>${e.category || 'Uncategorized'}</td><td>₹${e.amount.toLocaleString('en-IN')}</td></tr>`;
-            }).join('');
-
-            const html = `
-                <div style="font-family:Roboto,sans-serif;padding:24px;color:#1a1a1a;">
-                    <h1 style="font-size:24px;color:#415F91;">Spend Report</h1>
-                    <p style="color:#666;">${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
-                    <div style="font-size:36px;font-weight:400;margin:16px 0;">₹${total.toLocaleString('en-IN')}</div>
-                    <h3>Category Split</h3>
-                    ${Object.entries(cats).map(([c, v]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${c}</span><span>₹${v.toLocaleString('en-IN')}</span></div>`).join('')}
-                    <hr style="margin:16px 0;">
-                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                        <tr style="background:#f0f0f0;"><th style="padding:8px;text-align:left;">Date</th><th style="padding:8px;text-align:left;">Comment</th><th style="padding:8px;text-align:left;">Category</th><th style="padding:8px;text-align:right;">Amount</th></tr>
-                        ${tableRows}
-                    </table>
-                </div>`;
-
-            const el = document.createElement('div');
-            el.innerHTML = html;
-            document.body.appendChild(el);
-            html2pdf().set({ margin: 10, filename: `spends_${currentMonth + 1}_${currentYear}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(el).save().then(() => document.body.removeChild(el));
+            const entries=getMonthEntries(); const total=entries.reduce((s,e)=>s+e.amount,0); const cats={}; entries.forEach(e=>{const c=e.category||'Uncategorized';if(!cats[c])cats[c]=0;cats[c]+=e.amount;});
+            const rows=entries.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(e=>{const d=new Date(e.date);return `<tr><td>${d.getDate()}/${d.getMonth()+1}</td><td>${DOMPurify.sanitize(e.comment||'—')}</td><td>${e.category||'Uncategorized'}</td><td style="text-align:right;">₹${e.amount.toLocaleString('en-IN')}</td></tr>`;}).join('');
+            const html=`<div style="font-family:Roboto,sans-serif;padding:24px;color:#1a1a1a;"><h1 style="font-size:24px;color:#415F91;">Spend Report</h1><p style="color:#666;">${new Date(currentYear,currentMonth).toLocaleString('default',{month:'long',year:'numeric'})}</p><div style="font-size:36px;font-weight:400;margin:16px 0;">₹${total.toLocaleString('en-IN')}</div><h3>Category Split</h3>${Object.entries(cats).map(([c,v])=>`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${c}</span><span>₹${v.toLocaleString('en-IN')}</span></div>`).join('')}<hr style="margin:16px 0;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><tr style="background:#f0f0f0;"><th style="padding:8px;text-align:left;">Date</th><th style="padding:8px;text-align:left;">Comment</th><th style="padding:8px;text-align:left;">Category</th><th style="padding:8px;text-align:right;">Amount</th></tr>${rows}</table></div>`;
+            const el=document.createElement('div'); el.innerHTML=html; document.body.appendChild(el);
+            html2pdf().set({margin:10,filename:`spends_${currentMonth+1}_${currentYear}.pdf`,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).from(el).save().then(()=>document.body.removeChild(el));
             Swal.close();
         }
-
-        function exportXLSX() {
-            const entries = getMonthEntries();
-            const data = entries.sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => ({
-                Date: new Date(e.date).toISOString().split('T')[0],
-                Comment: e.comment,
-                Category: e.category || 'Uncategorized',
-                Amount: e.amount
-            }));
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Spends');
-            XLSX.writeFile(wb, `spends_${currentMonth + 1}_${currentYear}.xlsx`);
-            Swal.close();
-        }
-
-        function downloadFile(content, name, mime) {
-            const blob = new Blob([content], { type: mime });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = name;
-            a.click();
-            URL.revokeObjectURL(a.href);
-        }
-
-        // ── FILTERS / NAV ──
-        function setFilter(filter, btn) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
-            renderSpendList();
-        }
-
-        function shiftMonth(delta) {
-            currentMonth += delta;
-            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-            renderAll();
-        }
+        function downloadFile(c,name,mime){const b=new Blob([c],{type:mime});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
 
         // ── QUICK STATS ──
         function renderQuickStats() {
-            const entries = getMonthEntries();
-            const total = entries.reduce((s, e) => s + e.amount, 0);
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            const day = Math.min(new Date().getDate(), daysInMonth);
-            const avg = Math.round(total / day);
-            const cats = {};
-            entries.forEach(e => { const c = e.category || 'Uncategorized'; cats[c] = (cats[c] || 0) + e.amount; });
-            const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
-
-            document.getElementById('hero-total').innerText = '₹' + total.toLocaleString('en-IN');
-            document.getElementById('hero-count').innerText = entries.length + ' transactions';
-            document.getElementById('hero-avg').innerText = 'Avg: ₹' + avg.toLocaleString('en-IN') + '/day';
-            document.getElementById('month-label').innerText = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-            const container = document.getElementById('quick-stats');
-            container.innerHTML = `
+            const e=getMonthEntries(); const total=e.reduce((s,x)=>s+x.amount,0); const day=Math.min(new Date().getDate(),new Date(currentYear,currentMonth+1,0).getDate()); const avg=Math.round(total/day);
+            const cats={}; e.forEach(x=>{const c=x.category||'Uncategorized';if(!cats[c])cats[c]=0;cats[c]+=x.amount;});
+            const topCat=Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
+            document.getElementById('hero-total').innerText='₹'+total.toLocaleString('en-IN');
+            document.getElementById('hero-count').innerText=e.length+' txns';
+            document.getElementById('hero-avg').innerText='₹'+avg.toLocaleString('en-IN')+'/day';
+            document.getElementById('month-label').innerText=new Date(currentYear,currentMonth).toLocaleString('default',{month:'long',year:'numeric'});
+            document.getElementById('quick-stats').innerHTML=`
                 <div class="stat-chip"><div class="stat-chip-label">Avg/Day</div><div class="stat-chip-val">₹${avg.toLocaleString('en-IN')}</div></div>
-                <div class="stat-chip"><div class="stat-chip-label">Top Category</div><div class="stat-chip-val">${topCat ? topCat[0] : '—'}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Top Category</div><div class="stat-chip-val">${topCat?topCat[0]:'—'}</div></div>
                 <div class="stat-chip"><div class="stat-chip-label">Categories</div><div class="stat-chip-val">${Object.keys(cats).length}</div></div>
-                <div class="stat-chip"><div class="stat-chip-label">Biggest</div><div class="stat-chip-val">₹${entries.length > 0 ? Math.max(...entries.map(e => e.amount)).toLocaleString('en-IN') : 0}</div></div>
-            `;
+                <div class="stat-chip"><div class="stat-chip-label">Biggest</div><div class="stat-chip-val">₹${e.length>0?Math.max(...e.map(x=>x.amount)).toLocaleString('en-IN'):0}</div></div>`;
         }
 
-        // ── MAIN RENDER ──
-        function renderAll() {
-            renderQuickStats();
-            renderCharts();
-            renderSpendList();
-        }
-
-        // ── SET TODAY'S DATE IN MANUAL ENTRY ──
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
-            renderAll();
-        });
+        // ── MAIN ──
+        function renderAll() { renderQuickStats(); renderBudgetVsActual(); renderCharts(); renderSankey(); renderBiggestItem(); renderSpendList(); updateCommentSuggestions(); }
     </script>
 </body>
 </html>

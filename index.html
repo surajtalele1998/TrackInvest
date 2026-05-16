@@ -309,9 +309,12 @@
             <div id="rebalance-section" style="display:none; margin-bottom: 24px;"></div>
 
             <div class="section-title">
-                Portfolio Breakdown
+                    Portfolio Breakdown
                 <button class="ai-widget-mini" onclick="askAIEngine('full_report')">
                     <span class="material-symbols-rounded">analytics</span> Full AI Report
+                </button>
+                <button class="ai-widget-mini" onclick="generatePDFWealthReport()">
+                    <span class="material-symbols-rounded">picture_as_pdf</span> PDF Report
                 </button>
             </div>
 
@@ -816,6 +819,8 @@
                     <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span
                             class="material-symbols-rounded" style="font-size: 18px;">price_change</span>
                         Inflation</button>
+                    <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span
+                            class="material-symbols-rounded" style="font-size: 18px;">picture_as_pdf</span> Wealth PDF</button>
                 </div>
             </div>
 

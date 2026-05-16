@@ -748,6 +748,8 @@ function renderAll() {
     if (typeof updateAccountFilter === 'function') updateAccountFilter();
     if (typeof updateDividendTotals === 'function') updateDividendTotals();
     if (typeof updatePortfolioCalculations === 'function') updatePortfolioCalculations();
+    updateDashboardEntryCards();
+    checkSpendAlerts();
 }
 window.renderAll = renderAll;
 window.getEmptyStateHTML = getEmptyStateHTML;
@@ -2102,5 +2104,161 @@ function exportSyncUrl() {
     }
 }
 
+async function generatePDFWealthReport() {
+    if (!db.geminiKey && !db.groqKey) {
+        showSnackbar('AI key needed for commentary — set in Profile settings', 'error');
+        return;
+    }
+    showSnackbar('Generating wealth report...', 'auto_awesome');
+    try {
+        let reportDiv = document.createElement('div');
+        reportDiv.id = 'pdf-report-container';
+        reportDiv.style.cssText = 'padding:24px;font-family:Roboto,sans-serif;max-width:800px;margin:auto;background:#fff;color:#1a1a1a;';
+        let now = new Date();
+        let monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        let dateStr = `${now.getDate()} ${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+
+        let totalInv = db.investments.filter(i => !i.isDividend).reduce((s,i) => s + i.amount, 0);
+        let totalDiv = db.investments.filter(i => i.isDividend).reduce((s,i) => s + i.amount, 0);
+        let gainLoss = (currentTotalNW || 0) - totalInv;
+        let categoriesHtml = '';
+        Object.keys(currentTypeTotals || {}).forEach(t => {
+            if (currentTypeTotals[t] > 0) {
+                let curPerc = ((currentTypeTotals[t] / (currentTotalNW || 1)) * 100).toFixed(1);
+                categoriesHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${t}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(currentTypeTotals[t])}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${curPerc}%</td></tr>`;
+            }
+        });
+
+        let tax80c = (db.tax80cTotal || 0);
+        let tax80cPerc = Math.min(100, (tax80c / 150000) * 100);
+        let goalsHtml = '';
+        (db.goals || []).slice(0, 5).forEach(g => {
+            let saved = g.saved || 0;
+            let perc = Math.min(100, (saved / g.target) * 100);
+            goalsHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${escapeHtml(g.name)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(saved)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(g.target)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${perc.toFixed(0)}%</td></tr>`;
+        });
+
+        reportDiv.innerHTML = `
+            <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #6750A4;">
+                <h1 style="margin:0;font-size:24px;color:#6750A4;">Wealth Report</h1>
+                <p style="margin:4px 0 0;font-size:13px;color:#666;">Generated ${dateStr}</p>
+            </div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                <tr><td style="padding:8px;font-weight:600;color:#6750A4;">Net Worth</td><td style="padding:8px;text-align:right;font-size:22px;font-weight:700;">₹${formatInr(currentTotalNW || 0)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Total Invested (Principal)</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(totalInv)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Unrealized Gain/Loss</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;color:${gainLoss >= 0 ? '#2e7d32' : '#c62828'};">${gainLoss >= 0 ? '+' : ''}₹${formatInr(gainLoss)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Dividends Earned</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(totalDiv)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">80C Deductions</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(tax80c)} / ₹1,50,000 (${tax80cPerc.toFixed(0)}%)</td></tr>
+            </table>
+            <h3 style="color:#6750A4;font-size:16px;margin:16px 0 8px;">Portfolio Allocation</h3>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                <thead><tr style="background:#f5f3f7;"><th style="padding:8px;text-align:left;font-size:12px;color:#666;">Category</th><th style="padding:8px;text-align:right;font-size:12px;color:#666;">Value</th><th style="padding:8px;text-align:right;font-size:12px;color:#666;">Allocation</th></tr></thead>
+                <tbody>${categoriesHtml || '<tr><td colspan="3" style="padding:12px;text-align:center;color:#999;">No portfolio data</td></tr>'}</tbody>
+            </table>
+            ${goalsHtml ? `<h3 style="color:#6750A4;font-size:16px;margin:16px 0 8px;">Goal Progress</h3><table style="width:100%;border-collapse:collapse;margin-bottom:20px;"><thead><tr style="background:#f5f3f7;"><th style="padding:8px;text-align:left;font-size:12px;color:#666;">Goal</th><th style="padding:8px;text-align:right;font-size:12px;color:#666;">Saved</th><th style="padding:8px;text-align:right;font-size:12px;color:#666;">Target</th><th style="padding:8px;text-align:right;font-size:12px;color:#666;">Progress</th></tr></thead><tbody>${goalsHtml}</tbody></table>` : ''}
+            <div id="pdf-ai-commentary" style="background:#f5f3f7;border-radius:12px;padding:16px;margin-top:16px;">
+                <h4 style="margin:0 0 8px;font-size:14px;color:#6750A4;">AI Insights</h4>
+                <p style="font-size:13px;line-height:1.5;color:#333;" id="pdf-ai-text">Loading AI commentary...</p>
+            </div>
+            <div style="margin-top:24px;padding-top:16px;border-top:1px solid #ddd;font-size:11px;color:#999;text-align:center;">
+                Generated by TrackInvest — Premium Wealth Intelligence
+            </div>
+        `;
+        document.body.appendChild(reportDiv);
+
+        let aiCommentaryEl = document.getElementById('pdf-ai-text');
+        try {
+            let prompt = `Generate a 3-4 sentence wealth insight summary for a portfolio of ₹${formatInr(currentTotalNW || 0)} with categories: ${JSON.stringify(currentTypeTotals || {})}. 80C at ${tax80cPerc.toFixed(0)}%. Goals: ${JSON.stringify((db.goals || []).slice(0,3))}. Include one actionable tip. Raw HTML only, no markdown.`;
+            let aiResp = await callAIApi(prompt, "You are a wealth report analyst. Output raw HTML.");
+            aiCommentaryEl.innerHTML = formatAIResponse(aiResp);
+        } catch(e) {
+            aiCommentaryEl.innerHTML = 'Keep contributing regularly and review your allocation targets for optimal growth.';
+        }
+
+        await new Promise(r => setTimeout(r, 500));
+
+        let opt = {
+            margin: [10, 10, 10, 10],
+            filename: `Wealth_Report_${dateStr.replace(/\s/g, '_')}.pdf`,
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await html2pdf().set(opt).from(reportDiv).save();
+        document.body.removeChild(reportDiv);
+        showSnackbar('Wealth Report PDF downloaded!', 'check_circle');
+    } catch(e) {
+        console.error('PDF generation error:', e);
+        showSnackbar('PDF generation failed: ' + e.message, 'error');
+    }
+}
+
+function checkSpendAlerts() {
+    if (!db.spendTracker || !db.spendTracker.entries || db.spendTracker.entries.length === 0) return;
+    let today = new Date();
+    let todayStr = today.toISOString().split('T')[0];
+    let todayEntries = db.spendTracker.entries.filter(e => e.date === todayStr);
+    let todayTotal = todayEntries.reduce((s, e) => s + Math.abs(e.amount), 0);
+
+    let weekStart = new Date(today);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    let weekStr = weekStart.toISOString().split('T')[0];
+    let weekEntries = db.spendTracker.entries.filter(e => e.date >= weekStr && e.date <= todayStr);
+    let weekTotal = weekEntries.reduce((s, e) => s + Math.abs(e.amount), 0);
+
+    let budget = db.monthlyPlanConfig || {};
+    let needsBudget = budget.needs || 0;
+    let wantsBudget = budget.wants || 0;
+    let monthlyTotalBudget = needsBudget + wantsBudget;
+    let dailyBudget = monthlyTotalBudget > 0 ? monthlyTotalBudget / 30 : 0;
+    let weeklyBudget = dailyBudget * 7;
+
+    if (dailyBudget > 0 && todayTotal > dailyBudget * 1.2) {
+        showLocalNotification('Spend Alert 🚨', `Today's spend ₹${formatInr(todayTotal)} exceeds daily budget ₹${formatInr(dailyBudget)}`);
+    }
+    if (weeklyBudget > 0 && weekTotal > weeklyBudget) {
+        let weekPerc = ((weekTotal / monthlyTotalBudget) * 100).toFixed(0);
+        showLocalNotification('Weekly Spend Alert 📊', `This week: ₹${formatInr(weekTotal)} (${weekPerc}% of monthly budget)`);
+    }
+    if (dailyBudget > 0 && todayTotal > dailyBudget * 0.8 && todayTotal <= dailyBudget * 1.2) {
+        let remaining = dailyBudget - todayTotal;
+        showLocalNotification('Budget Warning ⚠️', `You have ₹${formatInr(Math.max(0, remaining))} left for today`);
+    }
+}
+
+function updateDashboardEntryCards() {
+    let plannerEntry = document.getElementById('monthly-planner-entry');
+    if (plannerEntry && db.monthlyPlanConfig) {
+        let needs = db.monthlyPlanConfig.needs || 0;
+        let wants = db.monthlyPlanConfig.wants || 0;
+        let totalBudget = needs + wants;
+        let totalInv = db.investments.filter(i => !i.isDividend).reduce((s, i) => s + i.amount, 0);
+        let budgetStatusEl = plannerEntry.querySelector('.budget-status');
+        if (!budgetStatusEl) {
+            let descEl = plannerEntry.querySelector('div[style*="font-size:13px"]');
+            if (descEl) {
+                descEl.innerHTML = `Budget ₹${formatInr(totalBudget)}/mo · Invested ₹${formatInr(totalInv)}`;
+            }
+        }
+    }
+
+    let spendEntry = document.getElementById('spend-tracker-entry');
+    if (spendEntry && db.spendTracker && db.spendTracker.entries) {
+        let now = new Date();
+        let monthStr = now.toISOString().slice(0, 7);
+        let monthEntries = db.spendTracker.entries.filter(e => e.date && e.date.startsWith(monthStr));
+        let monthTotal = monthEntries.reduce((s, e) => s + Math.abs(e.amount), 0);
+
+        let descEl = spendEntry.querySelector('div[style*="font-size:13px"]');
+        if (descEl) {
+            let budget = (db.monthlyPlanConfig?.needs || 0) + (db.monthlyPlanConfig?.wants || 0);
+            let budgetText = budget > 0 ? ` of ₹${formatInr(budget)}` : '';
+            descEl.innerHTML = `This month: ₹${formatInr(monthTotal)}${budgetText} · ${monthEntries.length} entries`;
+        }
+    }
+}
+
+window.generatePDFWealthReport = generatePDFWealthReport;
+window.checkSpendAlerts = checkSpendAlerts;
+window.updateDashboardEntryCards = updateDashboardEntryCards;
 window.exportSyncUrl = exportSyncUrl;
 window.broadcastToTabs = broadcastToTabs;
