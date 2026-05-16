@@ -11,6 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
     <script src="./version.js"></script>
+    <script src="./apiClient.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing:border-box; }
@@ -215,41 +216,116 @@ function isMarketOpen() {
 }
 
 // ===== API HELPERS with CORS fallback =====
-const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+const CORS_PROXIES = [
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://corsproxy.io/?',
+  'https://corsproxy.vercel.app/api/cors?url=',
+];
 
-async function fetchJSON(url) {
+async function fetchJSON(url, opts = {}) {
+  const { retries = 0 } = opts;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  // Try direct first
+  for (const attempt of ['direct', ...CORS_PROXIES]) {
     try {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(r.status);
-        return r.json();
+      const target = attempt === 'direct' ? url : attempt + encodeURIComponent(url);
+      const r = await fetch(target, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error(String(r.status));
+      return r.json();
     } catch (e) {
-        // CORS or network failure — retry via proxy
-        const proxied = await fetch(CORS_PROXY + encodeURIComponent(url));
-        if (!proxied.ok) throw new Error(proxied.status);
-        return proxied.json();
-    }
+      if (e.name === 'AbortError') throw e;
+      if (attempt === CORS_PROXIES[CORS_PROXIES.length - 1]) {
+        if (retries < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+          return fetchJSON(url, { retries: retries + 1 });
+        }
+        throw e;
+      }
+    } finally { clearTimeout(timer); }
+  }
+}
+
+// ── Cloud API wrapper (when enabled) ──
+function cloudReady() {
+  return typeof TrackInvestAPI !== 'undefined' && TrackInvestAPI.isReady();
 }
 
 async function fetchChartData(symbol) {
-    const d = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d`);
-    return d.chart.result[0];
+  // Try cloud API first
+  if (cloudReady()) {
+    try {
+      const data = await TrackInvestAPI.market.history(symbol, '1d', '5m');
+      if (data?.chart?.result?.[0]) return data.chart.result[0];
+    } catch {}
+  }
+  // Fallback: direct + CORS proxy
+  const d = await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=1d`);
+  return d.chart.result[0];
 }
 
 async function fetchYahooMeta(symbol) {
-    const data = await fetchChartData(symbol);
-    return data.meta;
+  if (cloudReady()) {
+    try {
+      const q = await TrackInvestAPI.market.quote(symbol);
+      if (q?.marketData) return { regularMarketPrice: q.marketData.regularMarketPrice, previousClose: q.marketData.previousClose, regularMarketChange: q.marketData.regularMarketChange, regularMarketChangePercent: q.marketData.regularMarketChangePercent, symbol: q.symbol };
+    } catch {}
+  }
+  // Try cloud history endpoint as fallback
+  if (cloudReady()) {
+    try {
+      const data = await TrackInvestAPI.market.history(symbol, '1d', '5m');
+      if (data?.chart?.result?.[0]?.meta) return data.chart.result[0].meta;
+    } catch {}
+  }
+  const data = await fetchChartData(symbol);
+  return data.meta;
 }
 
 async function fetchYahooSearch(q) {
-    const d = await fetchJSON(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0`);
-    return (d.quotes||[]).filter(x => x.quoteType === 'EQUITY' || x.quoteType === 'INDEX' || x.quoteType === 'ETF');
+  if (cloudReady()) {
+    try {
+      const result = await TrackInvestAPI.market.search(q);
+      if (result?.quotes) return result.quotes.filter(x => x.quoteType === 'EQUITY' || x.quoteType === 'INDEX' || x.quoteType === 'ETF');
+    } catch {}
+  }
+  const d = await fetchJSON(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0`);
+  return (d.quotes||[]).filter(x => x.quoteType === 'EQUITY' || x.quoteType === 'INDEX' || x.quoteType === 'ETF');
 }
 
 async function fetchMintedMetal() { return fetchJSON('https://mintedmetal.com/api/prices.json'); }
-async function fetchIBJAGold() { return fetchJSON('https://ibja-api.vercel.app/latest'); }
-async function fetchIBJASilver() { return fetchJSON('https://ibja-api.vercel.app/silver/latest'); }
+
+async function fetchIBJAGold() {
+  if (cloudReady()) {
+    try {
+      const data = await TrackInvestAPI.market.quote('GOLD');
+      if (data?.marketData?.regularMarketPrice) return { price: data.marketData.regularMarketPrice, currency: 'INR' };
+    } catch {}
+  }
+  return fetchJSON('https://ibja-api.vercel.app/latest');
+}
+
+async function fetchIBJASilver() {
+  if (cloudReady()) {
+    try {
+      const data = await TrackInvestAPI.market.quote('SILVER');
+      if (data?.marketData?.regularMarketPrice) return { price: data.marketData.regularMarketPrice, currency: 'INR' };
+    } catch {}
+  }
+  return fetchJSON('https://ibja-api.vercel.app/silver/latest');
+}
+
 async function fetchMFSearch(q) { return fetchJSON(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(q)}`); }
-async function fetchMFNav(code) { return fetchJSON(`https://api.mfapi.in/mf/${code}`); }
+async function fetchMFNav(code) {
+  if (cloudReady()) {
+    try {
+      const data = await TrackInvestAPI.market.mfNav(code);
+      if (data) return data;
+    } catch {}
+  }
+  return fetchJSON(`https://api.mfapi.in/mf/${code}`);
+}
 async function fetchUsdInr() { const m = await fetchYahooMeta('INR=X'); return m.regularMarketPrice; }
 
 // ===== BOOKMARKS =====

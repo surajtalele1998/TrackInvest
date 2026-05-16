@@ -3125,12 +3125,24 @@ async function searchStockForLog() {
     }
 
     try {
-        let res = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`);
-        let data = await res.json();
-
-        if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
-
-        let quotes = data.quotes || [];
+        let quotes;
+        // Try cloud API first
+        if (typeof TrackInvestAPI !== 'undefined' && TrackInvestAPI.isReady()) {
+            try {
+                const result = await TrackInvestAPI.market.search(q);
+                if (result?.quotes) quotes = result.quotes;
+            } catch {}
+        }
+        if (!quotes) {
+            let res = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`);
+            if (!res.ok) {
+                // CORS fallback
+                const proxy = 'https://api.codetabs.com/v1/proxy?quest=';
+                res = await fetch(proxy + encodeURIComponent(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`));
+            }
+            let data = await res.json();
+            quotes = data.quotes || [];
+        }
         if (quotes.length === 0) {
             if (sel) sel.innerHTML = '<option>No stocks found</option>';
             return showSnackbar("No stocks found", "error");
@@ -3173,9 +3185,26 @@ async function fetchLiveStockPrice(symbol) {
     priceInput.disabled = true;
 
     try {
-        let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
-        let data = await res.json();
-        let result = data.chart?.result?.[0];
+        let result;
+        // Try cloud API first
+        if (typeof TrackInvestAPI !== 'undefined' && TrackInvestAPI.isReady()) {
+            try {
+                const q = await TrackInvestAPI.market.quote(symbol);
+                if (q?.chart?.result?.[0]) result = q.chart.result[0];
+                else if (q?.marketData) {
+                    result = { meta: { regularMarketPrice: q.marketData.regularMarketPrice, shortName: q.symbol } };
+                }
+            } catch {}
+        }
+        if (!result) {
+            let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+            if (!res.ok) {
+                const proxy = 'https://api.codetabs.com/v1/proxy?quest=';
+                res = await fetch(proxy + encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`));
+            }
+            let data = await res.json();
+            result = data.chart?.result?.[0];
+        }
         if (!result) throw new Error("No data");
 
         let price = result.meta.regularMarketPrice;

@@ -83,8 +83,18 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('models.github.ai') ||
         url.hostname.includes('query1.finance.yahoo.com') ||
         url.hostname.includes('mintedmetal.com') ||
-        url.hostname.includes('ibja-api.vercel.app')) {
-        event.respondWith(fetch(event.request));
+        url.hostname.includes('ibja-api.vercel.app') ||
+        url.hostname.includes('api.codetabs.com') ||
+        url.hostname.includes('corsproxy')) {
+        event.respondWith(
+          fetch(event.request).catch(() => {
+            // CORS/network failure — try via public proxy
+            const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(event.request.url);
+            return fetch(proxyUrl).catch(() => {
+              return new Response(JSON.stringify({ error: 'unreachable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+            });
+          })
+        );
         return;
     }
 
