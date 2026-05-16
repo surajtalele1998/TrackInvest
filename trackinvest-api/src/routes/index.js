@@ -14,6 +14,16 @@ const authRoutes = require('./auth');
 const exportRoutes = require('./export');
 const newsRoutes = require('./news');
 const viewsRoutes = require('./views');
+const goalsRoutes = require('./goals');
+const watchlistRoutes = require('./watchlist');
+const alertsRoutes = require('./alerts');
+const calculatorRoutes = require('./calculator');
+const taxRoutes = require('./tax');
+const dividendRoutes = require('./dividends');
+const webhookRoutes = require('./webhooks');
+const importRoutes = require('./import');
+const adminRoutes = require('./admin');
+const docsRoutes = require('./docs');
 
 const router = express.Router();
 
@@ -28,5 +38,15 @@ router.use('/v1/auth', authRoutes);
 router.use('/v1/export', exportRoutes);
 router.use('/v1/news', newsRoutes);
 router.use('/v1/views', viewsRoutes);
+router.use('/v1/goals', goalsRoutes);
+router.use('/v1/watchlist', watchlistRoutes);
+router.use('/v1/alerts', alertsRoutes);
+router.use('/v1/calculator', calculatorRoutes);
+router.use('/v1/tax', taxRoutes);
+router.use('/v1/dividends', dividendRoutes);
+router.use('/v1/webhooks', webhookRoutes);
+router.use('/v1/import', importRoutes);
+router.use('/v1/admin', adminRoutes);
+router.use('/v1/docs', docsRoutes);
 
 module.exports = router;
