@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spend Tracker | TrackInvest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.4/dist/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --cat-food: #E3724A;
+            --cat-transport: #415F91;
+            --cat-bills: #186D33;
+            --cat-entertainment: #9C27B0;
+            --cat-health: #D96200;
+            --cat-shopping: #E91E63;
+            --cat-other: #8E9099;
+        }
+        .hero-spend { border-radius:28px; padding:24px; margin-bottom:16px; background:var(--md-primary-container); color:var(--md-on-primary-container); }
+        .hero-spend-total { font-size:44px; font-weight:400; line-height:1.1; margin:8px 0; }
+        .hero-spend-label { font-size:13px; font-weight:500; opacity:0.75; }
+        .stat-row { display:flex; gap:8px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; }
+        .stat-chip { flex-shrink:0; min-width:100px; background:var(--md-surface-container); border-radius:18px; padding:12px 16px; display:flex; flex-direction:column; gap:4px; cursor:pointer; }
+        .stat-chip-label { font-size:11px; color:var(--md-on-surface-variant); font-weight:500; }
+        .stat-chip-val { font-size:18px; font-weight:600; color:var(--md-on-surface); }
+        .cat-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; cursor:pointer; border:none; font-family:inherit; }
+        .cat-badge.uncat { background:var(--md-surface-container-highest); color:var(--md-on-surface-variant); }
+        .spend-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--md-surface-container-highest); }
+        .spend-row:last-child { border-bottom:none; }
+        .spend-amt { font-weight:600; font-size:15px; white-space:nowrap; color:var(--md-on-surface); }
+        .spend-comment { font-size:13px; color:var(--md-on-surface-variant); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .spend-date { font-size:11px; color:var(--md-outline); white-space:nowrap; }
+        .filter-tabs { display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:16px; }
+        .filter-tab { flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer; color:var(--md-on-surface-variant); transition:0.2s; }
+        .filter-tab.active { background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:600; }
+        .input-group { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+        .input-group .md-input { flex:1; min-width:120px; }
+        .btn-icon { background:transparent; border:none; color:var(--md-primary); cursor:pointer; padding:10px; border-radius:50%; display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; }
+        .btn-icon:hover { background:var(--md-surface-container-highest); }
+        .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
+        .chart-card { background:var(--md-surface-container); border-radius:20px; padding:16px; min-height:200px; }
+        .chart-card.full { grid-column:1/-1; }
+        .chart-card-title { font-size:13px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
+        .sankey-container { width:100%; overflow-x:auto; padding:16px 0; }
+        .sankey-svg { width:100%; min-width:400px; height:200px; }
+        .bottom-spacer { height:88px; }
+        @media(max-width:480px) {
+            .chart-grid { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="top-app-bar" style="gap:8px;">
+        <button class="icon-btn" onclick="window.location.href='index.html'">
+            <span class="material-symbols-rounded">arrow_back</span>
+        </button>
+        <div class="app-title" style="flex:1;">Spend Tracker</div>
+        <button class="icon-btn" onclick="toggleImportPanel()" title="Import Data">
+            <span class="material-symbols-rounded">file_upload</span>
+        </button>
+        <button class="icon-btn" onclick="showExportMenu()" title="Export">
+            <span class="material-symbols-rounded">download</span>
+        </button>
+    </header>
+
+    <main class="container" style="padding-top:0;">
+        <!-- Month Picker -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; padding-top:16px;">
+            <button class="btn-icon" onclick="shiftMonth(-1)"><span class="material-symbols-rounded">chevron_left</span></button>
+            <div style="font-size:20px; font-weight:500; color:var(--md-on-surface);" id="month-label"></div>
+            <button class="btn-icon" onclick="shiftMonth(1)"><span class="material-symbols-rounded">chevron_right</span></button>
+        </div>
+
+        <!-- Hero -->
+        <div class="hero-spend" id="hero-section">
+            <div class="hero-spend-label">Total Spent</div>
+            <div class="hero-spend-total" id="hero-total">₹0</div>
+            <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;">
+                <span style="font-size:13px; opacity:0.8;" id="hero-count">0 transactions</span>
+                <span style="font-size:13px; opacity:0.8;" id="hero-avg">Avg: ₹0/day</span>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="stat-row" id="quick-stats"></div>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-tab" onclick="setFilter('uncat',this)">Uncategorized</button>
+            <button class="filter-tab" onclick="setFilter('categorized',this)">Categorized</button>
+        </div>
+
+        <!-- Import Panel (hidden) -->
+        <div id="import-panel" style="display:none; background:var(--md-surface-container-high); border-radius:20px; padding:16px; margin-bottom:16px;">
+            <div style="font-weight:600; margin-bottom:12px; font-size:14px;">Import Transactions</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('csv-file-input').click()">
+                    <span class="material-symbols-rounded">description</span> CSV
+                </button>
+                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('pdf-file-input').click()">
+                    <span class="material-symbols-rounded">picture_as_pdf</span> PDF
+                </button>
+                <button class="btn-primary" style="flex:1;" onclick="document.getElementById('xlsx-file-input').click()">
+                    <span class="material-symbols-rounded">table_chart</span> XLSX
+                </button>
+            </div>
+            <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="importCSVFile(event)">
+            <input type="file" id="pdf-file-input" accept=".pdf" style="display:none" onchange="importPDFFile(event)">
+            <input type="file" id="xlsx-file-input" accept=".xlsx,.xls" style="display:none" onchange="importXLSXFile(event)">
+            <div style="font-size:12px; color:var(--md-outline);">Expected CSV format: amount,comment,commit_time</div>
+            <div style="font-size:12px; color:var(--md-primary); margin-top:4px; cursor:pointer;" onclick="document.getElementById('manual-entry').style.display=document.getElementById('manual-entry').style.display==='none'?'block':'none'">
+                + Add entry manually
+            </div>
+        </div>
+
+        <!-- Manual Entry -->
+        <div id="manual-entry" style="display:none; background:var(--md-surface-container-high); border-radius:20px; padding:16px; margin-bottom:16px;">
+            <div style="font-weight:600; margin-bottom:12px; font-size:14px;">Add Expense</div>
+            <div class="input-group">
+                <input type="number" id="manual-amt" class="md-input" placeholder="Amount" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
+                <input type="text" id="manual-comment" class="md-input" placeholder="Description" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
+            </div>
+            <div class="input-group">
+                <input type="date" id="manual-date" class="md-input" style="background:var(--md-surface-container-highest);padding:12px;border-radius:8px;">
+                <button class="btn-primary" onclick="addManualEntry()" style="flex:0.5;">
+                    <span class="material-symbols-rounded">add</span> Add
+                </button>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-grid" id="charts-section">
+            <div class="chart-card">
+                <div class="chart-card-title">Category Split</div>
+                <div style="height:180px;"><canvas id="catPieChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-card-title">Daily Spend</div>
+                <div style="height:180px;"><canvas id="dailyTrendChart"></canvas></div>
+            </div>
+            <div class="chart-card full">
+                <div class="chart-card-title">Spend Flow</div>
+                <div class="sankey-container" id="sankey-container">
+                    <svg class="sankey-svg" id="sankey-svg"></svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Section -->
+        <div style="margin-bottom:16px;">
+            <button class="btn-primary" style="width:100%;" onclick="runAICategorization()" id="ai-cat-btn">
+                <span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize with AI
+            </button>
+            <button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="runAIInsights()" id="ai-insights-btn">
+                <span class="material-symbols-rounded">insights</span> AI Spending Insights
+            </button>
+        </div>
+        <div id="ai-insights-output" style="display:none; background:var(--md-surface-container); border-radius:20px; padding:20px; margin-bottom:16px; line-height:1.6;"></div>
+
+        <!-- Transactions List -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:15px; font-weight:600; color:var(--md-on-surface);">Transactions</div>
+            <div style="display:flex; gap:4px;">
+                <button class="btn-icon" onclick="deleteAllUncategorized()" title="Clear uncategorized">
+                    <span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_sweep</span>
+                </button>
+                <button class="btn-icon" onclick="deleteAllEntries()" title="Clear all">
+                    <span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">delete_forever</span>
+                </button>
+            </div>
+        </div>
+        <div id="spend-list"></div>
+        <div class="bottom-spacer"></div>
+    </main>
+
+    <script>
+        // ── STORAGE ──
+        const STORAGE_KEY = 'appHubInvestDb';
+
+        function loadDB() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            } catch (e) { return {}; }
+        }
+
+        function saveDB() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (e) { alert('Storage failed'); }
+        }
+
+        let db = loadDB();
+        if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
+        if (!db.spendTracker.entries) db.spendTracker.entries = [];
+
+        // ── STATE ──
+        let currentMonth = new Date().getMonth();
+        let currentYear = new Date().getFullYear();
+        let currentFilter = 'all';
+        let catPieChart = null, dailyTrendChart = null;
+        const CAT_COLORS = {
+            'Food & Dining': '#E3724A', 'Transport': '#415F91', 'Bills & Utilities': '#186D33',
+            'Entertainment': '#9C27B0', 'Health & Medical': '#D96200', 'Shopping': '#E91E63',
+            'Groceries': '#388E3C', 'Rent': '#5C6BC0', 'Travel': '#00ACC1',
+            'Education': '#7B1FA2', 'Investment': '#F57C00', 'Income': '#2E7D32',
+            'Other': '#8E9099'
+        };
+        const DEFAULTS = Object.values(CAT_COLORS);
+
+        // ── DATE PARSERS ──
+        function parseBuckwheatDate(str) {
+            // "01/01/26, 3:20 pm" or "01/01/26, 3:20 pm" (with weird space)
+            str = str.trim().replace(/\u202f/g, ' ').replace(/\u2009/g, ' ');
+            const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}),\s*(\d{1,2}):(\d{2})\s*(am|pm)/i);
+            if (!m) return null;
+            let [, dd, mm, yy, hh, mi, ap] = m;
+            let year = 2000 + parseInt(yy);
+            let month = parseInt(mm) - 1;
+            let day = parseInt(dd);
+            let hour = parseInt(hh);
+            if (ap.toLowerCase() === 'pm' && hour < 12) hour += 12;
+            if (ap.toLowerCase() === 'am' && hour === 12) hour = 0;
+            return new Date(year, month, day, hour, parseInt(mi));
+        }
+
+        function fmtDate(d) {
+            return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        }
+
+        function getMonthEntries() {
+            return db.spendTracker.entries.filter(e => {
+                const d = new Date(e.date);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+        }
+
+        function getFilteredEntries() {
+            let entries = getMonthEntries();
+            if (currentFilter === 'uncat') return entries.filter(e => !e.category || e.category === 'Uncategorized');
+            if (currentFilter === 'categorized') return entries.filter(e => e.category && e.category !== 'Uncategorized');
+            return entries;
+        }
+
+        // ── IMPORT ──
+        function toggleImportPanel() {
+            const p = document.getElementById('import-panel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function importCSVFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const text = ev.target.result;
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                if (lines.length < 2) { Swal.fire('Error', 'CSV must have header + data rows', 'error'); return; }
+                const header = lines[0].toLowerCase();
+                // Detect column positions
+                const cols = header.split(',').map(c => c.trim());
+                const amtIdx = cols.indexOf('amount');
+                const commentIdx = cols.indexOf('comment');
+                const timeIdx = cols.indexOf('commit_time');
+                if (amtIdx === -1 || timeIdx === -1) { Swal.fire('Error', 'CSV must have amount, comment, commit_time columns', 'error'); return; }
+
+                let added = 0, skipped = 0;
+                for (let i = 1; i < lines.length; i++) {
+                    // Handle quoted fields properly
+                    const parsed = parseCSVLine(lines[i]);
+                    const amtStr = parsed[amtIdx];
+                    const comment = commentIdx >= 0 ? (parsed[commentIdx] || '') : '';
+                    const timeStr = parsed[timeIdx];
+                    const amt = parseFloat(amtStr);
+                    const date = parseBuckwheatDate(timeStr);
+                    if (!isNaN(amt) && date) {
+                        db.spendTracker.entries.push({
+                            id: Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6),
+                            amount: amt,
+                            comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }),
+                            date: date.toISOString(),
+                            category: 'Uncategorized'
+                        });
+                        added++;
+                    } else { skipped++; }
+                }
+                saveDB();
+                e.target.value = '';
+                Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions added${skipped ? ', ' + skipped + ' skipped' : ''}`, timer: 2000, showConfirmButton: false });
+                renderAll();
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '', inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQuotes) {
+                    if (ch === '"') {
+                        if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; }
+                        else { inQuotes = false; }
+                    } else { current += ch; }
+                } else {
+                    if (ch === '"') { inQuotes = true; }
+                    else if (ch === ',') { result.push(current.trim()); current = ''; }
+                    else { current += ch; }
+                }
+            }
+            result.push(current.trim());
+            return result;
+        }
+
+        function importPDFFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                // Basic text extraction from PDF (simple approach)
+                const text = ev.target.result;
+                const lines = text.split(/\r?\n/).filter(l => l.trim());
+                parseGenericLines(lines);
+                e.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function importXLSXFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                const data = new Uint8Array(ev.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet);
+                if (!json || json.length === 0) { Swal.fire('Error', 'No data found in sheet', 'error'); return; }
+                let added = 0;
+                json.forEach((row, i) => {
+                    const amt = parseFloat(row.amount || row.Amount || row.AMOUNT || 0);
+                    const comment = String(row.comment || row.Comment || row.COMMENT || row.description || row.Description || '');
+                    let date = null;
+                    const dStr = row.commit_time || row.Commit_time || row.date || row.Date || '';
+                    date = parseBuckwheatDate(String(dStr)) || new Date(String(dStr));
+                    if (!isNaN(amt) && amt > 0 && date) {
+                        db.spendTracker.entries.push({ id: Date.now() + '_x' + i + '_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
+                        added++;
+                    }
+                });
+                saveDB();
+                e.target.value = '';
+                Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions added`, timer: 2000, showConfirmButton: false });
+                renderAll();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function parseGenericLines(lines) {
+            let added = 0;
+            lines.forEach((line, i) => {
+                const parts = line.split(/\t|,/);
+                if (parts.length >= 2) {
+                    const amt = parseFloat(parts[0].replace(/[₹$,]/g, ''));
+                    if (!isNaN(amt) && amt > 0) {
+                        const date = new Date();
+                        db.spendTracker.entries.push({ id: Date.now() + '_p' + i + '_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(parts.slice(1).join(' '), { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
+                        added++;
+                    }
+                }
+            });
+            if (added > 0) { saveDB(); Swal.fire({ icon: 'success', title: 'Imported', text: `${added} transactions`, timer: 2000, showConfirmButton: false }); renderAll(); }
+        }
+
+        // ── MANUAL ENTRY ──
+        function addManualEntry() {
+            const amt = parseFloat(document.getElementById('manual-amt').value);
+            const comment = document.getElementById('manual-comment').value.trim();
+            const dateStr = document.getElementById('manual-date').value;
+            if (!amt || amt <= 0) { Swal.fire('Error', 'Enter a valid amount', 'error'); return; }
+            const date = dateStr ? new Date(dateStr + 'T00:00:00') : new Date();
+            db.spendTracker.entries.push({ id: Date.now() + '_m_' + Math.random().toString(36).slice(2,6), amount: amt, comment: DOMPurify.sanitize(comment, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] }), date: date.toISOString(), category: 'Uncategorized' });
+            saveDB();
+            document.getElementById('manual-amt').value = '';
+            document.getElementById('manual-comment').value = '';
+            document.getElementById('manual-date').value = '';
+            renderAll();
+            Swal.fire({ icon: 'success', title: 'Added', timer: 1200, showConfirmButton: false });
+        }
+
+        // ── CATEGORIZATION ──
+        function getUncategorized() {
+            return db.spendTracker.entries.filter(e => !e.category || e.category === 'Uncategorized');
+        }
+
+        async function runAICategorization() {
+            const uncat = getUncategorized();
+            if (uncat.length === 0) { Swal.fire('Info', 'No uncategorized entries', 'info'); return; }
+            const btn = document.getElementById('ai-cat-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded ai-loading-icon" style="font-size:18px;">autorenew</span> Categorizing...';
+
+            const prompt = `You are a financial categorizer. Categorize each expense into one of: ${Object.keys(CAT_COLORS).join(', ')}. Respond ONLY with a valid JSON array of objects, each with "comment" (exact match) and "category" fields. No explanation, no markdown.\n\nExpenses:\n${JSON.stringify(uncat.map(e => ({ comment: e.comment, amount: e.amount })))}`;
+
+            try {
+                const response = await callAI(prompt, 'spend_categorize_1');
+                const cleaned = response.replace(/```json|```/gi, '').trim();
+                const cats = JSON.parse(cleaned);
+                if (!Array.isArray(cats)) throw new Error('Not an array');
+                let mapped = 0;
+                uncat.forEach(e => {
+                    const match = cats.find(c => c.comment === e.comment);
+                    if (match && CAT_COLORS[match.category]) {
+                        e.category = match.category;
+                        mapped++;
+                    }
+                });
+                saveDB();
+                Swal.fire({ icon: 'success', title: 'Categorized', text: `${mapped}/${uncat.length} entries categorized`, timer: 2000, showConfirmButton: false });
+                renderAll();
+            } catch (e) {
+                // Fallback: let user pick categories manually
+                showManualCategoryPicker(uncat);
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-rounded">auto_awesome</span> Auto-Categorize with AI';
+        }
+
+        function showManualCategoryPicker(entries) {
+            const cats = Object.keys(CAT_COLORS);
+            let html = '<div style="max-height:400px;overflow-y:auto;">';
+            entries.forEach((e, idx) => {
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--md-surface-container-highest);">
+                    <span style="flex:1;font-size:13px;">${DOMPurify.sanitize(e.comment)} — ₹${e.amount}</span>
+                    <select id="manual-cat-${idx}" style="padding:4px 8px;border-radius:8px;border:1px solid var(--md-outline);font-size:12px;">
+                        ${cats.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+                </div>`;
+            });
+            html += '</div>';
+            Swal.fire({
+                title: 'Categorize Manually',
+                html: html,
+                showCancelButton: true,
+                confirmButtonText: 'Save',
+                preConfirm: () => {
+                    entries.forEach((e, idx) => {
+                        const sel = document.getElementById('manual-cat-' + idx);
+                        if (sel) e.category = sel.value;
+                    });
+                    saveDB();
+                    renderAll();
+                }
+            });
+        }
+
+        // ── AI INSIGHTS ──
+        async function runAIInsights() {
+            const entries = getMonthEntries();
+            if (entries.length === 0) { Swal.fire('Info', 'No entries this month', 'info'); return; }
+            const btn = document.getElementById('ai-insights-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-rounded ai-loading-icon" style="font-size:18px;">autorenew</span> Analyzing...';
+
+            // Aggregate by category
+            const byCat = {};
+            entries.forEach(e => {
+                const cat = e.category || 'Uncategorized';
+                if (!byCat[cat]) byCat[cat] = 0;
+                byCat[cat] += e.amount;
+            });
+
+            const prompt = `Analyze this monthly spending data and provide 3-5 concise, actionable insights. Format as simple HTML paragraphs with <strong> for key numbers. No markdown, no codeblocks.\n\nTotal: ₹${entries.reduce((s,e) => s + e.amount, 0)}\nTransactions: ${entries.length}\nCategory breakdown: ${JSON.stringify(byCat)}\nAverage per day: ₹${Math.round(entries.reduce((s,e) => s + e.amount, 0) / Math.max(1, new Date().getDate()))}`;
+
+            try {
+                const response = await callAI(prompt, 'spend_insight_1');
+                const out = document.getElementById('ai-insights-output');
+                out.innerHTML = response.replace(/```html|```/gi, '');
+                out.style.display = 'block';
+            } catch (e) {
+                Swal.fire('Error', 'AI analysis failed. Check API keys.', 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-rounded">insights</span> AI Spending Insights';
+        }
+
+        // ── AI HELPER ──
+        async function callAI(prompt, systemPrompt) {
+            const data = loadDB();
+            const geminiKey = data.geminiKey || '';
+            const groqKey = data.groqKey || '';
+            const timeoutMs = 15000;
+
+            if (geminiKey) {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + geminiKey, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + '\n\n' + prompt }] }] }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(tid);
+                    const data = await res.json();
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+                } catch (e) { clearTimeout(tid); if (groqKey) throw e; return 'AI Error'; }
+            }
+
+            if (groqKey) {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+                        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }], temperature: 0.3 }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(tid);
+                    const data = await res.json();
+                    return data.choices?.[0]?.message?.content || 'No response';
+                } catch (e) { clearTimeout(tid); return 'AI Error'; }
+            }
+            throw new Error('No API key configured');
+        }
+
+        // ── CHARTS ──
+        function renderCharts() {
+            const entries = getMonthEntries();
+            const cats = {};
+            const daily = {};
+            entries.forEach(e => {
+                const cat = e.category || 'Uncategorized';
+                if (!cats[cat]) cats[cat] = 0;
+                cats[cat] += e.amount;
+                const dayStr = fmtDate(new Date(e.date));
+                if (!daily[dayStr]) daily[dayStr] = 0;
+                daily[dayStr] += e.amount;
+            });
+
+            // Category Pie
+            const ctx1 = document.getElementById('catPieChart').getContext('2d');
+            if (catPieChart) catPieChart.destroy();
+            catPieChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(cats),
+                    datasets: [{ data: Object.values(cats), backgroundColor: Object.keys(cats).map(c => CAT_COLORS[c] || '#8E9099'), borderWidth: 0 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '65%',
+                    plugins: { legend: { position: 'bottom', labels: { padding: 8, font: { size: 10 }, boxWidth: 10 } } }
+                }
+            });
+
+            // Daily Trend
+            const ctx2 = document.getElementById('dailyTrendChart').getContext('2d');
+            if (dailyTrendChart) dailyTrendChart.destroy();
+            const days = Object.keys(daily).sort();
+            dailyTrendChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{ data: days.map(d => daily[d]), backgroundColor: 'var(--md-primary)', borderRadius: 4 }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { ticks: { font: { size: 9 } } }, y: { beginAtZero: true, ticks: { font: { size: 9 } } } }
+                }
+            });
+
+            // Sankey
+            renderSankey(cats);
+        }
+
+        function renderSankey(cats) {
+            const svg = document.getElementById('sankey-svg');
+            const total = Object.values(cats).reduce((s, v) => s + v, 0);
+            if (total === 0) { svg.innerHTML = '<text x="50%" y="50%" text-anchor="middle" fill="var(--md-outline)" font-size="14">No data</text>'; return; }
+
+            const w = Math.max(400, svg.clientWidth || 600);
+            const h = 180;
+            const barW = 14;
+            const gap = Math.min(16, (h - 40) / Object.keys(cats).length);
+            const colors = Object.keys(cats).map(c => CAT_COLORS[c] || '#8E9099');
+            const vals = Object.values(cats);
+            const totalPx = h - 40;
+            let y = 20;
+
+            let html = `<rect width="${w}" height="${h}" fill="none"/>
+                <text x="10" y="16" fill="var(--md-on-surface-variant)" font-size="11" font-weight="500">Total: ₹${total.toLocaleString('en-IN')}</text>`;
+
+            Object.keys(cats).forEach((cat, i) => {
+                const pct = vals[i] / total;
+                const barH = Math.max(8, pct * totalPx);
+                const color = colors[i];
+                html += `<rect x="20" y="${y}" width="${barW}" height="${barH}" rx="3" fill="${color}" opacity="0.9"/>
+                    <text x="42" y="${y + Math.min(barH / 2 + 4, 14)}" fill="var(--md-on-surface)" font-size="10">${cat}</text>
+                    <text x="${w - 10}" y="${y + Math.min(barH / 2 + 4, 14)}" fill="var(--md-on-surface)" font-size="10" text-anchor="end">₹${vals[i].toLocaleString('en-IN')} (${(pct * 100).toFixed(0)}%)</text>`;
+                // flow lines to a common point
+                const cx = w / 2;
+                html += `<path d="M${20 + barW} ${y + barH / 2} Q${cx} ${y + barH / 2} ${cx} ${h / 2}" fill="none" stroke="${color}" stroke-width="2" opacity="0.2"/>`;
+                y += barH + gap;
+            });
+
+            // Total aggregation bar
+            html += `<rect x="${w / 2 - barW / 2}" y="${h / 2 - 10}" width="${barW}" height="20" rx="4" fill="var(--md-primary)" opacity="0.8"/>
+                <text x="${w / 2}" y="${h / 2 + 4}" text-anchor="middle" fill="#fff" font-size="11" font-weight="600">Total</text>`;
+
+            svg.innerHTML = html;
+        }
+
+        // ── LIST RENDER ──
+        function renderSpendList() {
+            const container = document.getElementById('spend-list');
+            const entries = getFilteredEntries();
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--md-outline);"><span class="material-symbols-rounded" style="font-size:48px;">receipt_long</span><div style="margin-top:12px;font-size:14px;">No transactions</div><div style="font-size:12px;margin-top:4px;">Import a CSV or add manually</div></div>';
+                return;
+            }
+            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+            let html = '';
+            entries.forEach(e => {
+                const d = new Date(e.date);
+                const cat = e.category || 'Uncategorized';
+                const color = CAT_COLORS[cat] || '#8E9099';
+                html += `<div class="spend-row">
+                    <div class="spend-date">${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}</div>
+                    <div class="spend-comment">${DOMPurify.sanitize(e.comment)}</div>
+                    <div class="spend-amt">₹${e.amount.toLocaleString('en-IN')}</div>
+                    <button class="cat-badge" style="background:${color}22;color:${color};" onclick="changeCategory('${e.id}')">${cat}</button>
+                    <button class="btn-icon" onclick="deleteEntry('${e.id}')" style="color:var(--md-error);min-width:32px;min-height:32px;padding:4px;">
+                        <span class="material-symbols-rounded" style="font-size:16px;">close</span>
+                    </button>
+                </div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function changeCategory(id) {
+            const entry = db.spendTracker.entries.find(e => e.id === id);
+            if (!entry) return;
+            const cats = Object.keys(CAT_COLORS);
+            Swal.fire({
+                title: 'Category for ' + DOMPurify.sanitize(entry.comment),
+                input: 'select',
+                inputOptions: cats.reduce((o, c) => { o[c] = c; return o; }, {}),
+                inputValue: entry.category === 'Uncategorized' ? cats[0] : entry.category,
+                showCancelButton: true,
+                preConfirm: (val) => { entry.category = val; saveDB(); renderAll(); }
+            });
+        }
+
+        function deleteEntry(id) {
+            Swal.fire({ title: 'Delete?', showCancelButton: true, confirmButtonText: 'Delete', confirmButtonColor: 'var(--md-error)' }).then(r => {
+                if (r.isConfirmed) { db.spendTracker.entries = db.spendTracker.entries.filter(e => e.id !== id); saveDB(); renderAll(); }
+            });
+        }
+
+        function deleteAllUncategorized() {
+            Swal.fire({ title: 'Delete all uncategorized?', showCancelButton: true, confirmButtonColor: 'var(--md-error)' }).then(r => {
+                if (r.isConfirmed) { db.spendTracker.entries = db.spendTracker.entries.filter(e => e.category && e.category !== 'Uncategorized'); saveDB(); renderAll(); }
+            });
+        }
+
+        function deleteAllEntries() {
+            Swal.fire({ title: 'Delete ALL entries?', text: 'This cannot be undone', showCancelButton: true, confirmButtonColor: 'var(--md-error)' }).then(r => {
+                if (r.isConfirmed) {
+                    const monthEntries = getMonthEntries();
+                    monthEntries.forEach(e => {
+                        db.spendTracker.entries = db.spendTracker.entries.filter(x => x.id !== e.id);
+                    });
+                    saveDB(); renderAll();
+                }
+            });
+        }
+
+        // ── EXPORT ──
+        function showExportMenu() {
+            const entries = getMonthEntries();
+            if (entries.length === 0) { Swal.fire('Info', 'No data to export', 'info'); return; }
+            Swal.fire({
+                title: 'Export Data',
+                html: `
+                    <div style="display:flex; gap:8px; flex-direction:column;">
+                        <button class="btn-secondary" onclick="exportCSV()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">description</span> CSV</button>
+                        <button class="btn-secondary" onclick="exportPDF()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">picture_as_pdf</span> PDF</button>
+                        <button class="btn-secondary" onclick="exportXLSX()" style="width:100%;padding:12px;"><span class="material-symbols-rounded">table_chart</span> XLSX</button>
+                    </div>`,
+                showConfirmButton: false, showCloseButton: true
+            });
+        }
+
+        function exportCSV() {
+            const entries = getMonthEntries();
+            let csv = 'amount,comment,category,date\n';
+            entries.forEach(e => {
+                const d = new Date(e.date);
+                csv += `${e.amount},"${(e.comment || '').replace(/"/g, '""')}","${e.category || 'Uncategorized'}",${d.toISOString().split('T')[0]}\n`;
+            });
+            downloadFile(csv, `spends_${currentMonth + 1}_${currentYear}.csv`, 'text/csv');
+            Swal.close();
+        }
+
+        function exportPDF() {
+            const entries = getMonthEntries();
+            const total = entries.reduce((s, e) => s + e.amount, 0);
+            const cats = {};
+            entries.forEach(e => { const c = e.category || 'Uncategorized'; cats[c] = (cats[c] || 0) + e.amount; });
+
+            let tableRows = entries.sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => {
+                const d = new Date(e.date);
+                return `<tr><td>${d.getDate()}/${d.getMonth() + 1}</td><td>${DOMPurify.sanitize(e.comment)}</td><td>${e.category || 'Uncategorized'}</td><td>₹${e.amount.toLocaleString('en-IN')}</td></tr>`;
+            }).join('');
+
+            const html = `
+                <div style="font-family:Roboto,sans-serif;padding:24px;color:#1a1a1a;">
+                    <h1 style="font-size:24px;color:#415F91;">Spend Report</h1>
+                    <p style="color:#666;">${new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })}</p>
+                    <div style="font-size:36px;font-weight:400;margin:16px 0;">₹${total.toLocaleString('en-IN')}</div>
+                    <h3>Category Split</h3>
+                    ${Object.entries(cats).map(([c, v]) => `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span>${c}</span><span>₹${v.toLocaleString('en-IN')}</span></div>`).join('')}
+                    <hr style="margin:16px 0;">
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                        <tr style="background:#f0f0f0;"><th style="padding:8px;text-align:left;">Date</th><th style="padding:8px;text-align:left;">Comment</th><th style="padding:8px;text-align:left;">Category</th><th style="padding:8px;text-align:right;">Amount</th></tr>
+                        ${tableRows}
+                    </table>
+                </div>`;
+
+            const el = document.createElement('div');
+            el.innerHTML = html;
+            document.body.appendChild(el);
+            html2pdf().set({ margin: 10, filename: `spends_${currentMonth + 1}_${currentYear}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(el).save().then(() => document.body.removeChild(el));
+            Swal.close();
+        }
+
+        function exportXLSX() {
+            const entries = getMonthEntries();
+            const data = entries.sort((a, b) => new Date(b.date) - new Date(a.date)).map(e => ({
+                Date: new Date(e.date).toISOString().split('T')[0],
+                Comment: e.comment,
+                Category: e.category || 'Uncategorized',
+                Amount: e.amount
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Spends');
+            XLSX.writeFile(wb, `spends_${currentMonth + 1}_${currentYear}.xlsx`);
+            Swal.close();
+        }
+
+        function downloadFile(content, name, mime) {
+            const blob = new Blob([content], { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = name;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // ── FILTERS / NAV ──
+        function setFilter(filter, btn) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            btn.classList.add('active');
+            renderSpendList();
+        }
+
+        function shiftMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            renderAll();
+        }
+
+        // ── QUICK STATS ──
+        function renderQuickStats() {
+            const entries = getMonthEntries();
+            const total = entries.reduce((s, e) => s + e.amount, 0);
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const day = Math.min(new Date().getDate(), daysInMonth);
+            const avg = Math.round(total / day);
+            const cats = {};
+            entries.forEach(e => { const c = e.category || 'Uncategorized'; cats[c] = (cats[c] || 0) + e.amount; });
+            const topCat = Object.entries(cats).sort((a, b) => b[1] - a[1])[0];
+
+            document.getElementById('hero-total').innerText = '₹' + total.toLocaleString('en-IN');
+            document.getElementById('hero-count').innerText = entries.length + ' transactions';
+            document.getElementById('hero-avg').innerText = 'Avg: ₹' + avg.toLocaleString('en-IN') + '/day';
+            document.getElementById('month-label').innerText = new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            const container = document.getElementById('quick-stats');
+            container.innerHTML = `
+                <div class="stat-chip"><div class="stat-chip-label">Avg/Day</div><div class="stat-chip-val">₹${avg.toLocaleString('en-IN')}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Top Category</div><div class="stat-chip-val">${topCat ? topCat[0] : '—'}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Categories</div><div class="stat-chip-val">${Object.keys(cats).length}</div></div>
+                <div class="stat-chip"><div class="stat-chip-label">Biggest</div><div class="stat-chip-val">₹${entries.length > 0 ? Math.max(...entries.map(e => e.amount)).toLocaleString('en-IN') : 0}</div></div>
+            `;
+        }
+
+        // ── MAIN RENDER ──
+        function renderAll() {
+            renderQuickStats();
+            renderCharts();
+            renderSpendList();
+        }
+
+        // ── SET TODAY'S DATE IN MANUAL ENTRY ──
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+            renderAll();
+        });
+    </script>
+</body>
+</html>

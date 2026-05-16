@@ -139,6 +139,19 @@
     <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
 </div>
 
+<div class="md-card" id="spend-tracker-entry" style="display:none; align-items:center; justify-content:space-between; gap:16px; padding:20px; background:var(--md-surface-container-high);" onclick="window.location.href='spend_tracker.html'">
+    <div style="display:flex; align-items:center; gap:16px;">
+        <div style="width:48px; height:48px; border-radius:16px; background:var(--md-secondary-container); color:var(--md-on-secondary-container); display:flex; align-items:center; justify-content:center;">
+            <span class="material-symbols-rounded">receipt_long</span>
+        </div>
+        <div>
+            <div style="font-weight:600; font-size:16px; color:var(--md-on-surface);">Spend Tracker</div>
+            <div style="font-size:13px; color:var(--md-on-surface-variant); margin-top:2px;">Track expenses, AI categorization & insights</div>
+        </div>
+    </div>
+    <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+</div>
+
             <div id="maturity-section" style="display:none; margin-bottom:16px;">
                 <div class="section-title" style="margin-top:0;">⏰ Maturing Soon <span
                         style="font-size:12px;font-weight:400;color:var(--md-outline);">(Next 90 days)</span></div>
@@ -775,6 +788,14 @@
                         <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Show budgeting card on dashboard</div>
                     </div>
                     <label class="switch"><input type="checkbox" id="settings-enable-planner"><span class="slider"></span></label>
+                </div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; background:var(--md-surface-container); border-radius:16px; margin-bottom:16px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Spend Tracker</div>
+                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Track expenses with AI categorization & insights</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="settings-enable-spend-tracker"><span class="slider"></span></label>
                 </div>
 
                 <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span

@@ -724,6 +724,12 @@ function updatePortfolioCalculations() {
         plannerEntry.style.display = db.enableMonthlyPlanner ? 'flex' : 'none';
     }
 
+    // NEW: Show/Hide Spend Tracker Entry Card
+    let spendEntry = document.getElementById('spend-tracker-entry');
+    if (spendEntry) {
+        spendEntry.style.display = db.enableSpendTracker ? 'flex' : 'none';
+    }
+
     renderHistory();
 
     let monthTarget = db.userProfile.monthlyExpense || 0; let pct = monthTarget > 0 ? Math.min(100, (thisMonthTotal / monthTarget) * 100) : 0;

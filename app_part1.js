@@ -78,6 +78,10 @@ if (!db.aiBubblePosition) db.aiBubblePosition = { bottom: 24, right: 24 };
 // NEW: Default state for Monthly Planner visibility
 if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = true;
 
+// NEW: Spend Tracker
+if (typeof db.enableSpendTracker === 'undefined') db.enableSpendTracker = false;
+if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
+
 // Extended user profile with smart defaults (all optional, progressive disclosure)
 if (!db.userProfileExtended) db.userProfileExtended = {
     // Layer 1: Basics (auto-detected or simple)

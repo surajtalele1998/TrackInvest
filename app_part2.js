@@ -1066,6 +1066,10 @@ function saveProfileSettings() {
     // NEW: Save Planner visibility
     const plannerEl = document.getElementById('settings-enable-planner');
     if(plannerEl) db.enableMonthlyPlanner = plannerEl.checked;
+
+    // NEW: Save Spend Tracker visibility
+    const spendEl = document.getElementById('settings-enable-spend-tracker');
+    if(spendEl) db.enableSpendTracker = spendEl.checked;
     
     saveData(); renderAll(); showSnackbar("Profile & Preferences Updated", "check_circle");
 }
@@ -1139,6 +1143,8 @@ function openSettings() {
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
     if (plannerEl) plannerEl.checked = db.enableMonthlyPlanner; // NEW
+    const spendEl = document.getElementById('settings-enable-spend-tracker');
+    if (spendEl) spendEl.checked = db.enableSpendTracker;
     const bubbleToggle = document.getElementById('ai-bubble-toggle');
     if (bubbleToggle) bubbleToggle.checked = db.aiBubbleEnabled;
 
