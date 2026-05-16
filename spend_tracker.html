@@ -509,7 +509,7 @@
                     <div class="spend-date">${d.getDate()} ${d.toLocaleString('default',{month:'short'})}</div>
                     <div class="spend-comment">${DOMPurify.sanitize(e.comment||'—')}</div>
                     <div class="spend-amt">₹${e.amount.toLocaleString('en-IN')}</div>
-                    <button class="cat-badge" style="background:${color}22;color:${color};" onclick="changeCategory('${e.id}')">${cat}</button>
+                    <button class="cat-badge" style="background:${color}22;color:${color};" onclick="changeCategory('${e.id}')">${DOMPurify.sanitize(cat)}</button>
                     <button class="btn-icon" style="min-width:32px;min-height:32px;padding:4px;color:var(--md-error);" onclick="deleteEntry('${e.id}')"><span class="material-symbols-rounded" style="font-size:16px;">close</span></button>
                 </div>`;
             });

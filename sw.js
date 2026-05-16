@@ -1,4 +1,4 @@
-const CACHE_NAME = 'invest-pro-v91';
+const CACHE_NAME = 'invest-pro-v92';
 
 const CORE_ASSETS = [
     './',
@@ -11,7 +11,9 @@ const CORE_ASSETS = [
     './app_part1.js',
     './app_part2.js',
     './app_part3.js',
-    './monthly_plan.html'
+    './shared_ai.js',
+    './monthly_plan.html',
+    './spend_tracker.html'
 ];
 
 const CDN_ASSETS = [
@@ -73,7 +75,10 @@ self.addEventListener('fetch', (event) => {
     // For API calls (mfapi, groq, generativelanguage) → network only, no cache
     if (url.hostname.includes('mfapi.in') ||
         url.hostname.includes('groq.com') ||
-        url.hostname.includes('generativelanguage.googleapis.com')) {
+        url.hostname.includes('generativelanguage.googleapis.com') ||
+        url.hostname.includes('openrouter.ai') ||
+        url.hostname.includes('cerebras.ai') ||
+        url.hostname.includes('models.github.ai')) {
         event.respondWith(fetch(event.request));
         return;
     }

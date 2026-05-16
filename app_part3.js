@@ -623,7 +623,7 @@ function updatePortfolioCalculations() {
     }
 
     let portGrid = document.getElementById('portfolio-grid');
-    if (portGrid) { let activeCats = Object.keys(typeTotals).filter(t => typeTotals[t] > 0 || db.allocTargets[t]); portGrid.innerHTML = activeCats.length === 0 ? `<div class="empty-state-premium" style="grid-column:1 / -1;"><span class="material-symbols-rounded">pie_chart</span><div class="es-title">Empty Portfolio</div></div>` : activeCats.map(t => { let meta = db.categories[t]; let dObj = new Date(typeLastDate[t]); let dateStr = typeLastDate[t] ? `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })}` : "No entries"; let cur = typeTotals[t]; let inv = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[t]?.initialBal || 0); let prof = cur - inv; let roiHtml = prof !== 0 ? `<div class="roi-tag ${prof > 0 ? 'positive' : 'negative'}">${prof > 0 ? '+' : ''}${formatMoney(prof)}</div>` : ""; let intRate = db.categoryDetails[t]?.interestRate; let intRateHtml = intRate ? `<div style="font-size:10px;background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-weight:700;color:var(--md-primary);">${intRate}% APY</div>` : ""; return `<div class="port-card" onclick="openCategoryDetails('${t}')"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div class="port-icon" style="background:${meta.color};"><span class="material-symbols-rounded" style="font-size:20px;">${meta.icon}</span></div>${intRateHtml}</div><div class="port-type">${t}</div><div class="port-amt">${formatMoney(cur)}</div>${roiHtml}<div class="port-date" style="font-size:11px; margin-top:4px; color:var(--md-outline);">Last: ${dateStr}</div></div>`; }).join(''); }
+    if (portGrid) { let activeCats = Object.keys(typeTotals).filter(t => typeTotals[t] > 0 || db.allocTargets[t]); portGrid.innerHTML = activeCats.length === 0 ? `<div class="empty-state-premium" style="grid-column:1 / -1;"><span class="material-symbols-rounded">pie_chart</span><div class="es-title">Empty Portfolio</div></div>` : activeCats.map(t => { let meta = db.categories[t]; let safeT = escapeHtml(t); let safeColor = escapeHtml(meta?.color || '#ccc'); let safeIcon = escapeHtml(meta?.icon || 'help'); let dObj = new Date(typeLastDate[t]); let dateStr = typeLastDate[t] ? `${dObj.getDate()} ${dObj.toLocaleString('default', { month: 'short' })}` : "No entries"; let cur = typeTotals[t]; let inv = db.investments.filter(i => i.type === t && !i.isDividend && (activeAccountFilter === 'All' || i.account === activeAccountFilter)).reduce((s, i) => s + i.amount, 0) + (db.categoryDetails[t]?.initialBal || 0); let prof = cur - inv; let roiHtml = prof !== 0 ? `<div class="roi-tag ${prof > 0 ? 'positive' : 'negative'}">${prof > 0 ? '+' : ''}${formatMoney(prof)}</div>` : ""; let intRate = db.categoryDetails[t]?.interestRate; let intRateHtml = intRate ? `<div style="font-size:10px;background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-weight:700;color:var(--md-primary);">${intRate}% APY</div>` : ""; return `<div class="port-card" onclick="openCategoryDetails('${safeT}')"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div class="port-icon" style="background:${safeColor};"><span class="material-symbols-rounded" style="font-size:20px;">${safeIcon}</span></div>${intRateHtml}</div><div class="port-type">${safeT}</div><div class="port-amt">${formatMoney(cur)}</div>${roiHtml}<div class="port-date" style="font-size:11px; margin-top:4px; color:var(--md-outline);">Last: ${dateStr}</div></div>`; }).join(''); }
 
     let goalsList = document.getElementById('goals-list');
     if (goalsList) {
@@ -1140,7 +1140,7 @@ function renderFrequentActions() {
         actions.push({
             icon: catMeta.icon,
             label: topCategory,
-            action: `openInvestSheet(null, 1000); setInvestType('${topCategory}')`,
+            action: `openInvestSheet(null, 1000); setInvestType('${escapeHtml(topCategory)}')`,
             color: catMeta.color
         });
     }
@@ -1152,8 +1152,8 @@ function renderFrequentActions() {
     let html = `<div style="display:flex; gap:12px; overflow-x:auto; padding: 4px 0; scrollbar-width:none;">`;
     actions.forEach(a => {
         html += `<button onclick="${a.action}" style="flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding: 12px 16px; background:var(--md-surface-container-low); border:none; border-radius:16px; cursor:pointer; min-width:72px; transition:transform 0.2s, background 0.2s;" onmouseover="this.style.transform='scale(1.05)';this.style.background='var(--md-surface-container)'" onmouseout="this.style.transform='scale(1)';this.style.background='var(--md-surface-container-low)'">
-            <span class="material-symbols-rounded" style="font-size:24px; color:${a.color};">${a.icon}</span>
-            <span style="font-size:11px; color:var(--md-on-surface-variant); font-weight:500;">${a.label}</span>
+            <span class="material-symbols-rounded" style="font-size:24px; color:${a.color};">${escapeHtml(a.icon)}</span>
+            <span style="font-size:11px; color:var(--md-on-surface-variant); font-weight:500;">${escapeHtml(a.label)}</span>
         </button>`;
     });
     html += `</div>`;
@@ -1543,7 +1543,7 @@ function calculatePortfolioHealth() {
         if (topGoal.linkedCategory) {
             quickWins.push({
                 text: `Add SIP to "${topGoal.name}" linked to ${topGoal.linkedCategory}`,
-                action: `onclick="openInvestSheet(); setInvestType('${topGoal.linkedCategory}'); document.getElementById('inv-is-monthly').checked = true;"`
+                action: `onclick="openInvestSheet(); setInvestType('${escapeHtml(topGoal.linkedCategory)}'); document.getElementById('inv-is-monthly').checked = true;"`
             });
         }
     }

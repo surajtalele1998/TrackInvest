@@ -332,11 +332,12 @@ function saveInvestment() {
 // Enhanced snackbar with undo option
 function showUndoSnackbar(message, undoCallback) {
     const sb = document.getElementById("snackbar");
+    if (!sb) return;
     const undoId = 'undo-' + Date.now();
 
     sb.innerHTML = `
         <span class="material-symbols-rounded" style="font-size:20px;">check_circle</span>
-        <span style="flex:1;">${message}</span>
+        <span style="flex:1;">${escapeHtml(message)}</span>
         <button id="${undoId}" style="background:none;border:none;color:var(--md-primary);font-weight:600;cursor:pointer;padding:4px 8px;margin-left:8px;border-radius:4px;">
             UNDO
         </button>
@@ -1207,8 +1208,9 @@ function renderSettingsSections() {
     // Accounts section
     let accHtml = "";
     db.accounts.forEach((a, idx) => {
-        let delBtn = idx === 0 ? '' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteAccount('${a}')">delete</span>`;
-        accHtml += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span>${a}</span>${delBtn}</div>`;
+        let safeA = escapeHtml(a);
+        let delBtn = idx === 0 ? '' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteAccount('${safeA}')">delete</span>`;
+        accHtml += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--md-surface-container-highest);border-radius:12px;"><span>${safeA}</span>${delBtn}</div>`;
     });
     let accList = document.getElementById('account-list');
     if (accList) accList.innerHTML = accHtml;
@@ -1222,12 +1224,15 @@ function renderSettingsSections() {
             if (!cat.targetMultiplier) cat.targetMultiplier = 0;
             if (typeof cat.excludeDividend === 'undefined') cat.excludeDividend = false;
 
-            let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCategory('${c}')">delete</span>`;
+            let safeC = escapeHtml(c);
+            let safeColor = escapeHtml(cat?.color || '#ccc');
+            let safeIcon = escapeHtml(cat?.icon || 'help');
+            let delBtn = isDefault ? '<span style="font-size:10px;color:var(--md-outline);">Default</span>' : `<span class="material-symbols-rounded" style="color:var(--md-error);font-size:16px;cursor:pointer;" onclick="deleteCategory('${safeC}')">delete</span>`;
 
             catHtml += `
         <div style="padding:12px;background:var(--md-surface-container-highest);border-radius:12px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <span><span class="material-symbols-rounded" style="font-size:16px;color:${cat.color};vertical-align:text-bottom;margin-right:6px;">${cat.icon}</span>${c}</span>
+                <span><span class="material-symbols-rounded" style="font-size:16px;color:${safeColor};vertical-align:text-bottom;margin-right:6px;">${safeIcon}</span>${safeC}</span>
                 ${delBtn}
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
@@ -2149,7 +2154,7 @@ async function sendAIChat() {
     if (!db.geminiKey && !db.groqKey) { showSnackbar("API key required", "key"); return; }
     let input = document.getElementById('ai-chat-input'); let msg = input.value.trim(); if (!msg) return;
     db.chatHistory.push({ role: 'user', content: msg }); openAIChat(); input.value = '';
-    let log = document.getElementById('ai-chat-log'); log.innerHTML += `<div class="chat-bubble user">${msg}</div><div class="chat-bubble ai" id="typing">Thinking...</div>`; log.scrollTop = log.scrollHeight;
+    let log = document.getElementById('ai-chat-log'); log.innerHTML += `<div class="chat-bubble user">${escapeHtml(msg)}</div><div class="chat-bubble ai" id="typing">Thinking...</div>`; log.scrollTop = log.scrollHeight;
     let historyStr = db.chatHistory.slice(-10).map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
     let sipData = JSON.stringify(db.recurring.map(r => ({ t: r.type, a: r.amount })));
     let goalData = JSON.stringify(db.goals.map(g => ({ n: g.name, s: g.saved, t: g.target })));

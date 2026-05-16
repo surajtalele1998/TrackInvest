@@ -223,7 +223,7 @@ function setLoading(elementId, isLoading, message = '') {
         el.dataset.originalContent = el.innerHTML;
         el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:16px;color:var(--md-outline);">
             <span class="material-symbols-rounded" style="animation:spin 1s linear infinite;">progress_activity</span>
-            ${message || 'Loading...'}
+            ${escapeHtml(message) || 'Loading...'}
         </div>`;
         el.disabled = true;
     } else {

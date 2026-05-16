@@ -1114,7 +1114,8 @@ function callAI(prompt) {
 // ──────────────────────────────────────────────────────────────
 function snack(msg, icon = 'info') {
     const sb = document.getElementById('snackbar');
-    sb.innerHTML = `<span class="material-symbols-rounded" style="font-size:18px;">${icon}</span> ${msg}`;
+    if (!sb) return;
+    sb.innerHTML = `<span class="material-symbols-rounded" style="font-size:18px;">${escapeHtml(icon)}</span> ${escapeHtml(msg)}`;
     sb.classList.add('show');
     setTimeout(() => sb.classList.remove('show'), 3000);
 }
@@ -1122,7 +1123,7 @@ function snack(msg, icon = 'info') {
 function escapeHtml(str) {
     return String(str || '')
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 </script>
 </body>

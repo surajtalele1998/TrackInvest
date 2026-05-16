@@ -41,6 +41,7 @@ async function getErrorMessage(response) {
 // keys: { geminiKey, groqKey, openrouterKey, cerebrasKey, githubKey }
 // Returns response text or throws
 async function callAIProvider(keys, promptText, systemPrompt) {
+    if (!keys || typeof keys !== 'object') throw new Error('Invalid keys object');
     const active = {};
     for (const k of ['geminiKey', 'groqKey', 'openrouterKey', 'cerebrasKey', 'githubKey']) {
         active[k] = !!(keys[k] && keys[k].trim().length > 0);
