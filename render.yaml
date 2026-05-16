@@ -15,27 +15,27 @@ services:
         value: "3000"
       - key: API_KEYS
         sync: false
+      - key: JWT_SECRET
+        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
         sync: false
-      - key: OPENAI_API_KEY
+      - key: SUPABASE_URL
         sync: false
-      - key: ALPHA_VANTAGE_API_KEY
+      - key: SUPABASE_KEY
         sync: false
-      - key: VAPID_PUBLIC_KEY
+      - key: SUPABASE_ANON_KEY
         sync: false
-      - key: VAPID_PRIVATE_KEY
+      - key: TELEGRAM_BOT_TOKEN
         sync: false
-      - key: VAPID_SUBJECT
+      - key: TELEGRAM_CHAT_ID
         sync: false
-      - key: SMTP_HOST
+      - key: GITHUB_TOKEN
         sync: false
-      - key: SMTP_PORT
+      - key: NEWSAPI_KEY
         sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      - key: EXCHANGERATE_API_KEY
         sync: false
       - key: BROWSER_DISABLE
         value: "true"

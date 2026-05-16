@@ -9,11 +9,44 @@ const config = {
   apiKeys: (process.env.API_KEYS || '').split(',').map(s => s.trim()).filter(Boolean),
   apiKeyHeader: 'x-api-key',
 
+  jwt: {
+    secret: process.env.JWT_SECRET || (config?.isDev ? 'dev-secret-change-in-prod' : ''),
+    expiresIn: process.env.JWT_EXPIRES_IN || '30d',
+  },
+
   ai: {
     geminiKey: process.env.GEMINI_API_KEY || '',
     groqKey: process.env.GROQ_API_KEY || '',
     openaiKey: process.env.OPENAI_API_KEY || '',
     provider: process.env.GEMINI_API_KEY ? 'gemini' : (process.env.GROQ_API_KEY ? 'groq' : (process.env.OPENAI_API_KEY ? 'openai' : null)),
+  },
+
+  supabase: {
+    url: process.env.SUPABASE_URL || '',
+    key: process.env.SUPABASE_KEY || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || '',
+  },
+
+  github: {
+    token: process.env.GITHUB_TOKEN || '',
+    gistId: process.env.GITHUB_GIST_ID || '',
+  },
+
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    chatId: process.env.TELEGRAM_CHAT_ID || '',
+  },
+
+  ntfy: {
+    topic: process.env.NTFY_TOPIC || '',
+  },
+
+  news: {
+    apiKey: process.env.NEWSAPI_KEY || '',
+  },
+
+  exchangeRate: {
+    apiKey: process.env.EXCHANGERATE_API_KEY || '',
   },
 
   market: {
