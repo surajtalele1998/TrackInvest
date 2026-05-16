@@ -56,12 +56,18 @@ if (typeof db.privacyMode === 'undefined') db.privacyMode = false;
 if (!db.theme) db.theme = 'indigo';
 if (!db.geminiKey) db.geminiKey = '';
 if (!db.groqKey) db.groqKey = '';
+if (!db.openrouterKey) db.openrouterKey = '';
+if (!db.cerebrasKey) db.cerebrasKey = '';
+if (!db.githubKey) db.githubKey = '';
 // Decrypt encrypted API keys if present
 if (db._ek && db.appPin) {
     const parts = db._ek.split('|');
     if (parts.length === 2) {
         if (!db.geminiKey) db.geminiKey = _decryptKey(parts[0], db.appPin) || '';
         if (!db.groqKey) db.groqKey = _decryptKey(parts[1], db.appPin) || '';
+        if (!db.openrouterKey) db.openrouterKey = _decryptKey(parts[2] || '', db.appPin) || '';
+        if (!db.cerebrasKey) db.cerebrasKey = _decryptKey(parts[3] || '', db.appPin) || '';
+        if (!db.githubKey) db.githubKey = _decryptKey(parts[4] || '', db.appPin) || '';
     }
     delete db._ek;
 }
@@ -1384,8 +1390,8 @@ function saveData() {
 
     // Encrypt API keys at rest if PIN is set
     if (db.appPin) {
-        db._ek = _encryptKey(db.geminiKey || '', db.appPin) + '|' + _encryptKey(db.groqKey || '', db.appPin);
-        delete db.geminiKey; delete db.groqKey;
+        db._ek = _encryptKey(db.geminiKey || '', db.appPin) + '|' + _encryptKey(db.groqKey || '', db.appPin) + '|' + _encryptKey(db.openrouterKey || '', db.appPin) + '|' + _encryptKey(db.cerebrasKey || '', db.appPin) + '|' + _encryptKey(db.githubKey || '', db.appPin);
+        delete db.geminiKey; delete db.groqKey; delete db.openrouterKey; delete db.cerebrasKey; delete db.githubKey;
     }
 
     const sanitizedDb = sanitizeDatabaseObject(db);
@@ -1401,6 +1407,9 @@ function saveData() {
         const parts = db._ek.split('|');
         db.geminiKey = _decryptKey(parts[0] || '', db.appPin);
         db.groqKey = _decryptKey(parts[1] || '', db.appPin);
+        db.openrouterKey = _decryptKey(parts[2] || '', db.appPin);
+        db.cerebrasKey = _decryptKey(parts[3] || '', db.appPin);
+        db.githubKey = _decryptKey(parts[4] || '', db.appPin);
     }
 
     // Check storage quota asynchronously (non-blocking)

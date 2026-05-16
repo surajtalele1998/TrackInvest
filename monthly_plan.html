@@ -460,6 +460,7 @@
 
     <div id="snackbar" class="snackbar"></div>
 
+<script src="./shared_ai.js"></script>
 <script>
 // ──────────────────────────────────────────────────────────────
 // STATE
@@ -1104,26 +1105,8 @@ Give ONE short, specific, actionable tip in 2 sentences max. Focus on the bigges
     }
 }
 
-async function callAI(prompt) {
-    if (db.groqKey) {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${db.groqKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: prompt }], max_tokens: 120 })
-        });
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || '';
-    }
-    if (db.geminiKey) {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${db.geminiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 120 } })
-        });
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    }
-    throw new Error('No API key');
+function callAI(prompt) {
+    return callAIProvider(db, prompt, '');
 }
 
 // ──────────────────────────────────────────────────────────────

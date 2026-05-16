@@ -1116,7 +1116,10 @@ function openSettings() {
         },
         ai: {
             geminiKey: db.geminiKey || '',
-            groqKey: db.groqKey || ''
+            groqKey: db.groqKey || '',
+            openrouterKey: db.openrouterKey || '',
+            cerebrasKey: db.cerebrasKey || '',
+            githubKey: db.githubKey || ''
         }
     };
     loadUserProfileSettings();
@@ -1130,6 +1133,9 @@ function openSettings() {
     const pinEl = document.getElementById('settings-pin');
     const geminiEl = document.getElementById('gemini-api-key');
     const groqEl = document.getElementById('groq-api-key');
+    const openrouterEl = document.getElementById('openrouter-api-key');
+    const cerebrasEl = document.getElementById('cerebras-api-key');
+    const githubEl = document.getElementById('github-api-key');
     const biometricEl = document.getElementById('use-biometric-toggle');
     const plannerEl = document.getElementById('settings-enable-planner'); // NEW
     if (salaryEl) salaryEl.value = settingsData.profile.salary;
@@ -1141,6 +1147,9 @@ function openSettings() {
     if (pinEl) pinEl.value = settingsData.security.pin;
     if (geminiEl) geminiEl.value = settingsData.ai.geminiKey;
     if (groqEl) groqEl.value = settingsData.ai.groqKey;
+    if (openrouterEl) openrouterEl.value = settingsData.ai.openrouterKey;
+    if (cerebrasEl) cerebrasEl.value = settingsData.ai.cerebrasKey;
+    if (githubEl) githubEl.value = settingsData.ai.githubKey;
     if (biometricEl) biometricEl.checked = settingsData.security.useBiometric;
     if (plannerEl) plannerEl.checked = db.enableMonthlyPlanner; // NEW
     const spendEl = document.getElementById('settings-enable-spend-tracker');
@@ -1178,7 +1187,7 @@ function updateSettingsHelpText() {
     const helpTexts = [
         { id: 'salary-help', text: 'Used to calculate savings rate and tax estimates', after: 'settings-salary' },
         { id: 'pin-help', text: '4-digit PIN for app lock. Leave empty to disable.', after: 'settings-pin' },
-        { id: 'api-help', text: 'Get keys from: Groq (groq.com) or Gemini (makersuite.google.com)', after: 'gemini-api-key' }
+        { id: 'api-help', text: 'Get keys: Groq (console.groq.com), Gemini (aistudio.google.com), OpenRouter (openrouter.ai/keys), Cerebras (cloud.cerebras.ai), GitHub Models (github.com/settings/tokens)', after: 'gemini-api-key' }
     ];
 
     helpTexts.forEach(help => {
@@ -1279,7 +1288,7 @@ function updateCategorySetting(cat, key, val) {
     // No full re-render here to avoid losing focus on input
 }
 
-function saveApiKeys() { db.geminiKey = document.getElementById('gemini-api-key').value.trim(); db.groqKey = document.getElementById('groq-api-key').value.trim(); saveData(); showSnackbar("API Keys Saved", "key"); }
+function saveApiKeys() { db.geminiKey = document.getElementById('gemini-api-key').value.trim(); db.groqKey = document.getElementById('groq-api-key').value.trim(); db.openrouterKey = document.getElementById('openrouter-api-key').value.trim(); db.cerebrasKey = document.getElementById('cerebras-api-key').value.trim(); db.githubKey = document.getElementById('github-api-key').value.trim(); saveData(); showSnackbar("API Keys Saved", "key"); }
 function addAccount() { haptic(40); let name = document.getElementById('new-acc-name').value.trim(); if (name && !db.accounts.includes(name)) { db.accounts.push(name); document.getElementById('new-acc-name').value = ''; saveData(); initUI(); openSettings(); showSnackbar("Account Added"); } }
 function deleteAccount(name) { haptic(40); Swal.fire({ title: `Delete Account '${name}'?`, text: "Entries will remain but lose association.", showCancelButton: true }).then(r => { if (r.isConfirmed) { db.accounts = db.accounts.filter(a => a !== name); saveData(); initUI(); openSettings(); renderAll(); } }); }
 function addCustomCategory() {
@@ -1797,12 +1806,22 @@ function restoreData(e) {
             db.theme = parsed.theme || 'indigo';
             db.geminiKey = parsed.geminiKey || '';
             db.groqKey = parsed.groqKey || '';
+            db.openrouterKey = parsed.openrouterKey || '';
+            db.cerebrasKey = parsed.cerebrasKey || '';
+            db.githubKey = parsed.githubKey || '';
             // Decrypt keys from _ek if plaintext not present but appPin matches
             if (!db.geminiKey && parsed._ek && db.appPin) {
                 const parts = parsed._ek.split('|');
-                if (parts.length === 2) {
+                if (parts.length >= 2) {
                     db.geminiKey = _decryptKey(parts[0], db.appPin) || '';
                     db.groqKey = _decryptKey(parts[1], db.appPin) || '';
+                    if (parts.length >= 4) {
+                        db.openrouterKey = _decryptKey(parts[2] || '', db.appPin) || '';
+                        db.cerebrasKey = _decryptKey(parts[3] || '', db.appPin) || '';
+                    }
+                    if (parts.length >= 5) {
+                        db.githubKey = _decryptKey(parts[4] || '', db.appPin) || '';
+                    }
                 }
             }
             db.appPin = parsed.appPin || '';
@@ -2102,207 +2121,11 @@ function quickAddAmount(amt) { openInvestSheet(null, amt); }
 function updateRebalanceBadge() { let badge = document.getElementById('rebalance-badge'); let rebalanceSec = document.getElementById('rebalance-section'); badge.style.display = rebalanceSec && rebalanceSec.style.display !== 'none' ? 'block' : 'none'; }
 
 // ==========================================
-// 8. AI INTEGRATION (GROQ + GEMINI ROUTER)
+// 8. AI INTEGRATION (delegates to shared_ai.js)
 // ==========================================
-// API Key validation functions
-function isValidGeminiKey(key) {
-    return /^[A-Za-z0-9_-]{35,}$/.test(key);
-}
-
-function isValidGroqKey(key) {
-    return /^gsk_[A-Za-z0-9_-]{48,}$/.test(key);
-}
-
-function sanitizeInput(input) {
-    if (typeof input !== 'string') return '';
-    return input
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .replace(/javascript:/gi, '')
-        .replace(/on\w+\s*=/gi, '')
-        .replace(/<iframe\b[^>]*>/gi, '')
-        .replace(/<object\b[^>]*>/gi, '')
-        .replace(/<embed\b[^>]*>/gi, '')
-        .trim();
-}
-
-// Enhanced API call with retry logic and better error handling
-async function callAIApi(promptText, systemPrompt = "You are a helpful financial assistant.") {
-    let hasGemini = db.geminiKey && db.geminiKey.trim().length > 0;
-    let hasGroq = db.groqKey && db.groqKey.trim().length > 0;
-    if (!hasGemini && !hasGroq) throw new Error("No API key configured");
-
-    // Validate API keys format
-    if (hasGemini && !isValidGeminiKey(db.geminiKey)) {
-        console.warn("Invalid Gemini API key format");
-        hasGemini = false;
-    }
-    if (hasGroq && !isValidGroqKey(db.groqKey)) {
-        console.warn("Invalid Groq API key format");
-        hasGroq = false;
-    }
-
-    const sanitizedPrompt = sanitizeInput(promptText);
-    const maxRetries = 2;
-    const timeoutMs = 30000; // 30 seconds timeout
-
-    let responseText = null;
-    let lastError = null;
-
-    // Try Gemini first
-    if (hasGemini) {
-        for (let attempt = 0; attempt <= maxRetries && !responseText; attempt++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-                const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': db.geminiKey,
-                        'User-Agent': 'TrackInvest/1.0'
-                    },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `${systemPrompt}\n\n${sanitizedPrompt}` }] }],
-                        generationConfig: {
-                            temperature: 0.7,
-                            maxOutputTokens: 1000,
-                            topK: 40,
-                            topP: 0.95
-                        }
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (res.ok) {
-                    const data = await res.json();
-
-                    // Handle Gemini API specific errors
-                    if (data.error) {
-                        throw new Error(`Gemini API Error: ${data.error.message || 'Unknown error'}`);
-                    }
-
-                    responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I could not process that request.';
-                    break;
-                } else {
-                    const errorText = await getErrorMessage(res);
-                    lastError = new Error(`Gemini HTTP ${res.status}: ${errorText}`);
-
-                    if (attempt === maxRetries) {
-                        console.warn("Gemini failed after retries:", lastError);
-                    }
-                }
-            } catch (e) {
-                clearTimeout(timeoutId);
-                lastError = e;
-
-                if (e.name === 'AbortError') {
-                    console.warn("Gemini request timed out");
-                } else {
-                    console.warn(`Gemini attempt ${attempt + 1} failed:`, e);
-                }
-
-                if (attempt === maxRetries) {
-                    console.warn("Gemini failed after retries:", lastError);
-                }
-
-                // Exponential backoff
-                if (attempt < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-                }
-            }
-        }
-    }
-
-    // Try Groq as fallback
-    if (!responseText && hasGroq) {
-        for (let attempt = 0; attempt <= maxRetries && !responseText; attempt++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-                const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${db.groqKey}`,
-                        'Content-Type': 'application/json',
-                        'User-Agent': 'TrackInvest/1.0'
-                    },
-                    body: JSON.stringify({
-                        model: "llama-3.3-70b-versatile",
-                        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: sanitizedPrompt }],
-                        max_tokens: 1000,
-                        temperature: 0.7
-                    }),
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (res.ok) {
-                    const data = await res.json();
-
-                    // Handle Groq API specific errors
-                    if (data.error) {
-                        throw new Error(`Groq API Error: ${data.error.message || 'Unknown error'}`);
-                    }
-
-                    responseText = data.choices?.[0]?.message?.content || 'Sorry, I could not process that request.';
-                    break;
-                } else {
-                    const errorText = await getErrorMessage(res);
-                    lastError = new Error(`Groq HTTP ${res.status}: ${errorText}`);
-
-                    if (attempt === maxRetries) {
-                        console.warn("Groq failed after retries:", lastError);
-                    }
-                }
-            } catch (e) {
-                clearTimeout(timeoutId);
-                lastError = e;
-
-                if (e.name === 'AbortError') {
-                    console.warn("Groq request timed out");
-                } else {
-                    console.warn(`Groq attempt ${attempt + 1} failed:`, e);
-                }
-
-                if (attempt === maxRetries) {
-                    console.warn("Groq failed after retries:", lastError);
-                }
-
-                // Exponential backoff
-                if (attempt < maxRetries) {
-                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-                }
-            }
-        }
-    }
-
-    if (!responseText) {
-        const finalError = lastError || new Error("Both AI engines failed to respond.");
-        console.error("AI API call failed:", finalError);
-        throw finalError;
-    }
-
-    // Clean up response
-    return responseText
-        .replace(/```html/g, '')
-        .replace(/```/g, '')
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-        .trim();
-}
-
-// Helper function to extract error messages from responses
-async function getErrorMessage(response) {
-    try {
-        const text = await response.text();
-        return text || response.statusText || 'Unknown error';
-    } catch (e) {
-        return response.statusText || 'Unknown error';
-    }
+// Delegates to shared_ai.js
+async function callAIApi(promptText, systemPrompt) {
+    return callAIProvider(db, promptText, systemPrompt);
 }
 
 function openAIChat() {
