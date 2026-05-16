@@ -4,12 +4,19 @@ const config = require('../config');
 const { getDb } = require('../models/database');
 const logger = require('../utils/logger');
 
-if (config.notifications.vapidPublicKey && config.notifications.vapidPrivateKey) {
-  webPush.setVapidDetails(
-    config.notifications.vapidSubject,
-    config.notifications.vapidPublicKey,
-    config.notifications.vapidPrivateKey
-  );
+let vapidReady = false;
+try {
+  const hasKeys = config.notifications.vapidPublicKey && config.notifications.vapidPrivateKey;
+  let subject = config.notifications.vapidSubject || 'mailto:admin@trackinvest.app';
+  if (subject && !subject.startsWith('mailto:') && !subject.startsWith('http')) {
+    subject = 'mailto:' + subject;
+  }
+  if (hasKeys) {
+    webPush.setVapidDetails(subject, config.notifications.vapidPublicKey, config.notifications.vapidPrivateKey);
+    vapidReady = true;
+  }
+} catch (e) {
+  logger.warn('Web Push not configured: ' + e.message + ' — push notifications disabled');
 }
 
 function getSubscriptions() {
@@ -31,6 +38,10 @@ function removeSubscription(endpoint) {
 }
 
 async function sendPushNotification(title, body, tag = 'general') {
+  if (!vapidReady) {
+    logger.warn('Web Push not configured — skipping push');
+    return { sent: 0, failed: 0, reason: 'VAPID not configured' };
+  }
   const subs = getSubscriptions();
   if (subs.length === 0) {
     logger.warn('No push subscriptions to send to');
