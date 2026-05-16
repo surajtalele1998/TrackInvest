@@ -338,9 +338,6 @@
 
             <div class="section-title">
                     Portfolio Breakdown
-                <button class="ai-widget-mini" onclick="generateAIHubReport('full_report')">
-                    <span class="material-symbols-rounded">analytics</span> Full AI Report
-                </button>
                 <button class="ai-widget-mini" onclick="generatePDFWealthReport()">
                     <span class="material-symbols-rounded">picture_as_pdf</span> PDF Report
                 </button>
@@ -364,9 +361,7 @@
         </div>
 
         <div id="tab-ledger" class="tab-content">
-            <div class="section-title">Investment Ledger <button class="ai-widget-mini"
-                    onclick="generateAIHubReport('ledger')"><span class="material-symbols-rounded"
-                        style="font-size:14px;">auto_awesome</span> AI Habits</button></div>
+            <div class="section-title">Investment Ledger</div>
 
             <!-- Ledger insights bar -->
             <div class="insights-bar" id="ledger-insights-bar">
@@ -640,9 +635,14 @@
                     <span class="material-symbols-rounded" style="color:var(--md-primary); font-size:22px;">auto_awesome</span>
                     <span style="font-weight:600; font-size:17px;">AI Hub</span>
                 </div>
-                <button class="icon-btn" onclick="closeOverlays()">
-                    <span class="material-symbols-rounded">close</span>
-                </button>
+                <div style="display:flex; align-items:center; gap:4px;">
+                    <button id="ai-hub-download-pdf" class="icon-btn" style="display:none;" onclick="downloadAIHubReport()" title="Download as PDF">
+                        <span class="material-symbols-rounded" style="font-size:20px;">picture_as_pdf</span>
+                    </button>
+                    <button class="icon-btn" onclick="closeOverlays()">
+                        <span class="material-symbols-rounded">close</span>
+                    </button>
+                </div>
             </div>
             <div style="display:flex; gap:8px;">
                 <button id="ai-hub-tab-chat" class="ai-hub-tab active" onclick="switchAIHubTab('chat')"><span class="material-symbols-rounded" style="font-size:18px;">chat</span> Chat</button>
@@ -666,7 +666,6 @@
                     <button class="ai-hub-report-btn" onclick="generateAIHubReport('forecast')"><span class="material-symbols-rounded" style="font-size:16px;">trending_up</span> Forecast</button>
                 </div>
                 <div id="ai-hub-report-content"></div>
-                <button id="ai-hub-download-pdf" class="btn-primary" style="display:none; margin-top:16px; width:100%;" onclick="downloadAIHubReport()"><span class="material-symbols-rounded">picture_as_pdf</span> Download as PDF</button>
             </div>
         </div>
         <div id="ai-hub-footer" style="flex-shrink:0; padding:12px 20px 20px; border-top:1px solid var(--md-outline-variant); background:var(--md-surface-container-low);">
@@ -1163,7 +1162,7 @@
         <button class="btn-primary" style="margin-top:12px;" onclick="syncHistoricalSIP()">Generate History</button>
     </div>
 
-    <!-- AI sheet consolidated in bubble popup -->
+
 
 
     <div class="sheet sub-sheet" id="month-sheet" style="max-height:85vh;">

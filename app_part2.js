@@ -2572,19 +2572,19 @@ window.sendAIChatInHub = sendAIChatInHub;
 
 function generateAIHubReport(type, reportData = null) {
     if (reportData) {
-        // Display existing report data directly
         showHubReport(reportData);
         return;
     }
-
+    const hubSheet = document.getElementById('ai-hub-sheet');
+    const isOpen = hubSheet && hubSheet.classList.contains('open');
     if (type === 'full_report') {
-        askAIEngine('full_report', true);
+        askAIEngine('full_report', isOpen);
     } else if (type === 'ledger') {
-        askAIEngine('ledger', true);
+        askAIEngine('ledger', isOpen);
     } else if (type === 'blueprint') {
-        openWealthBlueprint(true);
+        openWealthBlueprint(isOpen);
     } else if (type === 'forecast') {
-        openAIPredictSheet(true);
+        openAIPredictSheet(isOpen);
     }
 }
 window.generateAIHubReport = generateAIHubReport;
@@ -2603,7 +2603,7 @@ function showHubReport(htmlContent) {
             .replace(/<embed/gi, '&lt;embed')
             .trim();
         container.innerHTML = cleaned;
-        if (pdfBtn) pdfBtn.style.display = 'block';
+        if (pdfBtn) { pdfBtn.style.display = ''; pdfBtn.title = 'Download as PDF'; }
         window._hubReportData = cleaned;
     } else {
         container.innerHTML = '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data.</div>';
