@@ -45,7 +45,7 @@
         .chart-card { background:var(--md-surface-container); border-radius:20px; padding:16px; }
         .chart-card.full { grid-column:1/-1; }
         .chart-card-title { font-size:11px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; }
-        .sankey-svg { width:100%; min-width:350px; height:180px; }
+        .sankey-svg { width:100%; max-width:100%; height:180px; overflow:visible; }
         .import-sheet { position:fixed; bottom:0; left:0; right:0; margin:0 auto; max-width:600px; background:var(--md-surface-container-low); border-radius:28px 28px 0 0; padding:24px; z-index:1001; transform:translateY(100%); transition:transform 0.3s cubic-bezier(0.1,0.7,0.1,1); max-height:70vh; overflow-y:auto; box-shadow:0 -8px 32px rgba(0,0,0,0.15); }
         .import-sheet.open { transform:translateY(0); }
         .import-scrim { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:1000; opacity:0; visibility:hidden; transition:0.3s; }
@@ -56,8 +56,23 @@
         .del-icon-btn:active { background:var(--md-error-container); }
         @media(max-width:480px) {
             .chart-grid { grid-template-columns:1fr; }
+            .chart-card { padding:12px; }
+            .chart-card .chart-card-title { margin-bottom:6px; }
+            .chart-card canvas { max-height:140px !important; }
             .quick-add-bar { flex-wrap:wrap; }
             .quick-add-bar .btn-primary { width:100%; }
+            .import-sheet { max-width:100%; border-radius:20px 20px 0 0; padding:16px; }
+            .budget-rows { padding:8px 12px; }
+            .budget-row { flex-wrap:wrap; gap:4px; padding:8px 0; }
+            .budget-row .b-label { width:100%; font-size:12px; }
+            .budget-row .b-budget { font-size:11px; min-width:50px; }
+            .budget-row .b-actual { font-size:13px; min-width:60px; }
+            .spend-card { padding:10px 12px; gap:6px; }
+            .spend-comment { font-size:13px; }
+            .spend-amt { font-size:14px; min-width:55px; }
+            .sankey-svg { height:140px; }
+            .filter-tabs { gap:2px; padding:3px; }
+            .filter-tab { padding:6px 10px; font-size:12px; }
         }
     </style>
 </head>

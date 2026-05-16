@@ -143,8 +143,10 @@ async function callAIProvider(keys, promptText, systemPrompt) {
     }
 
     return responseText
-        .replace(/```html/g, '')
-        .replace(/```/g, '')
+        .replace(/(```[\w]*)/gi, '')
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<\/?html[^>]*>/gi, '')
+        .replace(/<\/?body[^>]*>/gi, '')
+        .replace(/<!DOCTYPE[^>]*>/gi, '')
         .trim();
 }

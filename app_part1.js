@@ -86,6 +86,7 @@ if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = tr
 
 // NEW: Spend Tracker
 if (typeof db.enableSpendTracker === 'undefined') db.enableSpendTracker = false;
+if (typeof db.enableMarketWatch === 'undefined') db.enableMarketWatch = true;
 if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
 
 // Extended user profile with smart defaults (all optional, progressive disclosure)
@@ -854,7 +855,7 @@ let _overlayBusy = false;
 function closeOverlays(fromPopState = false) {
     if (_overlayBusy) return;
     _overlayBusy = true;
-    setTimeout(() => { _overlayBusy = false; }, 350);
+    setTimeout(() => { _overlayBusy = false; }, 150);
 
     if (fromPopState) {
         // History back: close only the topmost sheet
@@ -920,7 +921,7 @@ let _sheetOpening = false;
 function openSheet(sheetId, fromRestore = false) {
     if (_sheetOpening) return;
     _sheetOpening = true;
-    setTimeout(() => { _sheetOpening = false; }, 400);
+    setTimeout(() => { _sheetOpening = false; }, 200);
 
     haptic(20);
     const isSubSheet = SUB_SHEET_IDS.includes(sheetId);

@@ -1071,6 +1071,9 @@ function saveProfileSettings() {
     // NEW: Save Spend Tracker visibility
     const spendEl = document.getElementById('settings-enable-spend-tracker');
     if(spendEl) db.enableSpendTracker = spendEl.checked;
+
+    const mwEl = document.getElementById('settings-enable-market-watch');
+    if(mwEl) db.enableMarketWatch = mwEl.checked;
     
     saveData(); renderAll(); showSnackbar("Profile & Preferences Updated", "check_circle");
 }
@@ -1155,16 +1158,41 @@ function openSettings() {
     if (plannerEl) plannerEl.checked = db.enableMonthlyPlanner; // NEW
     const spendEl = document.getElementById('settings-enable-spend-tracker');
     if (spendEl) spendEl.checked = db.enableSpendTracker;
+    const mwEl = document.getElementById('settings-enable-market-watch');
+    if (mwEl) mwEl.checked = db.enableMarketWatch;
     const bubbleToggle = document.getElementById('ai-bubble-toggle');
     if (bubbleToggle) bubbleToggle.checked = db.aiBubbleEnabled;
 
     // Refresh manage sections
     renderSettingsSections();
 
+    // Update notification button state
+    updateNotificationBtnState();
+
     // Update settings UI with helpful tips
     updateSettingsHelpText();
 
     openSheet('settings-sheet');
+}
+
+function updateNotificationBtnState() {
+    const btn = document.getElementById('enable-alerts-btn');
+    if (!btn || !('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span> Alerts Active';
+    } else if (Notification.permission === 'denied') {
+        btn.innerHTML = '<span class="material-symbols-rounded">notifications_off</span> Alerts Blocked';
+        btn.style.background = 'var(--md-error-container)';
+        btn.style.color = 'var(--md-on-error-container)';
+    } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.background = '';
+        btn.style.color = '';
+        btn.innerHTML = '<span class="material-symbols-rounded">notifications_active</span> Enable Alerts';
+    }
 }
 
 function switchSettingsTab(tabName, btn) {
@@ -1808,7 +1836,7 @@ function restoreData(e) {
             db.fireTargetMonthly = parsed.fireTargetMonthly || 0;
             db.templates = parsed.templates || [];
             db.privacyMode = typeof parsed.privacyMode !== 'undefined' ? parsed.privacyMode : false;
-            db.theme = parsed.theme || 'indigo';
+            db.theme = parsed.theme || db.theme || 'indigo';
             db.geminiKey = parsed.geminiKey || '';
             db.groqKey = parsed.groqKey || '';
             db.openrouterKey = parsed.openrouterKey || '';
@@ -2169,28 +2197,27 @@ async function sendAIChat() {
 function formatAIResponse(text) {
     if (!text) return '<p style="padding:20px; opacity:0.6;">No data received...</p>';
 
-    // 1. Initial Clean: Remove AI code fences if present
     let formatted = text.replace(/```(html|markdown)?|```/gi, '').trim();
 
-    // 2. ESCAPE raw HTML early to prevent XSS while allowing our custom tags
+    // If response contains rich HTML tags, render directly with sanitization
+    if (/<(div|p|table|h[1-6]|span|ul|ol|li|br|hr|blockquote|pre|code|strong|em|b|i|a|img|section|article|header|footer|main|aside|nav|figure|figcaption|details|summary|mark|small|sub|sup)[\s>]/i.test(formatted)) {
+        formatted = formatted
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/\bon\w+\s*=/gi, '')
+            .replace(/javascript\s*:/gi, '')
+            .replace(/<iframe/gi, '&lt;iframe')
+            .replace(/<embed/gi, '&lt;embed')
+            .replace(/<object/gi, '&lt;object');
+        return formatted;
+    }
+
+    // Plain text / markdown: escape and process
     formatted = escapeHtml(formatted);
-
-    // 3. Process TABLES - Markdown table format | Col1 | Col2 |
     formatted = processAITables(formatted);
-
-    // 4. Process CHARTS - Special [CHART: type data] format
     formatted = processAICharts(formatted);
-
-    // 5. Process PROGRESS BARS - [PROGRESS: value% label]
     formatted = processAIProgress(formatted);
-
-    // 6. Process CALLOUTS - [!INFO], [!WARNING], [!TIP]
     formatted = processAICallouts(formatted);
-
-    // 7. Strip dangerous patterns
     formatted = formatted.replace(/\bon\w+\s*=/gi, '').replace(/javascript\s*:/gi, '');
-
-    // 8. Process MARKDOWN on escaped text
     formatted = formatted
         .replace(/^### (.*$)/gim, '<h3 style="margin:16px 0 8px;color:var(--md-on-surface-variant);font-size:16px;">$1</h3>')
         .replace(/^## (.*$)/gim, '<h2 style="margin:20px 0 10px;color:var(--md-on-surface);font-size:18px;font-weight:600;">$1</h2>')
@@ -2202,11 +2229,7 @@ function formatAIResponse(text) {
         .replace(/(<li[^>]*>.*<\/li>\n?)+/g, '<ul style="margin:12px 0;padding-left:20px;list-style-type:disc;">$&</ul>')
         .replace(/<\/ul>\s*<ul[^>]*>/g, '')
         .replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--md-primary);text-decoration:underline;">$1</a>');
-
-    // 9. Process inline code
     formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:var(--md-surface-container-highest);padding:2px 6px;border-radius:4px;font-family:monospace;font-size:90%;">$1</code>');
-
-    // 10. PRESERVE SPACING
     return formatted.split('\n').map(line => {
         if (line.trim().startsWith('<') || line.trim().endsWith('>')) return line;
         if (line.trim() === '') return '<div style="height:8px;"></div>';
@@ -2954,7 +2977,8 @@ function toggleAIPopup(forceState, view = 'chat') {
                     toggleAIPopup(false);
                 }
             };
-            document.addEventListener('click', window[handlerName]);
+            document.addEventListener('mousedown', window[handlerName]);
+            document.addEventListener('touchstart', window[handlerName], { passive: true });
             popup.dataset.handlerName = handlerName;
         }
     } else {
@@ -3009,8 +3033,14 @@ function openAIReportSheet(reportData = null) {
     if (!reportContent) return;
 
     if (reportData) {
-        // Clean markdown code blocks if present
-        let cleanedData = reportData.replace(/```(html|markdown)?|```/gi, '').trim();
+        let cleanedData = reportData
+            .replace(/(```[\w]*)/gi, '')
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/\bon\w+\s*=/gi, '')
+            .replace(/javascript\s*:/gi, '')
+            .replace(/<iframe/gi, '&lt;iframe')
+            .replace(/<embed/gi, '&lt;embed')
+            .trim();
         reportContent.innerHTML = cleanedData;
     } else {
         reportContent.innerHTML = '<div style="text-align:center; padding:40px 20px; opacity:0.5;">No report data available.</div>';

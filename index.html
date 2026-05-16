@@ -152,6 +152,19 @@
     <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
 </div>
 
+<div class="md-card" id="market-watch-entry" style="display:none; align-items:center; justify-content:space-between; gap:16px; padding:20px; background:var(--md-surface-container-high);" onclick="window.location.href='market_watch.html'">
+    <div style="display:flex; align-items:center; gap:16px;">
+        <div style="width:48px; height:48px; border-radius:16px; background:var(--md-tertiary-container); color:var(--md-on-tertiary-container); display:flex; align-items:center; justify-content:center;">
+            <span class="material-symbols-rounded">monitoring</span>
+        </div>
+        <div>
+            <div style="font-weight:600; font-size:16px; color:var(--md-on-surface);">Market Watch</div>
+            <div style="font-size:13px; color:var(--md-on-surface-variant); margin-top:2px;">Indices, commodities & stock search</div>
+        </div>
+    </div>
+    <span class="material-symbols-rounded" style="color:var(--md-outline);">chevron_right</span>
+</div>
+
             <div id="maturity-section" style="display:none; margin-bottom:16px;">
                 <div class="section-title" style="margin-top:0;">⏰ Maturing Soon <span
                         style="font-size:12px;font-weight:400;color:var(--md-outline);">(Next 90 days)</span></div>
@@ -415,10 +428,9 @@
             <div class="nav-icon-wrap"><span class="material-symbols-rounded">list_alt</span><span class="nav-badge"
                     id="ledger-entry-badge" style="display:none;"></span></div><span class="nav-label">Ledger</span>
         </div>
-        <div style="position:absolute;right:4px;bottom:2px;cursor:default;opacity:0.3;user-select:none;z-index:1;"
-            onclick="navigator.clipboard.writeText('v96');snack('Version copied','check_circle')"
-            title="Build v96"><span style="font-size:9px;font-weight:600;">v96</span></div>
     </nav>
+    <div style="position:fixed;right:4px;bottom:4px;cursor:default;opacity:0.25;user-select:none;z-index:101;pointer-events:none;"
+        title="Build v96"><span style="font-size:8px;font-weight:600;">v96</span></div>
 
     <button class="fab" onclick="openInvestSheet()" title="Add Entry (N)"><span
             class="material-symbols-rounded">add</span> Add Entry</button>
@@ -788,45 +800,36 @@
                         <input type="date" id="profile-dob" style="border:none; background:var(--md-surface-container-high); color:var(--md-on-surface); font-family:inherit; font-weight:600; padding:8px 12px; border-radius:12px; outline:none;" onchange="updateCalculatedAgeDisplay()">
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; background:var(--md-surface-container); border-radius:16px; margin-bottom:16px;">
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin:20px 0 12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Dashboard Features</div>
+
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:8px;">
                     <div>
-                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Monthly Planner Tool</div>
-                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Show budgeting card on dashboard</div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Monthly Planner</div>
+                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Budget your salary & cash flow</div>
                     </div>
                     <label class="switch"><input type="checkbox" id="settings-enable-planner"><span class="slider"></span></label>
                 </div>
 
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; background:var(--md-surface-container); border-radius:16px; margin-bottom:16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:8px;">
                     <div>
                         <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Spend Tracker</div>
-                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Track expenses with AI categorization & insights</div>
+                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Track expenses, AI categorization & insights</div>
                     </div>
                     <label class="switch"><input type="checkbox" id="settings-enable-spend-tracker"><span class="slider"></span></label>
                 </div>
 
-                <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:8px;"><span
-                        class="material-symbols-rounded">save</span> Save Profile</button>
-
-                <div
-                    style="margin-top:32px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Quick Tools</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">calculate</span> XIRR</button>
-                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">trending_up</span> SIP
-                        Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">real_estate_agent</span> EMI
-                        Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">price_change</span>
-                        Inflation</button>
-                    <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">picture_as_pdf</span> Wealth PDF</button>
-                    <button class="btn-secondary" onclick="window.location.href='market_watch.html'" style="padding:10px;"><span
-                            class="material-symbols-rounded" style="font-size: 18px;">monitoring</span> Market Watch</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Market Watch</div>
+                        <div style="font-size:12px; color:var(--md-on-surface-variant); margin-top:2px;">Live indices, commodities & stock search</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="settings-enable-market-watch"><span class="slider"></span></label>
                 </div>
+
+                <button class="btn-primary" onclick="saveProfileSettings()" style="margin-top:12px;"><span
+                        class="material-symbols-rounded">save</span> Save Profile</button>
             </div>
 
             <!-- Tab 2: Security & App -->
@@ -885,7 +888,7 @@
                     style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
                     Notifications</div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn-primary" style="flex:1;" onclick="ensureNotificationPermission()"><span class="material-symbols-rounded">notifications_active</span> Enable Alerts</button>
+                    <button class="btn-primary" id="enable-alerts-btn" style="flex:1;" onclick="ensureNotificationPermission()"><span class="material-symbols-rounded">notifications_active</span> Enable Alerts</button>
                 </div>
                 <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Receive local notifications when SIPs are processed. No server needed.</div>
 
@@ -1012,6 +1015,18 @@
                     onclick="triggerPWAInstall()">
                     <span class="material-symbols-rounded">install_mobile</span> Install App
                 </button>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-top:24px;margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Quick Tools</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">calculate</span> XIRR</button>
+                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">trending_up</span> SIP Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">real_estate_agent</span> EMI Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">price_change</span> Inflation</button>
+                    <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">picture_as_pdf</span> Wealth PDF</button>
+                    <button class="btn-secondary" onclick="window.location.href='market_watch.html'" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">monitoring</span> Market Watch</button>
+                </div>
             </div>
         </div>
     </div>

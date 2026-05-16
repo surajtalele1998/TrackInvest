@@ -730,6 +730,11 @@ function updatePortfolioCalculations() {
         spendEntry.style.display = db.enableSpendTracker ? 'flex' : 'none';
     }
 
+    let mwEntry = document.getElementById('market-watch-entry');
+    if (mwEntry) {
+        mwEntry.style.display = db.enableMarketWatch ? 'flex' : 'none';
+    }
+
     renderHistory();
 
     let monthTarget = db.userProfile.monthlyExpense || 0; let pct = monthTarget > 0 ? Math.min(100, (thisMonthTotal / monthTarget) * 100) : 0;
@@ -1431,6 +1436,7 @@ async function ensureNotificationPermission() {
     if (Notification.permission === 'granted') return true;
     if (Notification.permission === 'denied') return false;
     const result = await Notification.requestPermission();
+    if (typeof updateNotificationBtnState === 'function') updateNotificationBtnState();
     return result === 'granted';
 }
 function showLocalNotification(title, body) {
