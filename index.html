@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#F3F3F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
     <title>TrackInvest | Premium Wealth Intelligence</title>
@@ -459,7 +459,7 @@
     <div class="scrim-sub" id="scrim-sub" onclick="closeSubSheet()"></div>
 
     <!-- Recurring SIPs Manager Sheet -->
-    <div class="sheet" id="recurring-sheet" style="max-height:88vh;">
+    <div class="sheet" id="recurring-sheet">
         <div class="drag-handle"></div>
         <div class="sheet-title">
             <span style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
@@ -686,8 +686,7 @@
         </div>
     </div>
 
-    <div class="sheet" id="category-sheet"
-        style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet sheet-display" id="category-sheet">
         <div class="drag-handle" style="flex-shrink:0;"></div>
         <div class="sheet-title"
             style="margin-bottom:12px; flex-shrink:0; display:flex; justify-content:space-between; align-items:center;">
@@ -800,7 +799,7 @@
     </div>
 
     <div class="sheet" id="settings-sheet"
-        style="height:85vh; max-height:85vh; display:flex; flex-direction:column; overflow:hidden;">
+        style="height:100dvh; max-height:100dvh; display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
         <div class="sheet-title" style="margin-bottom:12px; flex-shrink:0;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded">settings</span>
@@ -1146,7 +1145,7 @@
         </div>
     </div>
 
-    <div class="sheet sub-sheet" id="history-sync-sheet" style="max-height:85vh;">
+    <div class="sheet sub-sheet" id="history-sync-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title">Universal History Generator</h3>
         <p style="font-size:13px; color:var(--md-on-surface-variant); margin-bottom:16px;">
@@ -1197,7 +1196,7 @@
 
 
 
-    <div class="sheet sub-sheet" id="month-sheet" style="max-height:85vh;">
+    <div class="sheet sub-sheet" id="month-sheet">
         <div class="drag-handle"></div>
         <h3 class="sheet-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
             <span id="month-sheet-title">Summary</span>
@@ -1242,8 +1241,7 @@
         <div id="xirr-result" style="margin-top:16px;font-size:18px;font-weight:500;text-align:center;"></div>
     </div>
 
-    <div class="sheet sub-sheet" id="webrtc-sync-sheet"
-        style="max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="sheet sub-sheet" id="webrtc-sync-sheet" style="display:flex; flex-direction:column; overflow:hidden;">
         <div class="drag-handle"></div>
         <div class="sheet-title" style="margin-bottom: 16px; flex-shrink: 0;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"
@@ -1383,7 +1381,7 @@
         <div id="inf-result" style="margin-top:16px;font-weight:500;text-align:center;"></div>
     </div>
 
-    <div class="sheet sub-sheet" id="dividend-sheet" style="max-height:90vh; display:flex; flex-direction:column;">
+    <div class="sheet sub-sheet" id="dividend-sheet" style="display:flex; flex-direction:column;">
         <div class="drag-handle"></div>
         <div class="sheet-title" style="margin-bottom: 16px; flex-shrink: 0;">
             <div style="display:flex;align-items:center;gap:8px;"><span class="material-symbols-rounded"

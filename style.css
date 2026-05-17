@@ -6,6 +6,8 @@
     --md-primary: #415F91;
     --md-primary-rgb: 65, 95, 145;
     --md-tertiary: #705573;
+    --md-tertiary-container: #F6DAFA;
+    --md-on-tertiary-container: #2A0D31;
     --md-on-primary: #FFFFFF;
     --md-primary-container: #D6E3FF;
     --md-on-primary-container: #001B3E;
@@ -48,6 +50,8 @@
     :root {
         --md-primary: #AAC7FF;
         --md-tertiary: #DBBCE1;
+        --md-tertiary-container: #3E2844;
+        --md-on-tertiary-container: #F6DAFA;
         --md-on-primary: #0A305F;
         --md-primary-container: #284777;
         --md-on-primary-container: #D6E3FF;
@@ -1624,8 +1628,8 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 .sheet-display {
-    height: 85vh;
-    max-height: 85vh;
+    height: 100dvh;
+    max-height: 100dvh;
     flex-direction: column;
     overflow: hidden;
     display: flex;
@@ -1646,7 +1650,7 @@ input[type=range]::-webkit-slider-runnable-track {
     transform: translateY(100%);
     will-change: transform;
     transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1), visibility 0s 0.4s;
-    max-height: 92vh;
+    max-height: 100dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
@@ -2000,7 +2004,7 @@ input:checked+.slider:before {
 }
 
 .snackbar.show {
-    bottom: calc(100px + env(safe-area-inset-bottom));
+    bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
 .swal2-popup {
