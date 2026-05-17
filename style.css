@@ -1628,8 +1628,8 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 .sheet-display {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: 85dvh;
+    max-height: 85dvh;
     flex-direction: column;
     overflow: hidden;
     display: flex;
@@ -1650,7 +1650,7 @@ input[type=range]::-webkit-slider-runnable-track {
     transform: translateY(100%);
     will-change: transform;
     transition: transform 0.4s cubic-bezier(0.1, 0.7, 0.1, 1), visibility 0s 0.4s;
-    max-height: 100dvh;
+    max-height: 85dvh;
     overflow-y: auto;
     overscroll-behavior: contain;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
@@ -2673,7 +2673,7 @@ input:checked+.slider:before {
 }
 
 #settings-sheet {
-    max-height: 100dvh !important;
+    max-height: 85dvh !important;
     display: flex;
     flex-direction: column;
 }
