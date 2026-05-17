@@ -1056,7 +1056,10 @@ function savePlanner() {
         };
         if (!db.userProfile) db.userProfile = {};
         db.userProfile.monthlyExpense = plan.needs.reduce((s, i) => s + i.amount, 0);
-        localStorage.setItem('appHubInvestDb', JSON.stringify(db));
+        // Merge with existing data to avoid overwriting other pages' data
+        let existing = JSON.parse(localStorage.getItem('appHubInvestDb') || '{}');
+        Object.assign(existing, db);
+        localStorage.setItem('appHubInvestDb', JSON.stringify(existing));
         snack('Plan saved!', 'check_circle');
     } catch (e) {
         snack('Save failed — storage may be full.', 'error');

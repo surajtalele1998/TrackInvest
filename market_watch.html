@@ -328,20 +328,20 @@ function renderBm() {
     count.textContent = `(${bmData.length})`; clearBtn.style.display = 'flex';
     list.innerHTML = bmData.map(b => {
         if (b.type === 'stock') {
-            return `<div class="bm-item" data-bm-key="${b.key}" data-bm-type="stock">
+            return `<div class="bm-item" data-bm-key="${attrEsc(b.key)}" data-bm-type="stock">
                 <span style="background:var(--md-primary-container);border-radius:8px;padding:6px;line-height:0;"><span class="material-symbols-rounded" style="font-size:16px;color:var(--md-on-primary-container);">trending_up</span></span>
                 <div class="bm-info"><div class="bm-name">${esc(b.name)}</div><div class="bm-sub">${b.key}</div></div>
                 <div class="bm-price">—</div>
                 <div class="bm-chg">—</div>
-                <button class="icon-btn-sm" onclick="removeBm('${b.key}')" title="Remove"><span class="material-symbols-rounded">close</span></button>
+                <button class="icon-btn-sm" onclick="removeBm('${attrEsc(b.key)}')" title="Remove"><span class="material-symbols-rounded">close</span></button>
             </div>`;
         }
-        return `<div class="bm-item" data-bm-key="${b.key}" data-bm-type="mf">
+        return `<div class="bm-item" data-bm-key="${attrEsc(b.key)}" data-bm-type="mf">
             <span style="background:var(--md-tertiary-container);border-radius:8px;padding:6px;line-height:0;"><span class="material-symbols-rounded" style="font-size:16px;color:var(--md-on-tertiary-container);">account_balance</span></span>
             <div class="bm-info"><div class="bm-name">${esc(b.name)}</div><div class="bm-sub">Code: ${b.key}</div></div>
             <div class="bm-price">—</div>
             <div class="bm-chg">—</div>
-            <button class="icon-btn-sm" onclick="removeBm('${b.key}')" title="Remove"><span class="material-symbols-rounded">close</span></button>
+            <button class="icon-btn-sm" onclick="removeBm('${attrEsc(b.key)}')" title="Remove"><span class="material-symbols-rounded">close</span></button>
         </div>`;
     }).join('');
 }
@@ -389,7 +389,7 @@ async function doSearch(q) {
                 const saved = isBm(q.symbol);
                 return `<div class="sr-item"><div class="sr-info"><div class="sr-name">${esc(q.shortname||q.longname||q.symbol)}</div><div class="sr-sub">${q.symbol} · ${q.exchange||''}</div></div>
                     <div style="text-align:right;"><div class="sr-price">${price}</div>${chg||''}</div>
-                    <button class="icon-btn-sm ${saved?'saved':''}" onclick="toggleBm('stock','${q.symbol}','${esc(q.shortname||q.symbol)}')" title="${saved?'Remove':'Save'}"><span class="material-symbols-rounded">${saved?'bookmark':'bookmark_border'}</span></button>
+                    <button class="icon-btn-sm ${saved?'saved':''}" onclick="toggleBm('stock','${attrEsc(q.symbol)}','${attrEsc(q.shortname||q.symbol)}')" title="${saved?'Remove':'Save'}"><span class="material-symbols-rounded">${saved?'bookmark':'bookmark_border'}</span></button>
                 </div>`;
             }));
             res.innerHTML = items.join('');
@@ -409,7 +409,7 @@ async function doSearch(q) {
                 const saved = isBm(f.schemeCode);
                 return `<div class="sr-item"><div class="sr-info"><div class="sr-name">${esc(f.schemeName)}</div><div class="sr-sub">Code: ${f.schemeCode}</div></div>
                     <div style="text-align:right;"><div class="sr-price">${nav}</div>${chg||''}</div>
-                    <button class="icon-btn-sm ${saved?'saved':''}" onclick="toggleBm('mf','${f.schemeCode}','${esc(f.schemeName.replace(/'/g,"\\'"))}')" title="${saved?'Remove':'Save'}"><span class="material-symbols-rounded">${saved?'bookmark':'bookmark_border'}</span></button>
+                    <button class="icon-btn-sm ${saved?'saved':''}" onclick="toggleBm('mf','${attrEsc(f.schemeCode)}','${attrEsc(f.schemeName)}')" title="${saved?'Remove':'Save'}"><span class="material-symbols-rounded">${saved?'bookmark':'bookmark_border'}</span></button>
                 </div>`;
             }));
             res.innerHTML = items.join('');
@@ -420,6 +420,7 @@ async function doSearch(q) {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s||''; return d.innerHTML; }
+function attrEsc(s) { return (s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
 // ===== COMMODITIES =====
 let commodityData = null;

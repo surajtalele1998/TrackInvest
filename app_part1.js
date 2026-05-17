@@ -1031,7 +1031,7 @@ function closeSubSheet(fromPopState = false) {
 // ── COPY NET WORTH ──────────────────────────────
 function copyNetWorth() {
     const text = `Net Worth: ₹${formatInr(currentTotalNW)} (as of ${new Date().toLocaleDateString('en-IN')})`;
-    navigator.clipboard.writeText(text).then(() => showSnackbar('Copied to clipboard', 'content_copy'));
+    navigator.clipboard.writeText(text).then(() => showSnackbar('Copied to clipboard', 'content_copy')).catch(() => {});
 }
 
 // ── CSV EXPORT ──────────────────────────────────

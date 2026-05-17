@@ -2673,7 +2673,7 @@ input:checked+.slider:before {
 }
 
 #settings-sheet {
-    max-height: 90vh !important;
+    max-height: 100dvh !important;
     display: flex;
     flex-direction: column;
 }

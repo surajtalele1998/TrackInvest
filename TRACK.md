@@ -98,18 +98,41 @@ Review all UI→Logic→BusinessLogic→DB flows. Fix CRUD, consistency, mobile-
 
 ---
 
+## Phase 6 — Cross-File Audit (Diff Approach)
+
+| # | Issue | Type | Status |
+|---|-------|------|--------|
+| 28 | `monthly_plan.html:1050` / `spend_tracker.html:245` — `savePlanner()` and `saveDB()` overwrite entire localStorage key, potentially losing data from other pages | ⛔ DATA LOSS | ✅ Fixed — merge with existing before write |
+| 29 | `app_part2.js:2201` — `callAIProvider(db, …)` passes full db object, works accidentally | 🔧 FRAGILE | ✅ Fixed — passes only keys object |
+| 30 | `app_part1.js:1034` — `clipboard.writeText()` without `.catch()` — unhandled rejection | ⚠️ CRASH | ✅ Fixed |
+| 31 | `style.css:2675-2676` — `#settings-sheet max-height: 90vh !important` overrides inline | 🎨 BUG | ✅ Fixed → 100dvh |
+| 32 | `market_watch.html:336,344,392,412` — template-literal `onclick` with unescaped single quotes | 🔓 INJECTION | ✅ Fixed — added `attrEsc()` |
+| 33 | `shared_ai.js` not loaded in standalone pages | ❌ FALSE POSITIVE | Already loaded at monthly_plan:469, spend_tracker:241 |
+
+### Cross-File Analysis Summary
+- **0 P0 bugs** remaining (false positive on shared_ai.js)
+- **5 issues found and fixed**: data loss, fragile pattern, unhandled rejection, style override, injection risk
+
+---
+
 ## Fix Log
 
-| Date | File | Fix |
-|------|------|-----|
-| — | All HTML | Removed `user-scalable=no, maximum-scale=1.0` from viewport meta |
-| — | All HTML | Added `&display=swap` to Google Fonts links |
-| — | `style.css` | Added `--md-tertiary-container`, `--md-on-tertiary-container` vars |
-| — | `style.css` | `.sheet` max-height: `92vh` → `100dvh` |
-| — | `style.css` | `.sheet-display` height: `85vh` → `100dvh` |
-| — | `style.css` | Snackbar bottom: `100px` → `16px` |
-| — | `index.html:802` | Settings sheet: `85vh` → `100dvh` |
-| — | `index.html:689` | Category sheet: uses `.sheet-display` class |
-| — | `index.html` | 5 sheets: removed inline `max-height` overrides |
-| — | `monthly_plan.html:1114` | `callAIProvider(db, …)` → keys object |
-| — | `market_watch.html` | Removed duplicate `.section-title`, `.chip`, `.chip-group` CSS |
+| # | File | Fix |
+|---|------|-----|
+| 1 | All HTML | Removed `user-scalable=no, maximum-scale=1.0` from viewport meta |
+| 2 | All HTML | Added `&display=swap` to Google Fonts links |
+| 3 | `style.css` | Added `--md-tertiary-container`, `--md-on-tertiary-container` vars |
+| 4 | `style.css` | `.sheet` max-height: `92vh` → `100dvh` |
+| 5 | `style.css` | `.sheet-display` height: `85vh` → `100dvh` |
+| 6 | `style.css` | Snackbar bottom: `100px` → `16px` |
+| 7 | `index.html:802` | Settings sheet: `85vh` → `100dvh` |
+| 8 | `index.html:689` | Category sheet: uses `.sheet-display` class |
+| 9 | `index.html` | 5 sheets: removed inline `max-height` overrides |
+| 10 | `monthly_plan.html:1114` | `callAIProvider(db, …)` → keys object |
+| 11 | `market_watch.html` | Removed duplicate `.section-title`, `.chip`, `.chip-group` CSS |
+| 12 | `spend_tracker.html:245` | `saveDB()` — merge with existing before write (prevents data loss) |
+| 13 | `monthly_plan.html:1050` | `savePlanner()` — merge with existing before write (prevents data loss) |
+| 14 | `app_part2.js:2201` | `callAIProvider(db, …)` → keys-only object |
+| 15 | `app_part1.js:1034` | `clipboard.writeText().catch(() => {})` |
+| 16 | `style.css:2676` | `#settings-sheet max-height`: `90vh → 100dvh` |
+| 17 | `market_watch.html` | Added `attrEsc()` for onclick attribute escaping |

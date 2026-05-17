@@ -2198,7 +2198,7 @@ function updateRebalanceBadge() { let badge = document.getElementById('rebalance
 // Delegates to shared_ai.js
 async function callAIApi(promptText, systemPrompt) {
     if (!window.__aiEnabled && window.__aiEnabled !== undefined) throw new Error('AI features disabled in Settings');
-    return callAIProvider(db, promptText, systemPrompt);
+    return callAIProvider({ geminiKey: db.geminiKey, groqKey: db.groqKey, openrouterKey: db.openrouterKey, cerebrasKey: db.cerebrasKey, githubKey: db.githubKey }, promptText, systemPrompt);
 }
 
 function formatAIResponse(text) {
