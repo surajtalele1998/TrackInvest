@@ -5,7 +5,7 @@ const config = require('../config');
 
 const router = express.Router();
 
-router.get('/health', (req, res) => {
+router.get('/', (req, res) => {
   let sqliteOk = false;
   try {
     const db = getDb();

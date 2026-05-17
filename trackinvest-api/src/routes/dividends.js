@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('../services/authService');
+const { authMiddleware } = require('../middleware/auth');
 const { addDividend, getDividends, getDividendSummary } = require('../services/dividendService');
 
 const router = express.Router();

@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const { authMiddleware } = require('../services/authService');
+const { authMiddleware } = require('../middleware/auth');
 const { registerWebhook, getWebhooks, deleteWebhook, getWebhookLogs, WEBHOOK_EVENTS } = require('../services/webhookService');
 const auditService = require('../services/auditService');
 const logger = require('../utils/logger');

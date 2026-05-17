@@ -2,7 +2,6 @@ const express = require('express');
 const ejs = require('ejs');
 const path = require('path');
 const supabase = require('../services/supabase');
-const { authMiddleware } = require('../services/authService');
 const { analyzePortfolio } = require('../services/portfolioAnalyzer');
 const { generateReport } = require('../services/aiEngine');
 const { exportToPdf } = require('../services/exportService');

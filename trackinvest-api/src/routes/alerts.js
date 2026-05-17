@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('../services/authService');
+const { authMiddleware } = require('../middleware/auth');
 const { createAlert, getAlerts, updateAlert, deleteAlert } = require('../services/priceAlertService');
 
 const router = express.Router();

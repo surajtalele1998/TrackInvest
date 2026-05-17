@@ -1,5 +1,5 @@
 const express = require('express');
-const { optionalAuth } = require('../services/authService');
+const { optionalAuth } = require('../middleware/auth');
 const { calculateSIP, calculateLumpsum, calculateEMI, calculateRetirement, calculateGoalProjection } = require('../services/sipCalculator');
 
 const router = express.Router();

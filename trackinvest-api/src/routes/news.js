@@ -1,6 +1,6 @@
 const express = require('express');
 const { getFinancialNews, getTopHeadlines, getExchangeRate } = require('../services/newsService');
-const { authMiddleware, optionalAuth } = require('../services/authService');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 

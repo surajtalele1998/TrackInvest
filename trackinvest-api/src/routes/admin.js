@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('../services/authService');
+const { authMiddleware } = require('../middleware/auth');
 const { getUsageStats, listUsers, getApiKeyInfo, getRecentRequests } = require('../services/adminService');
 const auditService = require('../services/auditService');
 

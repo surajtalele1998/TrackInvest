@@ -51,4 +51,22 @@ router.post('/sync', async (req, res, next) => {
   }
 });
 
+// ── Gist-style backup endpoints (mirror backup for cross-platform sync) ──
+router.post('/gist-backup', async (req, res, next) => {
+  try {
+    const result = await createBackup(req.body, 'gist', '1.0.0');
+    res.status(201).json({ success: true, backup: result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/gist-backups', (req, res) => {
+  const { page, limit } = paginate(req.query.page, req.query.limit);
+  const result = listBackups(page, limit);
+  // Filter to gist-type backups
+  const gists = result.backups.filter(b => b.label === 'gist' || b.label?.startsWith('gist'));
+  res.json({ success: true, count: gists.length, backups: gists, page: result.page, totalPages: result.totalPages });
+});
+
 module.exports = router;

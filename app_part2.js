@@ -1706,7 +1706,12 @@ const CloudService = {
   // ── helper: silent push, never throw ──
   async _try(fn) {
     if (!this.ready()) return;
-    try { await fn(); } catch (e) { console.warn('[Cloud]', e.message); }
+    try { await fn(); } catch (e) {
+      console.warn('[Cloud]', e.message);
+      if (e.message.includes('401') || e.message.includes('Invalid API key')) {
+        showSnackbar('Sync failed: Invalid API key — check Settings → Cloud Services', 'error');
+      }
+    }
   },
 
   // ── Invest: push/delete investment entries ──

@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware, optionalAuth } = require('../services/authService');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const { analyzeTaxHarvesting, estimateCapitalGains } = require('../services/taxHarvester');
 const { portfolioSchema } = require('../utils/validators');
 

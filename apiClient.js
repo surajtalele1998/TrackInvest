@@ -39,7 +39,9 @@ const TrackInvestAPI = (() => {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      const msg = err.error || `HTTP ${res.status}`;
+      if (res.status === 401) throw new Error('Invalid API key — generate a new one in Dev Portal or check your server configuration');
+      throw new Error(msg);
     }
     const ct = res.headers.get('content-type') || '';
     if (ct.includes('application/json')) return res.json();

@@ -1,7 +1,7 @@
 const express = require('express');
 const { exportToCsv, exportToExcel, exportToPdf } = require('../services/exportService');
 const { analyzePortfolio } = require('../services/portfolioAnalyzer');
-const { authMiddleware, optionalAuth } = require('../services/authService');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const supabase = require('../services/supabase');
 
 const router = express.Router();

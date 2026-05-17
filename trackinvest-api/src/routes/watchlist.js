@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware, optionalAuth } = require('../services/authService');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 const { createWatchlist, getWatchlists, addSymbol, removeSymbol, deleteWatchlist, getWatchlistPrices } = require('../services/watchlistService');
 
 const router = express.Router();

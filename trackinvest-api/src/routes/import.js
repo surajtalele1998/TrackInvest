@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const { authMiddleware } = require('../services/authService');
+const { authMiddleware } = require('../middleware/auth');
 const { importData } = require('../services/dataImportService');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
