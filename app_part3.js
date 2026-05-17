@@ -784,7 +784,7 @@ function showSmartPromptModal(prompt) {
         contentHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:16px;">
             ${prompt.options.map(opt => `
                 <button onclick="saveSmartPromptAnswer('${prompt.id}', '${opt.value}')" 
-                    style="padding:12px 20px;border-radius:24px;border:2px solid var(--md-outline-variant);background:var(--md-surface);color:var(--md-on-surface);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all 0.2s;"
+                    style="padding:12px 20px;border-radius:24px;border:2px solid var(--md-outline-variant);background:var(--md-surface);color:var(--md-on-surface);cursor:pointer;display:flex;align-items:center;gap:8px;transition:border-color 0.2s;"
                     onmouseover="this.style.borderColor='var(--md-primary)'"
                     onmouseout="this.style.borderColor='var(--md-outline-variant)'">
                     <span class="material-symbols-rounded" style="font-size:18px;">${opt.icon}</span>
@@ -796,7 +796,7 @@ function showSmartPromptModal(prompt) {
         contentHtml = `<div style="display:flex;flex-direction:column;gap:12px;margin-top:16px;">
             ${prompt.options.map(opt => `
                 <button onclick="saveSmartPromptAnswer('${prompt.id}', '${opt.value}')" 
-                    style="padding:16px;border-radius:12px;border:2px solid var(--md-outline-variant);background:var(--md-surface);color:var(--md-on-surface);cursor:pointer;text-align:left;transition:all 0.2s;width:100%;"
+                    style="padding:16px;border-radius:12px;border:2px solid var(--md-outline-variant);background:var(--md-surface);color:var(--md-on-surface);cursor:pointer;text-align:left;transition:border-color 0.2s;width:100%;"
                     onmouseover="this.style.borderColor='var(--md-primary)'"
                     onmouseout="this.style.borderColor='var(--md-outline-variant)'">
                     <div style="display:flex;align-items:center;gap:12px;">

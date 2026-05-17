@@ -469,7 +469,7 @@ style.textContent = `
     .input-focused {
         border-color: var(--md-primary) !important;
         box-shadow: 0 0 0 2px rgba(65, 95, 145, 0.2) !important;
-        transition: all 0.2s ease-out;
+        transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out;
     }
     
     .error-message {
@@ -2039,7 +2039,8 @@ function performTabSwitch(tabId, fromPopState = false) {
 
 function togglePrivacy() {
     haptic(40); db.privacyMode = !db.privacyMode; saveData();
-    document.getElementById('privacy-icon').innerText = db.privacyMode ? 'visibility_off' : 'visibility'; renderAll();
+    document.getElementById('privacy-icon').innerText = db.privacyMode ? 'visibility_off' : 'visibility';
+    renderAll();
 }
 
 function setTheme(themeName) {
@@ -2128,22 +2129,22 @@ function initUI() {
     setTheme(db.theme || 'indigo');
 
     let sel = document.getElementById('account-filter'); sel.innerHTML = `<option value="All">All Accounts</option>`;
-    db.accounts.forEach(a => sel.innerHTML += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`);
+    db.accounts.forEach(a => sel.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
 
     let formSel = document.getElementById('inv-account'); formSel.innerHTML = "";
-    db.accounts.forEach(a => formSel.innerHTML += `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`);
+    db.accounts.forEach(a => formSel.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`));
 
     let chips = document.getElementById('type-chips'); chips.innerHTML = "";
     let filterType = document.getElementById('ledger-filter-type'); if (filterType) filterType.innerHTML = `<option value="All">All Assets</option>`;
     Object.keys(db.categories).forEach(c => {
         let safeC = escapeHtml(c);
-        chips.innerHTML += `<div class="quick-chip" onclick="setInvestType('${safeC}')">${safeC}</div>`;
-        if (filterType) filterType.innerHTML += `<option value="${safeC}">${safeC}</option>`;
+        chips.insertAdjacentHTML('beforeend', `<div class="quick-chip" onclick="setInvestType('${safeC}')">${safeC}</div>`);
+        if (filterType) filterType.insertAdjacentHTML('beforeend', `<option value="${safeC}">${safeC}</option>`);
     });
     window.currentInvType = Object.keys(db.categories)[0];
 
     let gl = document.getElementById('goal-link'); gl.innerHTML = `<option value="">None (Manual Tracking)</option>`;
-    Object.keys(db.categories).forEach(c => { gl.innerHTML += `<option value="${escapeHtml(c)}">Link to ${escapeHtml(c)}</option>`; });
+    Object.keys(db.categories).forEach(c => { gl.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(c)}">Link to ${escapeHtml(c)}</option>`); });
     document.getElementById('xirr-category').innerHTML = Object.keys(db.categories).map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
 
     initChartInteractivity();
@@ -2406,7 +2407,8 @@ function initChartInteractivity() {
     let container = document.getElementById('nw-chart-container');
     let tooltip = document.getElementById('chart-tooltip');
     let point = document.getElementById('chart-point');
-    if (!container) return;
+    if (!container || container.dataset.chartInit) return;
+    container.dataset.chartInit = '1';
 
     function handleMove(e) {
         if (chartDataPoints.length === 0 || db.privacyMode) return;
@@ -3143,16 +3145,16 @@ const YAHOO_PROXIES = [
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
+  'https://api.allorigins.win/get?url=',
 ];
 
 async function yahooFetch(url) {
-  const attempts = [url, ...YAHOO_PROXIES.map(p => p + encodeURIComponent(url))];
   let lastErr;
-  for (let i = 0; i < Math.min(attempts.length, 3); i++) {
+  for (const proxy of YAHOO_PROXIES) {
     try {
       const ctrl = new AbortController();
       const id = setTimeout(() => ctrl.abort(), 10000);
-      const r = await fetch(attempts[i], { signal: ctrl.signal });
+      const r = await fetch(proxy + encodeURIComponent(url), { signal: ctrl.signal });
       clearTimeout(id);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();

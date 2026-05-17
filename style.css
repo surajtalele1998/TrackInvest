@@ -1296,7 +1296,7 @@ input[type=range]::-webkit-slider-runnable-track {
     flex:1; display:inline-flex; align-items:center; justify-content:center; gap:6px;
     padding:10px; border-radius:14px; border:none; font-size:13px; font-weight:500;
     background:var(--md-surface-container-high); color:var(--md-on-surface-variant);
-    cursor:pointer; transition:all 0.2s;
+    cursor:pointer; transition:background 0.2s,color 0.2s;
 }
 .ai-hub-tab.active {
     background:var(--md-primary-container); color:var(--md-on-primary-container);
@@ -1307,7 +1307,7 @@ input[type=range]::-webkit-slider-runnable-track {
     min-width:100px; padding:10px 12px; border-radius:14px; border:none;
     font-size:12px; font-weight:500; cursor:pointer;
     background:var(--md-surface-container-high); color:var(--md-on-surface-variant);
-    transition:all 0.2s;
+    transition:background 0.2s,color 0.2s;
 }
 .ai-hub-report-btn:hover {
     background:var(--md-primary-container); color:var(--md-on-primary-container);
@@ -1316,7 +1316,7 @@ input[type=range]::-webkit-slider-runnable-track {
 .ai-hub-history-item {
     padding:12px; border-radius:14px; background:var(--md-surface-container-low);
     margin-bottom:6px; cursor:pointer; border:1px solid transparent;
-    transition:all 0.2s;
+    transition:background 0.2s,border-color 0.2s;
 }
 .ai-hub-history-item:hover {
     background:var(--md-surface-container-high); border-color:var(--md-outline-variant);
@@ -2502,7 +2502,7 @@ input:checked+.slider:before {
     border: none;
     color: var(--md-on-surface);
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: background 0.2s, transform 0.2s ease;
     text-align: left;
 }
 
@@ -2605,7 +2605,7 @@ input:checked+.slider:before {
 }
 
 .nearby-action-btn {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s;
 }
 
 .nearby-action-btn:active {
@@ -2631,7 +2631,7 @@ input:checked+.slider:before {
 }
 
 .s-tab {
-    transition: all 0.2s ease;
+    transition: background 0.2s, color 0.2s;
 }
 
 .settings-action-card {

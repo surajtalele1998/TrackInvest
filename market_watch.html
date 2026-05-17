@@ -45,7 +45,7 @@
         /* Search Section */
         .search-section { background:var(--md-surface-container);border-radius:20px;padding:16px;margin-bottom:16px; }
         .search-tabs { display:flex;gap:4px;background:var(--md-surface-container-highest);border-radius:12px;padding:3px;margin-bottom:12px; }
-        .search-tab { flex:1;text-align:center;padding:8px;border-radius:10px;font-size:12px;font-weight:500;color:var(--md-on-surface-variant);cursor:pointer;transition:all 0.2s;border:none;background:transparent; }
+        .search-tab { flex:1;text-align:center;padding:8px;border-radius:10px;font-size:12px;font-weight:500;color:var(--md-on-surface-variant);cursor:pointer;transition:background 0.2s, color 0.2s;border:none;background:transparent; }
         .search-tab.active { background:var(--md-primary-container);color:var(--md-on-primary-container);box-shadow:0 1px 3px rgba(0,0,0,0.1); }
         .search-input-wrap { display:flex;align-items:center;gap:8px;background:var(--md-surface-container-highest);border-radius:12px;padding:0 12px;margin-bottom:12px; }
         .search-input-wrap input { flex:1;border:none;background:transparent;padding:12px 0;font-size:14px;outline:none;color:var(--md-on-surface); }
@@ -229,15 +229,16 @@ const CORS_PROXIES = [
   'https://api.codetabs.com/v1/proxy?quest=',
   'https://corsproxy.io/?',
   'https://api.allorigins.win/raw?url=',
+  'https://api.allorigins.win/get?url=',
 ];
 
-async function fetchJSON(url, retries = 2) {
-  // Try direct fetch first, then each proxy in sequence
-  const attempts = [url, ...CORS_PROXIES.map(p => p + encodeURIComponent(url))];
+async function fetchJSON(url, retries = 3) {
   let lastErr;
-  for (let i = 0; i < Math.min(attempts.length, retries + 1); i++) {
+  let idx = 0;
+  for (const proxy of CORS_PROXIES) {
+    if (idx++ >= retries) break;
     try {
-      const r = await fetchWithTimeout(attempts[i], 8000);
+      const r = await fetchWithTimeout(proxy + encodeURIComponent(url), 8000);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     } catch (e) {

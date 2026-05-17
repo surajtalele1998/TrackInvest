@@ -563,26 +563,18 @@ function renderHistory() {
     // Render recent searches
     renderSearchHistory();
 
-    let filtered = db.investments.filter(i => activeAccountFilter === 'All' || i.account === activeAccountFilter);
-    if (filterType !== 'All') filtered = filtered.filter(i => i.type === filterType);
-    if (term) filtered = filtered.filter(i => i.type.toLowerCase().includes(term) || (i.note && i.note.toLowerCase().includes(term)) || (i.tags && i.tags.toLowerCase().includes(term)) || i.date.includes(term));
-    if (dateFrom) filtered = filtered.filter(i => i.date >= dateFrom);
-    if (dateTo) filtered = filtered.filter(i => i.date <= dateTo);
-
-    // Sort
-    filtered.sort((a, b) => {
-        let va, vb;
-        if (window.ledgerSort === 'amount') { va = a.amount; vb = b.amount; }
-        else if (window.ledgerSort === 'type') { va = a.type; vb = b.type; return window.ledgerAsc ? va.localeCompare(vb) : vb.localeCompare(va); }
-        else { va = parseDate(a.date); vb = parseDate(b.date); }
-        return window.ledgerAsc ? va - vb : vb - va;
-    });
-
-    // Update insights bar
-    let liCount = document.getElementById('li-count'); if (liCount) liCount.textContent = filtered.filter(i => !i.isDividend).length;
-    let liTotal = filtered.filter(i => !i.isDividend).reduce((s, i) => s + i.amount, 0);
-    let liTotalEl = document.getElementById('li-total'); if (liTotalEl) liTotalEl.textContent = formatMoney(liTotal);
-    let liAvgEl = document.getElementById('li-avg'); if (liAvgEl) liAvgEl.textContent = filtered.filter(i => !i.isDividend).length > 0 ? formatMoney(Math.round(liTotal / filtered.filter(i => !i.isDividend).length)) : '₹0';
+    // Single-pass filter + summary computation (avoids 8 chained filters)
+    let liCount = 0, liTotal = 0;
+    let filtered = [];
+    for (const inv of db.investments) {
+        if (activeAccountFilter !== 'All' && inv.account !== activeAccountFilter) continue;
+        if (filterType !== 'All' && inv.type !== filterType) continue;
+        if (term && !inv.type.toLowerCase().includes(term) && !(inv.note && inv.note.toLowerCase().includes(term)) && !(inv.tags && inv.tags.toLowerCase().includes(term)) && !inv.date.includes(term)) continue;
+        if (dateFrom && inv.date < dateFrom) continue;
+        if (dateTo && inv.date > dateTo) continue;
+        filtered.push(inv);
+        if (!inv.isDividend) { liCount++; liTotal += inv.amount; }
+    }
 
     // Group by month only if sorting by date
     let html = '';
@@ -601,6 +593,9 @@ window.getEmptyStateHTML = getEmptyStateHTML;
 
 function attachSwipeListeners(cE) {
     if (!cE) return;
+    // Avoid accumulating duplicate listeners on repeated calls
+    if (cE.dataset.swipeAttached) return;
+    cE.dataset.swipeAttached = '1';
 
     let gestureState = {
         startX: 0,
@@ -677,7 +672,7 @@ function attachSwipeListeners(cE) {
         const diffX = touch.clientX - gestureState.startX;
         const threshold = 120;
 
-        gestureState.activeItem.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        gestureState.activeItem.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s';
 
         if (diffX > threshold) {
             // Edit Action

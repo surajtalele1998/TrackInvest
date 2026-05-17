@@ -68,11 +68,21 @@ self.addEventListener('activate', (event) => {
 
 // 3. Fetch — stale-while-revalidate for CDN, cache-first for local
 
-async function fetchWithProxyFallback(url, proxies) {
-  const attempts = [url, ...proxies.map(p => p + encodeURIComponent(url))];
-  for (let i = 0; i < Math.min(attempts.length, 3); i++) {
+const CORS_PROXIES = [
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://api.allorigins.win/get?url=',
+];
+
+async function fetchWithProxyFallback(url) {
+  const attempts = CORS_PROXIES.map(p => p + encodeURIComponent(url));
+  for (let i = 0; i < attempts.length; i++) {
     try {
-      const r = await fetch(attempts[i]);
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(attempts[i], { signal: ctrl.signal });
+      clearTimeout(id);
       if (r.ok) return r;
     } catch (_) {}
   }
@@ -86,7 +96,7 @@ self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET') return;
     if (url.protocol === 'chrome-extension:') return;
 
-    // For API calls (mfapi, groq, generativelanguage) → network only, no cache
+    // For API calls with CORS issues → CORS proxy chain only, skip direct fetch (will fail from deployed origin)
     if (url.hostname.includes('mfapi.in') ||
         url.hostname.includes('groq.com') ||
         url.hostname.includes('generativelanguage.googleapis.com') ||
@@ -96,16 +106,7 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('query1.finance.yahoo.com') ||
         url.hostname.includes('mintedmetal.com') ||
         url.hostname.includes('ibja-api.vercel.app')) {
-      const CORS_PROXIES = [
-        'https://api.codetabs.com/v1/proxy?quest=',
-        'https://corsproxy.io/?',
-        'https://api.allorigins.win/raw?url=',
-      ];
-      event.respondWith(
-        fetch(event.request).catch(() => {
-          return fetchWithProxyFallback(event.request.url, CORS_PROXIES);
-        })
-      );
+      event.respondWith(fetchWithProxyFallback(event.request.url));
       return;
     }
 
