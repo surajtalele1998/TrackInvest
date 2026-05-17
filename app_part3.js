@@ -633,16 +633,19 @@ function updatePortfolioCalculations() {
     renderQuickAddChips(); updateRebalanceBadge(); autoBackupReminder();
 }
 
-// Master render entry point. Earlier refactors split the monolithic renderer
-// into updateDividendTotals/updateAccountFilter/updatePortfolioCalculations
-// but left the renderAll() callers and the window alias dangling, which broke
-// the entire app on load. This wrapper restores the original behavior.
+// Master render entry point — debounced + rAF to prevent jank on rapid calls
+let _renderAllPending = false;
 function renderAll() {
-    if (typeof updateAccountFilter === 'function') updateAccountFilter();
-    if (typeof updateDividendTotals === 'function') updateDividendTotals();
-    if (typeof updatePortfolioCalculations === 'function') updatePortfolioCalculations();
-    updateDashboardEntryCards();
-    checkSpendAlerts();
+    if (_renderAllPending) return;
+    _renderAllPending = true;
+    requestAnimationFrame(() => {
+        _renderAllPending = false;
+        if (typeof updateAccountFilter === 'function') updateAccountFilter();
+        if (typeof updateDividendTotals === 'function') updateDividendTotals();
+        if (typeof updatePortfolioCalculations === 'function') updatePortfolioCalculations();
+        updateDashboardEntryCards();
+        checkSpendAlerts();
+    });
 }
 window.renderAll = renderAll;
 window.getEmptyStateHTML = getEmptyStateHTML;

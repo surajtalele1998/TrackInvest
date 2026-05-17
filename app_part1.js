@@ -724,11 +724,11 @@ function debounce(func, wait) {
 // 2. GLOBAL HELPER FUNCTIONS
 // ==========================================
 function haptic(ms = 30) {
-    if (!window.userInteracted) return;
     try {
-        if (typeof navigator !== 'undefined' && navigator.vibrate && ms > 0) {
-            navigator.vibrate(ms);
-        }
+        if (typeof navigator === 'undefined' || !navigator.vibrate) return;
+        // Chrome on Android requires minimum ~40ms for perceptible feedback
+        const duration = Array.isArray(ms) ? ms : Math.max(ms, 40);
+        navigator.vibrate(duration);
     } catch (e) { }
 }
 document.addEventListener('mousedown', () => window.userInteracted = true, { once: true });
@@ -1442,10 +1442,14 @@ function saveData() {
         db.githubKey = _decryptKey(parts[4] || '', db.appPin);
     }
 
-    // Check storage quota asynchronously (non-blocking)
-    checkStorageQuota(sanitizedDb);
-    // Broadcast to other tabs after the quota check (non-blocking)
-    setTimeout(() => { try { window.__syncChannel = window.__syncChannel || new BroadcastChannel('trackinvest-sync'); window.__syncChannel.postMessage({ type: 'sync-data', data: { timestamp: Date.now() } }); } catch (e) {} }, 0);
+    // Defer non-critical work (quota check, cross-tab sync) to next frame to avoid jank
+    requestAnimationFrame(() => {
+        checkStorageQuota(sanitizedDb);
+        try {
+            window.__syncChannel = window.__syncChannel || new BroadcastChannel('trackinvest-sync');
+            window.__syncChannel.postMessage({ type: 'sync-data', data: { timestamp: Date.now() } });
+        } catch (e) {}
+    });
 }
 
 function handleStorageError(error) {
