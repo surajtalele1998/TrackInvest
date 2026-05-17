@@ -435,7 +435,7 @@
         </div>
     </main>
 
-    <nav class="bottom-nav">
+    <nav class="bottom-nav" id="bottom-nav">
         <div class="nav-item active" id="nav-dashboard" onclick="switchTab('dashboard')">
             <div class="nav-icon-wrap"><span class="material-symbols-rounded">dashboard</span></div><span
                 class="nav-label">Dashboard</span><span class="badge-dot" id="rebalance-badge"></span>
@@ -812,12 +812,8 @@
             style="display:flex; gap:4px; padding:4px; background:var(--md-surface-container-high); border-radius:12px; margin-bottom:20px; flex-shrink:0;">
             <button class="s-tab active" onclick="switchSettingsTab('profile', this)"
                 style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Profile</button>
-            <button class="s-tab" onclick="switchSettingsTab('security', this)"
-                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">App</button>
-            <button class="s-tab" onclick="switchSettingsTab('manage', this)"
-                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Manage</button>
-            <button class="s-tab" onclick="switchSettingsTab('data', this)"
-                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Data</button>
+            <button class="s-tab" onclick="switchSettingsTab('advanced', this)"
+                style="flex:1; padding:8px; border:none; background:transparent; border-radius:8px; font-size:13px; font-weight:500; cursor:pointer;">Advanced</button>
         </div>
 
         <div id="settings-content-scroll" class="scroll-y" style="flex:1; padding-bottom:20px;">
@@ -902,8 +898,8 @@
                         class="material-symbols-rounded">save</span> Save Profile</button>
             </div>
 
-            <!-- Tab 2: Security & App -->
-            <div id="stab-security" class="s-tab-content" style="display:none;">
+            <!-- Tab 2: Advanced -->
+            <div id="stab-advanced" class="s-tab-content" style="display:none;">
                 <div
                     style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
                     App Security</div>
@@ -918,7 +914,6 @@
                                     onchange="toggleBiometric()"><span class="slider"></span></label>
                             <span style="font-size:12px;">Biometric</span>
                         </div>
-
                     </div>
                 </div>
 
@@ -932,10 +927,6 @@
                     </div>
                     <label class="switch"><input type="checkbox" id="settings-ai-toggle"><span class="slider"></span></label>
                 </div>
-
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    AI Strategy Keys</div>
                 <div class="input-container"><label>Groq API Key (Primary)</label><input type="password"
                         id="groq-api-key" class="md-input" placeholder="gsk_..."></div>
                 <div class="input-container"><label>Gemini API Key (Fallback 1)</label><input type="password"
@@ -946,25 +937,12 @@
                         id="cerebras-api-key" class="md-input" placeholder="cerebras_..."></div>
                 <div class="input-container"><label>GitHub Models Key (Fallback 4)</label><input type="password"
                         id="github-api-key" class="md-input" placeholder="github_pat_..."></div>
-                <button class="btn-primary" onclick="saveApiKeys()"><span class="material-symbols-rounded">key</span>
-                    Save API Keys</button>
+                <button class="btn-primary" onclick="saveApiKeys()" style="margin-bottom:24px;"><span class="material-symbols-rounded">key</span> Save API Keys</button>
 
                 <div
-                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Sync</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button class="btn-primary" style="flex:1;" onclick="exportSyncUrl()"><span class="material-symbols-rounded">share</span> Share Sync Link</button>
-                </div>
-                <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button class="btn-secondary" style="flex:1;" onclick="nearbyBroadcast()"><span class="material-symbols-rounded">wifi</span> Nearby Sync</button>
-                    <button class="btn-secondary" style="flex:1;" onclick="webrtcStartAsSender()"><span class="material-symbols-rounded">qr_code_scanner</span> QR Sync</button>
-                </div>
-                <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Data auto-syncs across open tabs. Use Share or Nearby for cross-device. No server needed.</div>
-
-                <div
-                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
                     Web Connectivity</div>
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:24px;">
                     <div>
                         <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable Web Access</div>
                         <div style="font-size:11px; color:var(--md-outline); margin-top:2px;">Live prices, NAV lookup, exchange rates, gold rates</div>
@@ -973,7 +951,115 @@
                 </div>
 
                 <div
-                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Manage Accounts</div>
+                <div id="account-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+                <div class="input-row" style="margin-bottom:24px;">
+                    <input type="text" id="new-acc-name" class="md-input" placeholder="New Account Name" style="flex:1;">
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addAccount()"><span class="material-symbols-rounded">add</span></button>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Manage Categories</div>
+                <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+                <div class="input-row" style="margin-bottom:24px;">
+                    <input type="text" id="new-cat-name" class="md-input" placeholder="Name" style="flex:1.5;">
+                    <select id="new-cat-template" class="md-input" style="flex:1;">
+                        <option value="flat">Flat/Simple</option>
+                        <option value="fd">FD (Interest)</option>
+                        <option value="sip">SIP (Monthly)</option>
+                        <option value="stock">Stock (Qty/Price)</option>
+                        <option value="growth">Growth (%)</option>
+                    </select>
+                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addCustomCategory()"><span class="material-symbols-rounded">add</span></button>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Data Operations</div>
+                <div class="settings-action-card" onclick="exportData()">
+                    <span class="material-symbols-rounded" style="color:var(--md-primary);">cloud_download</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Backup Data</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Export as encrypted JSON file</div>
+                    </div>
+                </div>
+                <label class="settings-action-card">
+                    <span class="material-symbols-rounded" style="color:var(--md-secondary);">cloud_upload</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Restore Data</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Import from backup file</div>
+                    </div>
+                    <input type="file" style="display:none;" accept=".json,.enc" onchange="restoreData(event)">
+                </label>
+                <label class="settings-action-card">
+                    <span class="material-symbols-rounded" style="color:var(--md-success);">csv</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Import CSV</div>
+                        <div style="font-size:12px; color:var(--md-outline);">Import data from spreadsheets</div>
+                    </div>
+                    <input type="file" style="display:none;" accept=".csv" onchange="importCSV(event)">
+                </label>
+                <div class="settings-action-card" onclick="dataCleanup()" style="color:var(--md-error);">
+                    <span class="material-symbols-rounded">mop</span>
+                    <div style="flex:1;">
+                        <div style="font-weight:600; font-size:14px;">Clean Old Entries</div>
+                        <div style="font-size:12px; opacity:0.7;">Remove historical clutter</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;margin:16px 0; padding:0 8px;">
+                    <input type="checkbox" id="encrypt-backup-toggle" checked style="width:18px;height:18px;">
+                    <label for="encrypt-backup-toggle" style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt Backup with App PIN</label>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase; margin-top:24px;">
+                    Sync & Reports</div>
+                <button class="btn-primary" style="background:var(--md-secondary-container);color:var(--md-on-secondary-container); margin-bottom:8px;" onclick="openSheet('history-sync-sheet')">
+                    <span class="material-symbols-rounded">history_edu</span> Universal Generator
+                </button>
+                <button class="btn-primary" style="background:var(--md-surface-container-highest);color:var(--md-on-surface); margin-bottom:8px;" onclick="exportTaxPDF()">
+                    <span class="material-symbols-rounded">picture_as_pdf</span> 80C Tax Report
+                </button>
+                <button class="btn-primary" style="background:var(--md-primary-container);color:var(--md-on-primary-container); margin-bottom:8px;" onclick="openSheet('webrtc-sync-sheet')">
+                    <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
+                </button>
+                <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                    <button class="btn-primary" style="flex:1;" onclick="exportSyncUrl()"><span class="material-symbols-rounded">share</span> Share Link</button>
+                    <button class="btn-secondary" style="flex:1;" onclick="nearbyBroadcast()"><span class="material-symbols-rounded">wifi</span> Nearby</button>
+                    <button class="btn-secondary" style="flex:1;" onclick="webrtcStartAsSender()"><span class="material-symbols-rounded">qr_code_scanner</span> QR</button>
+                </div>
+
+                <button id="pwa-install-btn" class="btn-primary"
+                    style="display:none; background:var(--md-primary); color:var(--md-on-primary); margin-top:16px;"
+                    onclick="triggerPWAInstall()">
+                    <span class="material-symbols-rounded">install_mobile</span> Install App
+                </button>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin:24px 0 12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Theme</div>
+                <div class="theme-picker" id="theme-picker" style="margin-bottom:24px;">
+                    <div class="theme-swatch ts-indigo active" style="background: #415F91;" onclick="setTheme('indigo')"></div>
+                    <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')"></div>
+                    <div class="theme-swatch ts-sunset" style="background: #924C00;" onclick="setTheme('sunset')"></div>
+                    <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')"></div>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Quick Tools</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">calculate</span> XIRR</button>
+                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">trending_up</span> SIP Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">real_estate_agent</span> EMI Calc</button>
+                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">price_change</span> Inflation</button>
+                    <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">picture_as_pdf</span> Wealth PDF</button>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin:24px 0 12px;letter-spacing:0.5px;text-transform:uppercase;">
                     Notifications</div>
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--md-surface-container);border-radius:14px;margin-bottom:4px;">
                     <div>
@@ -1004,146 +1090,13 @@
                         <label class="switch"><input type="checkbox" class="notif-toggle" data-key="priceAlerts"><span class="slider"></span></label>
                     </div>
                 </div>
-                <div style="font-size:11px;color:var(--md-outline);margin-top:8px;">Notifications work offline via service worker. No server needed.</div>
 
                 <div
-                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Theme</div>
-                <div class="theme-picker" id="theme-picker" style="margin-bottom:24px;">
-                    <div class="theme-swatch ts-indigo active" style="background: #415F91;"
-                        onclick="setTheme('indigo')"></div>
-                    <div class="theme-swatch ts-emerald" style="background: #186D33;" onclick="setTheme('emerald')">
-                    </div>
-                    <div class="theme-swatch ts-sunset" style="background: #924C00;" onclick="setTheme('sunset')"></div>
-                    <div class="theme-swatch ts-amethyst" style="background: #744AAC;" onclick="setTheme('amethyst')">
-                    </div>
-                </div>
-
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin:24px 0 12px;letter-spacing:0.5px;text-transform:uppercase;">
                     Milestone Badges</div>
-                <div class="badge-grid" id="badge-grid"></div>
-            </div>
-
-            <!-- Tab 3: Manage Accounts & Categories -->
-            <div id="stab-manage" class="s-tab-content" style="display:none;">
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Manage Accounts</div>
-                <div id="account-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
-                <div class="input-row" style="margin-bottom:24px;">
-                    <input type="text" id="new-acc-name" class="md-input" placeholder="New Account Name"
-                        style="flex:1;">
-                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addAccount()"><span
-                            class="material-symbols-rounded">add</span></button>
-                </div>
-
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Manage Categories</div>
-                <div id="category-crud-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
-                </div>
-                <div style="font-size:12px; color:var(--md-on-surface-variant); margin-bottom:4px;">Add New Category
-                </div>
-                <div class="input-row">
-                    <input type="text" id="new-cat-name" class="md-input" placeholder="Name" style="flex:1.5;">
-                    <select id="new-cat-template" class="md-input" style="flex:1;">
-                        <option value="flat">Flat/Simple</option>
-                        <option value="fd">FD (Interest)</option>
-                        <option value="sip">SIP (Monthly)</option>
-                        <option value="stock">Stock (Qty/Price)</option>
-                        <option value="growth">Growth (%)</option>
-                    </select>
-                    <button class="btn-primary" style="width:auto;padding:0 16px;" onclick="addCustomCategory()"><span
-                            class="material-symbols-rounded">add</span></button>
-                </div>
-            </div>
-
-            <!-- Tab 4: Data Management -->
-            <div id="stab-data" class="s-tab-content" style="display:none;">
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Data Operations</div>
-
-                <div class="settings-action-card" onclick="exportData()">
-                    <span class="material-symbols-rounded" style="color:var(--md-primary);">cloud_download</span>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:14px;">Backup Data</div>
-                        <div style="font-size:12px; color:var(--md-outline);">Export as encrypted JSON file</div>
-                    </div>
-                </div>
-
-                <label class="settings-action-card">
-                    <span class="material-symbols-rounded" style="color:var(--md-secondary);">cloud_upload</span>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:14px;">Restore Data</div>
-                        <div style="font-size:12px; color:var(--md-outline);">Import from backup file</div>
-                    </div>
-                    <input type="file" style="display:none;" accept=".json,.enc" onchange="restoreData(event)">
-                </label>
-
-                <label class="settings-action-card">
-                    <span class="material-symbols-rounded" style="color:var(--md-success);">csv</span>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:14px;">Import CSV</div>
-                        <div style="font-size:12px; color:var(--md-outline);">Import data from spreadsheets</div>
-                    </div>
-                    <input type="file" style="display:none;" accept=".csv" onchange="importCSV(event)">
-                </label>
-
-                <div class="settings-action-card" onclick="dataCleanup()" style="color:var(--md-error);">
-                    <span class="material-symbols-rounded">mop</span>
-                    <div style="flex:1;">
-                        <div style="font-weight:600; font-size:14px;">Clean Old Entries</div>
-                        <div style="font-size:12px; opacity:0.7;">Remove historical clutter</div>
-                    </div>
-                </div>
-
-                <div style="display:flex;align-items:center;gap:12px;margin:16px 0; padding:0 8px;">
-                    <input type="checkbox" id="encrypt-backup-toggle" checked style="width:18px;height:18px;">
-                    <label for="encrypt-backup-toggle"
-                        style="font-size:13px;color:var(--md-on-surface-variant);">Encrypt Backup with App PIN</label>
-                </div>
-
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase; margin-top:24px;">
-                    Reports & Sync</div>
-                <button class="btn-primary"
-                    style="background:var(--md-secondary-container);color:var(--md-on-secondary-container); margin-bottom:8px;"
-                    onclick="openSheet('history-sync-sheet')">
-                    <span class="material-symbols-rounded">history_edu</span> Universal Generator
-                </button>
-                <button class="btn-primary"
-                    style="background:var(--md-surface-container-highest);color:var(--md-on-surface); margin-bottom:8px;"
-                    onclick="exportTaxPDF()">
-                    <span class="material-symbols-rounded">picture_as_pdf</span> 80C Tax Report
-                </button>
-                <button class="btn-primary"
-                    style="background:var(--md-primary-container);color:var(--md-on-primary-container); margin-bottom:8px;"
-                    onclick="openSheet('webrtc-sync-sheet')">
-                    <span class="material-symbols-rounded">nearby_share</span> Offline Nearby Sync
-                </button>
-
-                <button id="pwa-install-btn" class="btn-primary"
-                    style="display:none; background:var(--md-primary); color:var(--md-on-primary); margin-top:16px;"
-                    onclick="triggerPWAInstall()">
-                    <span class="material-symbols-rounded">install_mobile</span> Install App
-                </button>
-
-                <div
-                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-top:24px;margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
-                    Quick Tools</div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
-                    <button class="btn-secondary" onclick="openSheet('xirr-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">calculate</span> XIRR</button>
-                    <button class="btn-secondary" onclick="openSheet('sip-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">trending_up</span> SIP Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('emi-calc-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">real_estate_agent</span> EMI Calc</button>
-                    <button class="btn-secondary" onclick="openSheet('inflation-sheet')" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">price_change</span> Inflation</button>
-                    <button class="btn-secondary" onclick="generatePDFWealthReport()" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">picture_as_pdf</span> Wealth PDF</button>
-                    <button class="btn-secondary" onclick="window.location.href='market_watch.html'" style="padding:10px;"><span class="material-symbols-rounded" style="font-size:18px;">monitoring</span> Market Watch</button>
-                </div>
+                <div class="badge-grid" id="badge-grid" style="margin-bottom:24px;"></div>
             </div>
         </div>
-    </div>
 
     <div class="sheet sub-sheet" id="history-sync-sheet">
         <div class="drag-handle"></div>
