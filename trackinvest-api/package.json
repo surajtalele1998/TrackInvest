@@ -1,6 +1,6 @@
 {
   "name": "trackinvest-api",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "TrackInvest Background API Service — AI, market data, portfolio analytics, notifications, auth, backup, export, news, cron jobs",
   "main": "src/server.js",
   "scripts": {
