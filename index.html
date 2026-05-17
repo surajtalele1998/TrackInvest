@@ -200,26 +200,28 @@
             </div>
 
             <!-- Quick stat chips -->
-            <div class="stat-row" id="stat-row">
-                <div class="stat-chip">
-                    <div class="stat-chip-label">Invested</div>
-                    <div class="stat-chip-val" id="sc-invested">₹0</div>
-                </div>
-                <div class="stat-chip">
-                    <div class="stat-chip-label">Gain/Loss</div>
-                    <div class="stat-chip-val" id="sc-pnl">₹0</div>
-                </div>
-                <div class="stat-chip">
-                    <div class="stat-chip-label">Savings Rate</div>
-                    <div class="stat-chip-val" id="sc-savings-rate">0%</div>
-                </div>
-                <div class="stat-chip">
-                    <div class="stat-chip-label">Best Month</div>
-                    <div class="stat-chip-val" id="sc-best-month">—</div>
-                </div>
-                <div class="stat-chip">
-                    <div class="stat-chip-label">Streak</div>
-                    <div class="stat-chip-val" id="sc-streak">0 mo</div>
+            <div class="md-card" style="padding:16px;">
+                <div class="stat-row" id="stat-row">
+                    <div class="stat-chip">
+                        <div class="stat-chip-label">Invested</div>
+                        <div class="stat-chip-val" id="sc-invested">₹0</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-chip-label">Gain/Loss</div>
+                        <div class="stat-chip-val" id="sc-pnl">₹0</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-chip-label">Savings Rate</div>
+                        <div class="stat-chip-val" id="sc-savings-rate">0%</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-chip-label">Best Month</div>
+                        <div class="stat-chip-val" id="sc-best-month">—</div>
+                    </div>
+                    <div class="stat-chip">
+                        <div class="stat-chip-label">Streak</div>
+                        <div class="stat-chip-val" id="sc-streak">0 mo</div>
+                    </div>
                 </div>
             </div>
             <div style="display:flex; gap:8px; margin-bottom:8px;">
@@ -297,17 +299,21 @@
             </div>
 
             <div class="section-title" style="justify-content:flex-start;gap:8px;"><span class="material-symbols-rounded" style="font-size:16px;">calendar_month</span> Activity Calendar</div>
-            <div id="heatmap-section" style="margin-bottom:24px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-                    <button class="icon-btn" onclick="shiftHeatmapMonth(-1)" id="heatmap-prev" title="Previous month"><span class="material-symbols-rounded">chevron_left</span></button>
-                    <div style="font-size:15px;font-weight:500;color:var(--md-on-surface);flex:1;text-align:center;" id="heatmap-month-title">Activity Calendar</div>
-                    <button class="icon-btn" onclick="shiftHeatmapMonth(1)" id="heatmap-next" title="Next month"><span class="material-symbols-rounded">chevron_right</span></button>
+            <div class="md-card" style="padding:20px;">
+                <div id="heatmap-section">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <button class="icon-btn" onclick="shiftHeatmapMonth(-1)" id="heatmap-prev" title="Previous month"><span class="material-symbols-rounded">chevron_left</span></button>
+                        <div style="font-size:15px;font-weight:500;color:var(--md-on-surface);flex:1;text-align:center;" id="heatmap-month-title">Activity Calendar</div>
+                        <button class="icon-btn" onclick="shiftHeatmapMonth(1)" id="heatmap-next" title="Next month"><span class="material-symbols-rounded">chevron_right</span></button>
+                    </div>
+                    <div class="heatmap-grid" id="heatmap-grid"></div>
                 </div>
-                <div class="heatmap-grid" id="heatmap-grid"></div>
             </div>
 
             <div class="section-title" style="justify-content:flex-start;gap:8px;"><span class="material-symbols-rounded" style="font-size:16px;">trending_up</span> 12‑Month Trend</div>
-            <div class="chart-container-js" style="margin-bottom: 24px;"><canvas id="rollingChart"></canvas></div>
+            <div class="md-card" style="padding:20px;">
+                <div class="chart-container-js"><canvas id="rollingChart"></canvas></div>
+            </div>
 
             <!-- Smart Advisor Card -->
             <div id="advisor-card" class="md-card"
@@ -328,7 +334,9 @@
             </div>
 
             <div class="section-title">Recent Activity</div>
-            <div class="list" id="dashboard-history-list"></div>
+            <div class="md-card" style="padding:12px;">
+                <div class="list" id="dashboard-history-list"></div>
+            </div>
         </div>
 
         <div id="tab-portfolio" class="tab-content">
