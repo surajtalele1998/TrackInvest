@@ -67,6 +67,18 @@ self.addEventListener('activate', (event) => {
 });
 
 // 3. Fetch — stale-while-revalidate for CDN, cache-first for local
+
+async function fetchWithProxyFallback(url, proxies) {
+  const attempts = [url, ...proxies.map(p => p + encodeURIComponent(url))];
+  for (let i = 0; i < Math.min(attempts.length, 3); i++) {
+    try {
+      const r = await fetch(attempts[i]);
+      if (r.ok) return r;
+    } catch (_) {}
+  }
+  return new Response(JSON.stringify({ error: 'unreachable' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+}
+
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
@@ -84,8 +96,17 @@ self.addEventListener('fetch', (event) => {
         url.hostname.includes('query1.finance.yahoo.com') ||
         url.hostname.includes('mintedmetal.com') ||
         url.hostname.includes('ibja-api.vercel.app')) {
-        event.respondWith(fetch(event.request));
-        return;
+      const CORS_PROXIES = [
+        'https://api.codetabs.com/v1/proxy?quest=',
+        'https://corsproxy.io/?',
+        'https://api.allorigins.win/raw?url=',
+      ];
+      event.respondWith(
+        fetch(event.request).catch(() => {
+          return fetchWithProxyFallback(event.request.url, CORS_PROXIES);
+        })
+      );
+      return;
     }
 
     // For same-origin: cache-first

@@ -214,20 +214,38 @@ function isMarketOpen() {
     return m >= 555 && m < 930;
 }
 
-// ===== API HELPERS with CORS fallback =====
-const CORS_PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+// ===== API HELPERS with CORS fallback chain =====
+const CORS_PROXIES = [
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+];
 
-async function fetchJSON(url) {
+async function fetchJSON(url, retries = 2) {
+  // Try direct fetch first, then each proxy in sequence
+  const attempts = [url, ...CORS_PROXIES.map(p => p + encodeURIComponent(url))];
+  let lastErr;
+  for (let i = 0; i < Math.min(attempts.length, retries + 1); i++) {
     try {
-        const r = await fetch(url);
-        if (!r.ok) throw new Error(r.status);
-        return r.json();
+      const r = await fetchWithTimeout(attempts[i], 8000);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
     } catch (e) {
-        // CORS or network failure — retry via proxy
-        const proxied = await fetch(CORS_PROXY + encodeURIComponent(url));
-        if (!proxied.ok) throw new Error(proxied.status);
-        return proxied.json();
+      lastErr = e;
     }
+  }
+  throw lastErr || new Error('All proxies failed');
+}
+
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    return r;
+  } finally {
+    clearTimeout(id);
+  }
 }
 
 async function fetchChartData(symbol) {

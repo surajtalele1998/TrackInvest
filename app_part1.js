@@ -3109,6 +3109,28 @@ async function fetchLiveNAV(code) {
 
 // --- STOCK SEARCH & PRICE LOOKUP via Yahoo Finance ---
 
+const YAHOO_PROXIES = [
+  'https://api.codetabs.com/v1/proxy?quest=',
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+];
+
+async function yahooFetch(url) {
+  const attempts = [url, ...YAHOO_PROXIES.map(p => p + encodeURIComponent(url))];
+  let lastErr;
+  for (let i = 0; i < Math.min(attempts.length, 3); i++) {
+    try {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(attempts[i], { signal: ctrl.signal });
+      clearTimeout(id);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error('Yahoo unreachable');
+}
+
 async function searchStockForLog() {
     let q = document.getElementById('inv-mf-query').value.trim();
     if (!q) return showSnackbar("Enter stock name to search", "warning");
@@ -3122,11 +3144,9 @@ async function searchStockForLog() {
     }
 
     try {
-        let res = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`);
-        let data = await res.json();
+        let data = await yahooFetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10`);
 
         if (searchBtn) setButtonLoading(searchBtn.id || 'mf-search-btn', false);
-
         let quotes = data.quotes || [];
         if (quotes.length === 0) {
             if (sel) sel.innerHTML = '<option>No stocks found</option>';
@@ -3170,8 +3190,7 @@ async function fetchLiveStockPrice(symbol) {
     priceInput.disabled = true;
 
     try {
-        let res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
-        let data = await res.json();
+        let data = await yahooFetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
         let result = data.chart?.result?.[0];
         if (!result) throw new Error("No data");
 
