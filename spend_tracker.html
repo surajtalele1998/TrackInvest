@@ -58,9 +58,9 @@
         .cat-badge:hover { filter:brightness(1.1); }
 
         /* ── Charts ── */
-        .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
-        .chart-card { background:var(--md-surface-container); border-radius:24px; padding:16px; border:1px solid var(--md-outline-variant); }
-        .chart-card.full { grid-column:1/-1; }
+        .chart-grid { display:flex; gap:12px; margin-bottom:16px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+        .chart-card { background:var(--md-surface-container); border-radius:24px; padding:16px; border:1px solid var(--md-outline-variant); flex-shrink:0; min-width:280px; }
+        .chart-card canvas { max-height:170px; max-width:100%; }
         .chart-card-title { font-size:11px; font-weight:600; color:var(--md-on-surface-variant); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px; }
         .sankey-svg { width:100%; max-width:100%; height:180px; overflow:visible; }
 
@@ -83,8 +83,7 @@
         .spend-empty div { font-size:14px; color:var(--md-on-surface-variant); }
 
         @media(max-width:480px) {
-            .chart-grid { grid-template-columns:1fr; }
-            .chart-card { padding:12px; }
+            .chart-card { min-width:240px; padding:12px; }
             .chart-card canvas { max-height:140px !important; }
             .quick-add-bar { flex-wrap:wrap; }
             .quick-add-bar .btn-primary { width:100%; }
@@ -194,7 +193,7 @@
         <div class="chart-grid" id="charts-section">
             <div class="chart-card"><div class="chart-card-title"><span class="material-symbols-rounded" style="font-size:14px;">donut_small</span> By Category</div><div style="height:170px;"><canvas id="catPieChart"></canvas></div></div>
             <div class="chart-card"><div class="chart-card-title"><span class="material-symbols-rounded" style="font-size:14px;">bar_chart</span> Daily Trend</div><div style="height:170px;"><canvas id="dailyTrendChart"></canvas></div></div>
-            <div class="chart-card full"><div class="chart-card-title"><span class="material-symbols-rounded" style="font-size:14px;">flowchart</span> Spend Flow</div><div class="sankey-container"><svg class="sankey-svg" id="sankey-svg"></svg></div></div>
+            <div class="chart-card"><div class="chart-card-title"><span class="material-symbols-rounded" style="font-size:14px;">flowchart</span> Spend Flow</div><div class="sankey-container"><svg class="sankey-svg" id="sankey-svg"></svg></div></div>
         </div>
 
         <!-- Biggest Single Expense -->
@@ -227,8 +226,8 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <span style="font-size:13px;color:var(--md-on-surface-variant);font-weight:500;" id="list-count"></span>
             <div style="display:flex;gap:4px;">
-                <button class="btn-icon" style="min-width:36px;min-height:36px;" onclick="deleteAllUncategorized()" title="Clear uncategorized"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-error);">filter_alt_off</span></button>
-                <button class="btn-icon" style="min-width:36px;min-height:36px;background:var(--md-error-container);border-radius:10px;" onclick="deleteAllEntries()" title="Clear month"><span class="material-symbols-rounded" style="font-size:18px;color:var(--md-on-error-container);">delete_sweep</span></button>
+                <button class="icon-btn" onclick="deleteAllUncategorized()" title="Clear uncategorized"><span class="material-symbols-rounded" style="color:var(--md-error);">filter_alt_off</span></button>
+                <button class="icon-btn" onclick="deleteAllEntries()" title="Clear month"><span class="material-symbols-rounded" style="color:var(--md-error);">delete_sweep</span></button>
             </div>
         </div>
         <div class="spend-list" id="spend-list"></div>
