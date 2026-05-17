@@ -262,7 +262,7 @@
                             id="fire-target">Target: 0</span></div>
                 </div>
 
-                <div class="carousel-card"
+                <div class="carousel-card ai-dependent"
                     style="background:var(--md-secondary-container); color:var(--md-on-secondary-container); border:none; cursor:pointer;"
                     onclick="openAIHub('reports')">
                     <div
@@ -271,6 +271,16 @@
                     </div>
                     <div style="font-size:12px; line-height:1.4; opacity:0.9;">
                         Chat, Reports & Wealth Blueprint...
+                    </div>
+                </div>
+
+                <div class="carousel-card ai-dependent-info"
+                    style="background:var(--md-surface-container); color:var(--md-on-surface-variant); border:none; cursor:default;">
+                    <div style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px;">
+                        <span class="material-symbols-rounded" style="font-size:18px;">auto_awesome</span> AI Hub
+                    </div>
+                    <div style="font-size:12px; line-height:1.4; opacity:0.8; margin-top:4px;">
+                        Enable AI in Settings → App to access AI chat, reports & insights.
                     </div>
                 </div>
 
@@ -915,6 +925,17 @@
 
                 <div
                     style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
+                    AI Features</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:12px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable AI</div>
+                        <div style="font-size:11px; color:var(--md-outline); margin-top:2px;">AI chat, reports, auto-categorize, forecasts</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="settings-ai-toggle"><span class="slider"></span></label>
+                </div>
+
+                <div
+                    style="font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:16px;letter-spacing:0.5px;text-transform:uppercase;">
                     AI Strategy Keys</div>
                 <div class="input-container"><label>Groq API Key (Primary)</label><input type="password"
                         id="groq-api-key" class="md-input" placeholder="gsk_..."></div>
@@ -940,6 +961,17 @@
                     <button class="btn-secondary" style="flex:1;" onclick="webrtcStartAsSender()"><span class="material-symbols-rounded">qr_code_scanner</span> QR Sync</button>
                 </div>
                 <div style="font-size:11px;color:var(--md-outline);margin-top:6px;">Data auto-syncs across open tabs. Use Share or Nearby for cross-device. No server needed.</div>
+
+                <div
+                    style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">
+                    Web Connectivity</div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:var(--md-surface-container); border-radius:14px; margin-bottom:12px;">
+                    <div>
+                        <div style="font-weight:500; font-size:14px; color:var(--md-on-surface);">Enable Web Access</div>
+                        <div style="font-size:11px; color:var(--md-outline); margin-top:2px;">Live prices, NAV lookup, exchange rates, gold rates</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" id="settings-web-toggle"><span class="slider"></span></label>
+                </div>
 
                 <div
                     style="margin-top:24px; font-size:12px;font-weight:600;color:var(--md-primary);margin-bottom:12px;letter-spacing:0.5px;text-transform:uppercase;">

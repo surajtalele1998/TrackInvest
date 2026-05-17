@@ -86,6 +86,33 @@ if (typeof db.enableMonthlyPlanner === 'undefined') db.enableMonthlyPlanner = tr
 // NEW: Spend Tracker
 if (typeof db.enableSpendTracker === 'undefined') db.enableSpendTracker = false;
 if (typeof db.enableMarketWatch === 'undefined') db.enableMarketWatch = true;
+if (typeof db.aiEnabled === 'undefined') db.aiEnabled = true;
+if (typeof db.webEnabled === 'undefined') db.webEnabled = true;
+
+// Global feature toggles — check these before AI/web calls
+window.__aiEnabled = db.aiEnabled;
+window.__webEnabled = db.webEnabled;
+
+// Update body classes when toggles change
+function updateFeatureVisibility() {
+  document.body.classList.toggle('ai-disabled', !window.__aiEnabled);
+  document.body.classList.toggle('web-disabled', !window.__webEnabled);
+}
+updateFeatureVisibility();
+
+// Monkey-patch fetch for web connectivity toggle
+const _origFetch = window.fetch;
+window.fetch = function(input, init) {
+  const url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
+  try {
+    const u = new URL(url, self.location.origin);
+    if (!window.__webEnabled && u.origin !== self.location.origin && !url.startsWith('data:') && !url.startsWith('blob:') && u.protocol !== 'chrome-extension:') {
+      return Promise.reject(new Error('Web connectivity disabled in Settings'));
+    }
+  } catch (_) {}
+  return _origFetch.call(this, input, init);
+};
+
 if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
 
 // Extended user profile with smart defaults (all optional, progressive disclosure)

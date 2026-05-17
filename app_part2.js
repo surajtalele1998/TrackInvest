@@ -1073,7 +1073,13 @@ function saveProfileSettings() {
 
     const mwEl = document.getElementById('settings-enable-market-watch');
     if(mwEl) db.enableMarketWatch = mwEl.checked;
-    
+
+    // Master toggles
+    const aiToggle = document.getElementById('settings-ai-toggle');
+    if (aiToggle) { db.aiEnabled = aiToggle.checked; window.__aiEnabled = db.aiEnabled; }
+    const webToggle = document.getElementById('settings-web-toggle');
+    if (webToggle) { db.webEnabled = webToggle.checked; window.__webEnabled = db.webEnabled; }
+
     saveData(); renderAll(); showSnackbar("Profile & Preferences Updated", "check_circle");
 }
 
@@ -1154,6 +1160,12 @@ function openSettings() {
     if (spendEl) spendEl.checked = db.enableSpendTracker;
     const mwEl = document.getElementById('settings-enable-market-watch');
     if (mwEl) mwEl.checked = db.enableMarketWatch;
+
+    // Master toggles
+    const aiToggle = document.getElementById('settings-ai-toggle');
+    if (aiToggle) aiToggle.checked = db.aiEnabled !== false;
+    const webToggle = document.getElementById('settings-web-toggle');
+    if (webToggle) webToggle.checked = db.webEnabled !== false;
 
     // Refresh manage sections
     renderSettingsSections();
@@ -2185,6 +2197,7 @@ function updateRebalanceBadge() { let badge = document.getElementById('rebalance
 // ==========================================
 // Delegates to shared_ai.js
 async function callAIApi(promptText, systemPrompt) {
+    if (!window.__aiEnabled && window.__aiEnabled !== undefined) throw new Error('AI features disabled in Settings');
     return callAIProvider(db, promptText, systemPrompt);
 }
 

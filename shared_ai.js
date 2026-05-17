@@ -41,6 +41,7 @@ async function getErrorMessage(response) {
 // keys: { geminiKey, groqKey, openrouterKey, cerebrasKey, githubKey }
 // Returns response text or throws
 async function callAIProvider(keys, promptText, systemPrompt) {
+    if (window.__aiEnabled === false) throw new Error('AI features disabled in Settings');
     if (!keys || typeof keys !== 'object') throw new Error('Invalid keys object');
     const active = {};
     for (const k of ['geminiKey', 'groqKey', 'openrouterKey', 'cerebrasKey', 'githubKey']) {

@@ -2689,3 +2689,16 @@ input:checked+.slider:before {
     background: var(--md-surface-container-highest);
     border-radius: 10px;
 }
+
+/* ===== Feature toggle visibility ===== */
+body.ai-disabled .ai-dependent,
+body.web-disabled .web-dependent {
+  display: none !important;
+}
+body.ai-disabled .ai-dependent-info,
+body.web-disabled .web-dependent-info {
+  display: block !important;
+}
+.ai-dependent-info, .web-dependent-info {
+  display: none;
+}
