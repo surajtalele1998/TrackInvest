@@ -48,17 +48,31 @@ router.get('/audit', authMiddleware, async (req, res, next) => {
 
 const crypto = require('crypto');
 router.post('/generate-key', async (req, res) => {
+  const cfg = require('../config');
   const masterKey = req.headers['x-admin-key'] || req.headers['x-api-key'];
-  const validMaster = require('../config').apiKeys;
-  if (!masterKey || !validMaster.includes(masterKey)) {
-    return res.status(401).json({ error: 'Unauthorized. Use an existing API key in x-api-key header.' });
+  const validMaster = cfg.apiKeys;
+
+  // If no API keys configured yet, allow first-key creation without auth
+  if (validMaster.length > 0) {
+    if (!masterKey || !validMaster.includes(masterKey)) {
+      return res.status(401).json({ error: 'Unauthorized. Provide an existing API key in x-api-key header.' });
+    }
   }
+
   const prefix = 'sk-' + crypto.randomBytes(8).toString('hex');
   const suffix = crypto.randomBytes(16).toString('hex');
   const newKey = `${prefix}${suffix}`;
-  const msg = `Generated key: ${newKey}\nAdd it to your API_KEYS env var and redeploy.\nIn dev mode: add to .env API_KEYS and restart.`;
+
+  // Add to runtime config immediately so it works without redeploy
+  if (!cfg.apiKeys.includes(newKey)) {
+    cfg.apiKeys.push(newKey);
+  }
+
+  const note = validMaster.length === 0
+    ? 'First key created and activated. You can now use this key in the frontend.'
+    : 'Add this key to your API_KEYS environment variable on Render to make it permanent.';
   auditService.log('apikey.generate', 'admin', { prefix: prefix });
-  res.json({ success: true, key: newKey, note: 'Add this key to your API_KEYS environment variable on Render.' });
+  res.json({ success: true, key: newKey, note });
 });
 
 module.exports = router;

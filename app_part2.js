@@ -1489,8 +1489,20 @@ async function testCloudConnection() {
   resultEl.style.display = 'block';
   try {
     const h = await TrackInvestAPI.health();
-    resultEl.innerHTML = '<span style="color:var(--md-primary);">✓ Connected — ' + (h.message || h.service || 'API running') + '</span>';
-    resultEl.style.color = 'var(--md-primary)';
+    resultEl.innerHTML = '<span style="color:var(--md-primary);">✓ Server reachable — ' + (h.message || h.service || 'API running') + '</span><br>';
+
+    // Also test an authenticated endpoint to verify the API key
+    try {
+      await TrackInvestAPI.market.search('test');
+      resultEl.innerHTML += '<span style="color:var(--md-primary);font-size:12px;">✓ API key valid</span>';
+      resultEl.style.color = 'var(--md-primary)';
+    } catch (authErr) {
+      if (authErr.message.includes('401') || authErr.message.includes('Unauthorized') || authErr.message.includes('Invalid API key')) {
+        resultEl.innerHTML += '<span style="color:#B3261E;font-size:12px;">✗ API key rejected — generate a new key in Dev Portal or set the API_KEYS env var on Render</span>';
+      } else {
+        resultEl.innerHTML += '<span style="color:var(--md-outline);font-size:12px;">⚠ Key test skipped: ' + authErr.message.slice(0, 60) + '</span>';
+      }
+    }
   } catch (e) {
     resultEl.innerHTML = '<span style="color:#B3261E;">✗ ' + e.message + '</span>';
     resultEl.style.color = '#B3261E';
@@ -1627,6 +1639,38 @@ async function cloudDevGenerateKey() {
   } catch (e) {
     showSnackbar('Failed: ' + e.message, 'error');
   }
+}
+
+// ── Cloud Feature Sheets ──
+function openCloudFeatureSheet(html, title) {
+  Swal.fire({ title, html, width: 480, confirmButtonText: 'OK', showClass: { popup: 'swal2-show-sheet' } });
+}
+
+function openCloudSheet(feature, el) {
+  const cards = {
+    goals: { icon: 'trackpad_target', desc: 'Goal tracking & projections powered by the cloud backend.' },
+    watchlist: { icon: 'visibility', desc: 'Live watchlist prices fetched via the cloud API.' },
+    alerts: { icon: 'notifications_active', desc: 'Price alerts with Telegram & push notifications.' },
+    calculators: { icon: 'calculate', desc: 'SIP, EMI, lumpsum, retirement calculators running server-side.' },
+    tax: { icon: 'account_balance', desc: 'Tax-loss harvesting & capital gains estimation.' },
+    dividends: { icon: 'payments', desc: 'Dividend tracking & income summary.' },
+    import: { icon: 'upload_file', desc: 'Import CSV/JSON data via the cloud API.' },
+    backup: { icon: 'backup', desc: 'Cloud backup, sync & restore.' },
+    news: { icon: 'newspaper', desc: 'Financial news from NewsAPI via cloud.' },
+    exchange: { icon: 'currency_exchange', desc: 'Live exchange rate data.' },
+  };
+  const info = cards[feature];
+  if (!info) return;
+  const ready = TrackInvestAPI.isReady();
+  const h = '<div style="text-align:center;padding:16px;">' +
+    '<span class="material-symbols-rounded" style="font-size:48px;color:var(--md-primary);">' + info.icon + '</span>' +
+    '<h3 style="margin:8px 0 4px;text-transform:capitalize;">' + feature + '</h3>' +
+    '<p style="font-size:13px;color:var(--md-outline);margin:0 0 12px;">' + info.desc + '</p>' +
+    (ready
+      ? '<div style="padding:8px;background:var(--md-primary-container);border-radius:8px;font-size:12px;color:var(--md-on-primary-container);">✓ Cloud API connected — this feature is available</div>'
+      : '<div style="padding:8px;background:var(--md-error-container);border-radius:8px;font-size:12px;color:var(--md-on-error-container);">⚠ Cloud API not configured. Go to Settings → Cloud Services to set up your API key.</div>') +
+    '</div>';
+  openCloudFeatureSheet(h, feature.charAt(0).toUpperCase() + feature.slice(1));
 }
 
 // ── Cloud Backups Sheet ──

@@ -14,7 +14,7 @@ router.post('/register', async (req, res, next) => {
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     const client = supabase.getClient();
-    if (!client) return res.status(503).json({ error: 'Supabase not configured' });
+    if (!client) return res.status(503).json({ error: 'Registration not available — Supabase not configured. Use local storage instead.' });
 
     const passwordHash = hashPassword(password);
     const { data: user, error } = await client.from('users').insert({
@@ -22,17 +22,21 @@ router.post('/register', async (req, res, next) => {
     }).select('id, email, name, created_at').single();
 
     if (error) {
-      if (error.message.includes('duplicate') || error.message.includes('unique')) {
+      if (error.message && (error.message.includes('duplicate') || error.message.includes('unique') || error.code === '23505')) {
         return res.status(409).json({ error: 'Email already registered' });
       }
-      throw error;
+      logger.error('Register insert error:', error);
+      return res.status(500).json({ error: 'Registration failed. Check server logs.' });
     }
 
     const tokens = generateTokens({ id: user.id, email: user.email });
-    await sendNotification('👤 New User Registered', `${user.email} joined TrackInvest`);
+    try { await sendNotification('👤 New User Registered', `${user.email} joined TrackInvest`); } catch (_) {}
 
     res.status(201).json({ success: true, user: { id: user.id, email: user.email, name: user.name }, ...tokens });
-  } catch (err) { next(err); }
+  } catch (err) {
+    logger.error('Register error:', err);
+    res.status(500).json({ error: 'Registration failed. Supabase may not be configured on this server.' });
+  }
 });
 
 router.post('/login', async (req, res, next) => {
