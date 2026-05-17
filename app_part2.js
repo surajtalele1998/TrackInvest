@@ -1954,9 +1954,9 @@ function exportTaxPDF() {
     doc.setFontSize(18);
     doc.text("80C Tax Savings Report (FY)", 14, 22);
     let fyInv = db.investments.filter(i => db.categories[i.type] && db.categories[i.type].is80c && isCurrentFY(i.date)).sort((a, b) => parseDate(b.date) - parseDate(a.date));
-    let tableData = fyInv.map(i => [i.date, i.type, i.note || '-', formatInr(i.amount)]);
+    let tableData = fyInv.map(i => [i.date, i.type, i.note || '-', fmtNum(i.amount)]);
     let total = fyInv.reduce((sum, i) => sum + i.amount, 0);
-    tableData.push(['', '', 'TOTAL:', formatInr(total)]);
+    tableData.push(['', '', 'TOTAL:', fmtNum(total)]);
     doc.autoTable({ startY: 30, head: [['Date', 'Asset', 'Note', 'Amount (Rs)']], body: tableData, theme: 'striped', headStyles: { fillColor: [69, 89, 164] } });
     doc.save('InvestPro_Tax_Report.pdf');
     showSnackbar("PDF Downloaded", "picture_as_pdf");
@@ -2257,7 +2257,7 @@ function processAITables(text) {
         // Headers
         tableHtml += '<thead><tr style="background:var(--md-primary-container);">';
         headerCells.forEach(h => {
-            tableHtml += `<th style="padding:12px;text-align:left;color:var(--md-on-primary-container);font-weight:600;border-bottom:2px solid var(--md-outline-variant);">${h}</th>`;
+            tableHtml += `<th style="padding:12px;text-align:left;color:var(--md-on-primary-container);font-weight:600;border-bottom:2px solid var(--md-outline-variant);">${escapeHtml(h)}</th>`;
         });
         tableHtml += '</tr></thead><tbody>';
 
@@ -2267,7 +2267,7 @@ function processAITables(text) {
             const bg = idx % 2 === 0 ? 'var(--md-surface)' : 'var(--md-surface-container-low)';
             tableHtml += `<tr style="background:${bg};">`;
             cells.forEach(c => {
-                tableHtml += `<td style="padding:10px 12px;border-bottom:1px solid var(--md-outline-variant);color:var(--md-on-surface);">${c}</td>`;
+                tableHtml += `<td style="padding:10px 12px;border-bottom:1px solid var(--md-outline-variant);color:var(--md-on-surface);">${escapeHtml(c)}</td>`;
             });
             tableHtml += '</tr>';
         });
@@ -2431,7 +2431,6 @@ function saveChatSession() {
     }
 
     saveData();
-    // updateChatHistoryUI(); // No longer needed if we use renderAIPopupContent('history')
 }
 
 // ==========================================
@@ -2759,7 +2758,7 @@ async function generateAIForecast(alreadyOpen = false) {
         let total = predictions.reduce((s, p) => s + p.predicted, 0);
         let html = `<div style="background:var(--md-primary-container);color:var(--md-on-primary-container);border-radius:24px;padding:24px;margin-bottom:24px;text-align:center;">
                     <div style="font-size:14px;font-weight:500;opacity:0.8;margin-bottom:4px;">Predicted Total Next Month</div>
-                    <div style="font-size:36px;font-weight:600;">₹${formatInr(total)}</div>
+                    <div style="font-size:36px;font-weight:600;">₹${fmtNum(total)}</div>
                 </div><div style="display:flex;flex-direction:column;gap:12px;">`;
         predictions.forEach(p => {
             let meta = db.categories[p.category] || { color: '#8D6E63', icon: 'savings' };
@@ -2775,7 +2774,7 @@ async function generateAIForecast(alreadyOpen = false) {
                             <div style="font-size:13px;color:var(--md-on-surface-variant);margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${p.reason}</div>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
-                            <div style="font-size:18px;font-weight:600;color:var(--md-on-surface);">₹${formatInr(p.predicted)}</div>
+                            <div style="font-size:18px;font-weight:600;color:var(--md-on-surface);">₹${fmtNum(p.predicted)}</div>
                             <div style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;background:${trendBg};padding:4px 8px;border-radius:8px;">
                                 <span class="material-symbols-rounded" style="font-size:14px;color:${trendColor};">${trendIcon}</span>
                                 <span style="font-size:12px;font-weight:600;color:${trendColor};text-transform:capitalize;">${p.trend}</span>
@@ -2958,7 +2957,7 @@ async function askAIEngine(context, alreadyOpen = false) {
         **Portfolio Health Score: [X/100]**
         | Metric | Value | Verdict |
         | :--- | :--- | :--- |
-        | Net Worth | ₹${formatInr(payload.netWorth)} | [Analysis] |
+        | Net Worth | ₹${fmtNum(payload.netWorth)} | [Analysis] |
         | Savings Rate | [Calculated %] | [Efficient/Inefficient] |
         | Tax Efficiency | ₹${payload.taxSaved}/1.5L | [Warning/Good] |
 

@@ -888,7 +888,7 @@ function suggestGoalMonthlySIP(goal, horizon) {
         title: 'Suggested Monthly SIP',
         html: `
             <div style="text-align:center;">
-                <div style="font-size:32px;font-weight:700;color:var(--md-primary);margin:16px 0;">₹${formatInr(monthlyNeeded)}</div>
+                <div style="font-size:32px;font-weight:700;color:var(--md-primary);margin:16px 0;">₹${fmtNum(monthlyNeeded)}</div>
                 <div style="font-size:14px;color:var(--md-on-surface-variant);">
                     Monthly for ${months / 12} years to reach ${formatMoney(goal.target)}
                 </div>
@@ -1249,26 +1249,6 @@ function nearbyStartScanner() {
 // ==========================================
 let deferredInstallPrompt = null;
 
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { scope: './' })
-            .then(reg => {
-                console.log('[PWA] SW registered, scope:', reg.scope);
-                // Check for SW updates
-                reg.addEventListener('updatefound', () => {
-                    const newWorker = reg.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            showSnackbar('App updated! Refresh for latest version.', 'system_update');
-                        }
-                    });
-                });
-            })
-            .catch(err => console.error('[PWA] SW registration failed:', err));
-    });
-}
-
 // Capture the install prompt
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -1401,12 +1381,12 @@ function calculatePortfolioHealth() {
         score -= 15;
         issues.push("Low liquidity buffer");
         suggestions.push({
-            text: `Build emergency fund: Save ₹${formatInr(Math.ceil(safetyGap))} to reach 6-month buffer (₹${formatInr(monthlyExp * 6)})`,
+            text: `Build emergency fund: Save ₹${fmtNum(Math.ceil(safetyGap))} to reach 6-month buffer (₹${fmtNum(monthlyExp * 6)})`,
             impact: 'high',
             priority: 1
         });
         quickWins.push({
-            text: `Move ₹${formatInr(Math.min(5000, Math.ceil(safetyGap / 3)))} to Liquid fund this month`,
+            text: `Move ₹${fmtNum(Math.min(5000, Math.ceil(safetyGap / 3)))} to Liquid fund this month`,
             action: `onclick="openInvestSheet(null, ${Math.min(5000, Math.ceil(safetyGap / 3))}); setInvestType('Liquid');"`
         });
     } else if (cash >= monthlyExp * 6) {
@@ -1430,7 +1410,7 @@ function calculatePortfolioHealth() {
         let topGoal = underfundedGoals[0];
         let gap = topGoal.target * 0.1 - (topGoal.saved || 0);
         suggestions.push({
-            text: `"${topGoal.name}" needs ₹${formatInr(Math.ceil(gap))} more to be on track`,
+            text: `"${topGoal.name}" needs ₹${fmtNum(Math.ceil(gap))} more to be on track`,
             impact: 'medium',
             priority: 2
         });
@@ -1451,7 +1431,7 @@ function calculatePortfolioHealth() {
         issues.push("Aggressive equity exposure");
         let rebalanceAmt = Math.floor((equity - safe * 2) / 3);
         suggestions.push({
-            text: `Rebalance: Move ₹${formatInr(rebalanceAmt)} from equity to FD/Debt for stability`,
+            text: `Rebalance: Move ₹${fmtNum(rebalanceAmt)} from equity to FD/Debt for stability`,
             impact: 'high',
             priority: 1
         });
@@ -1459,12 +1439,12 @@ function calculatePortfolioHealth() {
         issues.push("Conservative growth");
         let investMore = Math.floor(safe * 0.1);
         suggestions.push({
-            text: `Increase equity exposure: Add ₹${formatInr(investMore)} to SIPs to beat inflation`,
+            text: `Increase equity exposure: Add ₹${fmtNum(investMore)} to SIPs to beat inflation`,
             impact: 'medium',
             priority: 2
         });
         quickWins.push({
-            text: `Start ₹${formatInr(Math.min(1000, investMore))} monthly SIP in index fund`,
+            text: `Start ₹${fmtNum(Math.min(1000, investMore))} monthly SIP in index fund`,
             action: `onclick="openInvestSheet(null, ${Math.min(1000, investMore)}); setInvestType('SIP'); document.getElementById('inv-is-monthly').checked = true;"`
         });
     }
@@ -1478,7 +1458,7 @@ function calculatePortfolioHealth() {
             if (current < target) {
                 let gap = target - current;
                 suggestions.push({
-                    text: `${cat}: ₹${formatInr(current)}/₹${formatInr(target)} (gap: ₹${formatInr(Math.ceil(gap))})`,
+                    text: `${cat}: ₹${fmtNum(current)}/₹${fmtNum(target)} (gap: ₹${fmtNum(Math.ceil(gap))})`,
                     impact: gap > target * 0.5 ? 'high' : 'medium',
                     priority: gap > target * 0.5 ? 2 : 3
                 });
@@ -2013,7 +1993,7 @@ async function generatePDFWealthReport() {
         Object.keys(currentTypeTotals || {}).forEach(t => {
             if (currentTypeTotals[t] > 0) {
                 let curPerc = ((currentTypeTotals[t] / (currentTotalNW || 1)) * 100).toFixed(1);
-                categoriesHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${t}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(currentTypeTotals[t])}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${curPerc}%</td></tr>`;
+                categoriesHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${t}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${fmtNum(currentTypeTotals[t])}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${curPerc}%</td></tr>`;
             }
         });
 
@@ -2023,7 +2003,7 @@ async function generatePDFWealthReport() {
         (db.goals || []).slice(0, 5).forEach(g => {
             let saved = g.saved || 0;
             let perc = Math.min(100, (saved / g.target) * 100);
-            goalsHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${escapeHtml(g.name)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(saved)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${formatInr(g.target)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${perc.toFixed(0)}%</td></tr>`;
+            goalsHtml += `<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">${escapeHtml(g.name)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${fmtNum(saved)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">₹${fmtNum(g.target)}</td><td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${perc.toFixed(0)}%</td></tr>`;
         });
 
         reportDiv.innerHTML = `
@@ -2032,11 +2012,11 @@ async function generatePDFWealthReport() {
                 <p style="margin:4px 0 0;font-size:13px;color:#666;">Generated ${dateStr}</p>
             </div>
             <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
-                <tr><td style="padding:8px;font-weight:600;color:#6750A4;">Net Worth</td><td style="padding:8px;text-align:right;font-size:22px;font-weight:700;">₹${formatInr(currentTotalNW || 0)}</td></tr>
-                <tr><td style="padding:8px;border-top:1px solid #eee;">Total Invested (Principal)</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(totalInv)}</td></tr>
-                <tr><td style="padding:8px;border-top:1px solid #eee;">Unrealized Gain/Loss</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;color:${gainLoss >= 0 ? '#2e7d32' : '#c62828'};">${gainLoss >= 0 ? '+' : ''}₹${formatInr(gainLoss)}</td></tr>
-                <tr><td style="padding:8px;border-top:1px solid #eee;">Dividends Earned</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(totalDiv)}</td></tr>
-                <tr><td style="padding:8px;border-top:1px solid #eee;">80C Deductions</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${formatInr(tax80c)} / ₹1,50,000 (${tax80cPerc.toFixed(0)}%)</td></tr>
+                <tr><td style="padding:8px;font-weight:600;color:#6750A4;">Net Worth</td><td style="padding:8px;text-align:right;font-size:22px;font-weight:700;">₹${fmtNum(currentTotalNW || 0)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Total Invested (Principal)</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${fmtNum(totalInv)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Unrealized Gain/Loss</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;color:${gainLoss >= 0 ? '#2e7d32' : '#c62828'};">${gainLoss >= 0 ? '+' : ''}₹${fmtNum(gainLoss)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">Dividends Earned</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${fmtNum(totalDiv)}</td></tr>
+                <tr><td style="padding:8px;border-top:1px solid #eee;">80C Deductions</td><td style="padding:8px;border-top:1px solid #eee;text-align:right;">₹${fmtNum(tax80c)} / ₹1,50,000 (${tax80cPerc.toFixed(0)}%)</td></tr>
             </table>
             <h3 style="color:#6750A4;font-size:16px;margin:16px 0 8px;">Portfolio Allocation</h3>
             <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
@@ -2056,7 +2036,7 @@ async function generatePDFWealthReport() {
 
         let aiCommentaryEl = document.getElementById('pdf-ai-text');
         try {
-            let prompt = `Generate a 3-4 sentence wealth insight summary for a portfolio of ₹${formatInr(currentTotalNW || 0)} with categories: ${JSON.stringify(currentTypeTotals || {})}. 80C at ${tax80cPerc.toFixed(0)}%. Goals: ${JSON.stringify((db.goals || []).slice(0,3))}. Include one actionable tip. Raw HTML only, no markdown.`;
+            let prompt = `Generate a 3-4 sentence wealth insight summary for a portfolio of ₹${fmtNum(currentTotalNW || 0)} with categories: ${JSON.stringify(currentTypeTotals || {})}. 80C at ${tax80cPerc.toFixed(0)}%. Goals: ${JSON.stringify((db.goals || []).slice(0,3))}. Include one actionable tip. Raw HTML only, no markdown.`;
             let aiResp = await callAIApi(prompt, "You are a wealth report analyst. Output raw HTML.");
             aiCommentaryEl.innerHTML = formatAIResponse(aiResp);
         } catch(e) {
@@ -2101,15 +2081,15 @@ function checkSpendAlerts() {
     let weeklyBudget = dailyBudget * 7;
 
     if (dailyBudget > 0 && todayTotal > dailyBudget * 1.2) {
-        showLocalNotification('Spend Alert 🚨', `Today's spend ₹${formatInr(todayTotal)} exceeds daily budget ₹${formatInr(dailyBudget)}`);
+        showLocalNotification('Spend Alert 🚨', `Today's spend ₹${fmtNum(todayTotal)} exceeds daily budget ₹${fmtNum(dailyBudget)}`);
     }
     if (weeklyBudget > 0 && weekTotal > weeklyBudget) {
         let weekPerc = ((weekTotal / monthlyTotalBudget) * 100).toFixed(0);
-        showLocalNotification('Weekly Spend Alert 📊', `This week: ₹${formatInr(weekTotal)} (${weekPerc}% of monthly budget)`);
+        showLocalNotification('Weekly Spend Alert 📊', `This week: ₹${fmtNum(weekTotal)} (${weekPerc}% of monthly budget)`);
     }
     if (dailyBudget > 0 && todayTotal > dailyBudget * 0.8 && todayTotal <= dailyBudget * 1.2) {
         let remaining = dailyBudget - todayTotal;
-        showLocalNotification('Budget Warning ⚠️', `You have ₹${formatInr(Math.max(0, remaining))} left for today`);
+        showLocalNotification('Budget Warning ⚠️', `You have ₹${fmtNum(Math.max(0, remaining))} left for today`);
     }
 }
 
@@ -2124,7 +2104,7 @@ function updateDashboardEntryCards() {
         if (!budgetStatusEl) {
             let descEl = plannerEntry.querySelector('div[style*="font-size:13px"]');
             if (descEl) {
-                descEl.innerHTML = `Budget ₹${formatInr(totalBudget)}/mo · Invested ₹${formatInr(totalInv)}`;
+                descEl.innerHTML = `Budget ₹${fmtNum(totalBudget)}/mo · Invested ₹${fmtNum(totalInv)}`;
             }
         }
     }
@@ -2139,8 +2119,8 @@ function updateDashboardEntryCards() {
         let descEl = spendEntry.querySelector('div[style*="font-size:13px"]');
         if (descEl) {
             let budget = (db.monthlyPlanConfig?.needs || 0) + (db.monthlyPlanConfig?.wants || 0);
-            let budgetText = budget > 0 ? ` of ₹${formatInr(budget)}` : '';
-            descEl.innerHTML = `This month: ₹${formatInr(monthTotal)}${budgetText} · ${monthEntries.length} entries`;
+            let budgetText = budget > 0 ? ` of ₹${fmtNum(budget)}` : '';
+            descEl.innerHTML = `This month: ₹${fmtNum(monthTotal)}${budgetText} · ${monthEntries.length} entries`;
         }
     }
 }

@@ -243,6 +243,7 @@
         const STORAGE_KEY = 'appHubInvestDb';
         function loadDB() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
         function saveDB() { try { let existing = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; Object.assign(existing, db); localStorage.setItem(STORAGE_KEY, JSON.stringify(existing)); } catch(e) { alert('Storage failed'); } }
+        function fmt(n) { return Number(n||0).toLocaleString('en-IN'); }
         let db = loadDB();
         if (!db.spendTracker) db.spendTracker = { entries: [], aiCategoryCache: {} };
         if (!db.spendTracker.entries) db.spendTracker.entries = [];

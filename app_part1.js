@@ -792,13 +792,16 @@ function parseDate(dateStr) {
  * @param {number} num - The number to format
  * @returns {string} Formatted currency string
  */
-function formatInr(num) { return Number(num).toLocaleString('en-IN'); }
-
 /**
- * Formats a number as Indian Rupees with privacy mode support
+ * Formats a number to Indian-locale string with privacy mode check
  * @param {number} num - The number to format
- * @returns {string} Formatted currency string
+ * @returns {string} Formatted number string (no currency symbol)
  */
+function fmtNum(num) {
+    if (db.privacyMode) return '•••••';
+    return Number(num).toLocaleString('en-IN');
+}
+
 // ── Currency Conversion ──
 let _exchangeRates = null;
 let _exchangeRatesFetched = 0;
@@ -832,7 +835,7 @@ function convertCurrency(amountInr, targetCurrency) {
 function formatMoney(num) {
     if (db.privacyMode) return '•••••';
     const sym = db.currency && db.currency !== 'INR' ? (db.currencySymbol || db.currency + ' ') : '₹';
-    return sym + formatInr(num);
+    return sym + fmtNum(num);
 }
 
 /**
@@ -1030,7 +1033,7 @@ function closeSubSheet(fromPopState = false) {
 
 // ── COPY NET WORTH ──────────────────────────────
 function copyNetWorth() {
-    const text = `Net Worth: ₹${formatInr(currentTotalNW)} (as of ${new Date().toLocaleDateString('en-IN')})`;
+    const text = `Net Worth: ₹${fmtNum(currentTotalNW)} (as of ${new Date().toLocaleDateString('en-IN')})`;
     navigator.clipboard.writeText(text).then(() => showSnackbar('Copied to clipboard', 'content_copy')).catch(() => {});
 }
 
@@ -2289,7 +2292,7 @@ function calculateStrictTax(tax80c = null) {
     }
 
     tax = tax * 1.04; // 4% Health & Education Cess
-    return { liability: tax, str: `₹${formatInr(tax)}` };
+    return { liability: tax, str: `₹${fmtNum(tax)}` };
 }
 
 function calculateStrictValuation(type, totalInvested, rawInvs) {
@@ -2973,8 +2976,8 @@ function updateSmartPreview() {
 
         html = `<div style="padding:12px; border-radius:12px; background:var(--md-primary-container); color:var(--md-on-primary-container);">
             <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">Accrued Value (${years.toFixed(1)}Y)</div>
-            <div style="font-size:20px; font-weight:600;">₹${formatInr(currentVal.toFixed(0))}</div>
-            <div style="font-size:11px; margin-top:4px;">Interest: <span style="color:var(--md-success);">+₹${formatInr((currentVal - amt).toFixed(0))}</span></div>
+            <div style="font-size:20px; font-weight:600;">₹${fmtNum(currentVal.toFixed(0))}</div>
+            <div style="font-size:11px; margin-top:4px;">Interest: <span style="color:var(--md-success);">+₹${fmtNum((currentVal - amt).toFixed(0))}</span></div>
         </div>`;
     } else if (type === 'SIP') {
         const isMonthly = document.getElementById('inv-is-monthly').checked;
@@ -2985,15 +2988,15 @@ function updateSmartPreview() {
             const futureVal = amt * ((Math.pow(1 + r, months + 1) - 1) / r) * (1 + r);
             html = `<div style="padding:12px; border-radius:12px; background:var(--md-secondary-container); color:var(--md-on-secondary-container);">
                 <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">SIP Valuation (${months + 1} Months)</div>
-                <div style="font-size:20px; font-weight:600;">₹${formatInr(futureVal.toFixed(0))}</div>
-                <div style="font-size:11px; margin-top:4px;">Invested: ₹${formatInr(totalInvested)} | P&L: <span style="color:var(--md-success);">+₹${formatInr((futureVal - totalInvested).toFixed(0))}</span></div>
+                <div style="font-size:20px; font-weight:600;">₹${fmtNum(futureVal.toFixed(0))}</div>
+                <div style="font-size:11px; margin-top:4px;">Invested: ₹${fmtNum(totalInvested)} | P&L: <span style="color:var(--md-success);">+₹${fmtNum((futureVal - totalInvested).toFixed(0))}</span></div>
             </div>`;
         } else {
             const currentVal = amt * Math.pow(1 + (rate / 100), years);
             html = `<div style="padding:12px; border-radius:12px; background:var(--md-secondary-container); color:var(--md-on-secondary-container);">
                 <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">Growth Forecast (${years.toFixed(1)}Y @ ${rate}%)</div>
-                <div style="font-size:20px; font-weight:600;">₹${formatInr(currentVal.toFixed(0))}</div>
-                <div style="font-size:11px; margin-top:4px;">Gain: <span style="color:var(--md-success);">+₹${formatInr((currentVal - amt).toFixed(0))}</span></div>
+                <div style="font-size:20px; font-weight:600;">₹${fmtNum(currentVal.toFixed(0))}</div>
+                <div style="font-size:11px; margin-top:4px;">Gain: <span style="color:var(--md-success);">+₹${fmtNum((currentVal - amt).toFixed(0))}</span></div>
             </div>`;
         }
     } else if (type === 'PF' || type === 'PPF') {
@@ -3001,8 +3004,8 @@ function updateSmartPreview() {
         const currentVal = amt * Math.pow(1 + (rate / 100), years);
         html = `<div style="padding:12px; border-radius:12px; background:var(--md-tertiary-container); color:var(--md-on-tertiary-container);">
             <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">Govt Compound Interest (${rate}%)</div>
-            <div style="font-size:20px; font-weight:600;">₹${formatInr(currentVal.toFixed(0))}</div>
-            <div style="font-size:11px; margin-top:4px;">Interest: <span style="color:var(--md-success);">+₹${formatInr((currentVal - amt).toFixed(0))}</span></div>
+            <div style="font-size:20px; font-weight:600;">₹${fmtNum(currentVal.toFixed(0))}</div>
+            <div style="font-size:11px; margin-top:4px;">Interest: <span style="color:var(--md-success);">+₹${fmtNum((currentVal - amt).toFixed(0))}</span></div>
         </div>`;
     } else {
         // Default generic growth
@@ -3011,7 +3014,7 @@ function updateSmartPreview() {
         if (rate > 0) {
             html = `<div style="padding:12px; border-radius:12px; border:1px solid var(--md-outline-variant);">
                 <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">Forecasted Value (${rate}%)</div>
-                <div style="font-size:18px; font-weight:600;">₹${formatInr(currentVal.toFixed(0))}</div>
+                <div style="font-size:18px; font-weight:600;">₹${fmtNum(currentVal.toFixed(0))}</div>
             </div>`;
         }
     }
